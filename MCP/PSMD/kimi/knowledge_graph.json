@@ -1,0 +1,10 @@
+slots:
+  - postop_day
+  - flatus
+  - oral_intake
+
+foods:
+  rice_water:
+    description: "米汤"
+  thin_porridge:
+    description: "稀粥"

@@ -6,7 +6,8 @@ const readline = require('readline');
 const yaml = require('js-yaml');
 
 // 获取目标路径（脚本所在目录）
-const targetPath = __dirname;
+//const targetPath = __dirname;
+const targetPath = "d:\\huangyg\\git\\ego\\data\\voucher\\2025\\";
 
 // 查找最新的AVR ID
 function getLatestAvrId() {

@@ -1,0 +1,82 @@
+{
+  "nodes": {
+    "root": {
+      "id": "root",
+      "response": "欢迎进行科技行业投资咨询。您想了解哪个细分领域？",
+      "options": [
+        { "id": "ai", "description": "人工智能(AI)与机器学习", "next_node": "node_ai" },
+        { "id": "cloud", "description": "云计算与数据中心", "next_node": "node_cloud" }
+      ]
+    },
+    "node_ai": {
+      "id": "node_ai",
+      "response": "AI是一个广阔领域。您对硬件还是软件更感兴趣？",
+      "options": [
+        { "id": "hardware", "description": "AI硬件（如GPU、专用芯片）", "next_node": "node_ai_hardware" },
+        { "id": "software", "description": "AI软件与算法", "next_node": "node_ai_software" }
+      ]
+    },
+    "node_ai_hardware": {
+      "id": "node_ai_hardware",
+      "response": "AI硬件的代表公司包括NVIDIA、AMD、Intel等。您想了解市场趋势、头部公司还是比较分析？",
+      "options": [
+        { "id": "trend", "description": "市场趋势与规模", "next_node": "node_ai_hw_trend" },
+        { "id": "companies", "description": "头部公司详细介绍", "next_node": "node_ai_hw_companies" },
+        { "id": "compare", "description": "公司间对比分析", "next_node": "node_ai_hw_compare" }
+      ]
+    },
+    "node_ai_hw_companies": {
+      "id": "node_ai_hw_companies",
+      "response": "以下是主要AI硬件公司的概述：\n1. NVIDIA: 在GPU领域占据主导地位...\n2. AMD: 提供竞品GPU和CPU...\n3. Intel: 专注于CPU并积极进军GPU和AI加速卡市场。",
+      "options": [
+        { "id": "back", "description": "返回上一级", "next_node": "node_ai_hardware" },
+        { "id": "end", "description": "结束咨询", "next_node": null }
+      ]
+    },
+    "node_ai_hw_trend": {
+       "id": "node_ai_hw_trend",
+       "response": "AI硬件市场正经历快速增长，预计未来几年将保持高复合年增长率。主要驱动力来自于数据中心对高性能计算的需求以及边缘AI应用的兴起。",
+       "options": [
+         { "id": "back", "description": "返回上一级", "next_node": "node_ai_hardware" },
+         { "id": "end", "description": "结束咨询", "next_node": null }
+       ]
+    },
+    "node_ai_software": {
+       "id": "node_ai_software",
+       "response": "AI软件和算法领域涵盖机器学习框架、自然语言处理库、计算机视觉工具等。您想了解哪些方面？",
+       "options": [
+         { "id": "frameworks", "description": "主流机器学习框架", "next_node": "node_ai_sw_frameworks" },
+         { "id": "nlp", "description": "自然语言处理技术", "next_node": "node_ai_sw_nlp" },
+         { "id": "back", "description": "返回上一级", "next_node": "node_ai" },
+         { "id": "end", "description": "结束咨询", "next_node": null }
+       ]
+    },
+    "node_ai_sw_frameworks": {
+       "id": "node_ai_sw_frameworks",
+       "response": "主流的AI软件框架包括TensorFlow、PyTorch、Keras等。它们提供了构建和训练机器学习模型的工具和库。",
+       "options": [
+         { "id": "back", "description": "返回上一级", "next_node": "node_ai_software" },
+         { "id": "end", "description": "结束咨询", "next_node": null }
+       ]
+    },
+    "node_cloud": {
+       "id": "node_cloud",
+       "response": "云计算市场由AWS、Microsoft Azure和Google Cloud主导。您想了解云服务类型、市场趋势还是主要厂商？",
+       "options": [
+         { "id": "services", "description": "云服务类型 (IaaS, PaaS, SaaS)", "next_node": "node_cloud_services" },
+         { "id": "trends", "description": "市场趋势与规模", "next_node": "node_cloud_trends" },
+         { "id": "providers", "description": "主要云服务提供商", "next_node": "node_cloud_providers" },
+         { "id": "back", "description": "返回上一级", "next_node": "root" },
+         { "id": "end", "description": "结束咨询", "next_node": null }
+       ]
+    },
+    "node_cloud_services": {
+       "id": "node_cloud_services",
+       "response": "云服务主要分为三类：\n- IaaS (基础设施即服务): 提供虚拟机、存储等基础计算资源。\n- PaaS (平台即服务): 提供应用开发和部署平台。\n- SaaS (软件即服务): 通过互联网提供软件应用。",
+       "options": [
+         { "id": "back", "description": "返回上一级", "next_node": "node_cloud" },
+         { "id": "end", "description": "结束咨询", "next_node": null }
+       ]
+    }
+  }
+}
