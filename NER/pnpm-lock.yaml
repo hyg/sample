@@ -1,0 +1,102 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@nlpjs/ner':
+        specifier: 5.0.0-alpha.5
+        version: 5.0.0-alpha.5
+      wink-nlp-utils:
+        specifier: ^2.1.0
+        version: 2.1.0
+
+packages:
+
+  '@nlpjs/core@5.0.0-alpha.5':
+    resolution: {integrity: sha512-6KER6Jsy/KLVNor2isRsYV5XjVtYVaYLLqEmQt69Nmw2tIYyzzhzPxZPmOaU++OWfiUaZWGMgNueJHAmK6sApw==}
+
+  '@nlpjs/language-min@5.0.0-alpha.5':
+    resolution: {integrity: sha512-O4tnPFqiSxK2Ukv0WD+NhviaBSjW8xq2GJFzQo3dKEief0JJQVK0McYzkahgyInhy0J/q4z9KGFzGs5VEVgwfA==}
+
+  '@nlpjs/ner@5.0.0-alpha.5':
+    resolution: {integrity: sha512-abtdWNXqEmWmRwRFCLnv72g2wMgcmWcEes6kL895GmevS/NseOE8j87ufTwPuk77Fgcga/z794eQaFU7Wn2HTA==}
+
+  '@nlpjs/similarity@5.0.0-alpha.5':
+    resolution: {integrity: sha512-xgEjMXnwieZTXV/cRHnsFL72s6EvFxohOU2jWhXMgtaiV6bpglnJJTzvtFl8ZeLCzqfZqY3pfGmsvtWaR3vujw==}
+
+  emoji-regex@9.2.2:
+    resolution: {integrity: sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==}
+
+  wink-distance@2.0.2:
+    resolution: {integrity: sha512-pyEhUB/OKFYcgOC4J6E+c+gwVA/8qg2s5n49mIcUsJZM5iDSa17uOxRQXR4rvfp+gbj55K/I08FwjFBwb6fq3g==}
+
+  wink-eng-lite-web-model@1.8.1:
+    resolution: {integrity: sha512-M2tSOU/rVNkDj8AS8IoKJaM7apJJjS0cN+hE8CPazfnB4A/ojyc9+7RMPk18UOiIdSyWk7MR6w8z9lWix2l5tA==}
+    engines: {node: '>=16.0.0'}
+
+  wink-helpers@2.0.0:
+    resolution: {integrity: sha512-I/ZzXrHcNRXuoeFJmp2vMVqDI6UCK02Tds1WP4kSGAmx520gjL1BObVzF7d2ps24tyHIly9ngdB2jwhlFUjPvg==}
+
+  wink-jaro-distance@2.0.0:
+    resolution: {integrity: sha512-9bcUaXCi9N8iYpGWbFkf83OsBkg17r4hEyxusEzl+nnReLRPqxhB9YNeRn3g54SYnVRNXP029lY3HDsbdxTAuA==}
+
+  wink-nlp-utils@2.1.0:
+    resolution: {integrity: sha512-b7PcRhEBNxQmsmht70jLOkwYUyie3da4/cgEXL+CumYO5b/nwV+W7fuMXToh5BtGq1RABznmc2TGTp1Qf/JUXg==}
+
+  wink-nlp@1.14.3:
+    resolution: {integrity: sha512-lvY5iCs3T8I34F8WKS70+2P0U9dWLn3vdPf/Z+m2VK14N7OmqnPzmHfh3moHdusajoQ37Em39z0IZB9K4x/96A==}
+
+  wink-porter2-stemmer@2.0.1:
+    resolution: {integrity: sha512-0g+RkkqhRXFmSpJQStVXW5N/WsshWpJXsoDRW7DwVkGI2uDT6IBCoq3xdH5p6IHLaC6ygk7RWUsUx4alKxoagQ==}
+
+  wink-tokenizer@5.3.0:
+    resolution: {integrity: sha512-O/yAw0g3FmSgeeQuYAJJfP7fVPB4A6ay0018qASh79aWmIOyPYy4j4r9EQT8xBjicja6lCLvgRVAybmEBaATQA==}
+
+snapshots:
+
+  '@nlpjs/core@5.0.0-alpha.5': {}
+
+  '@nlpjs/language-min@5.0.0-alpha.5': {}
+
+  '@nlpjs/ner@5.0.0-alpha.5':
+    dependencies:
+      '@nlpjs/core': 5.0.0-alpha.5
+      '@nlpjs/language-min': 5.0.0-alpha.5
+      '@nlpjs/similarity': 5.0.0-alpha.5
+
+  '@nlpjs/similarity@5.0.0-alpha.5': {}
+
+  emoji-regex@9.2.2: {}
+
+  wink-distance@2.0.2:
+    dependencies:
+      wink-helpers: 2.0.0
+      wink-jaro-distance: 2.0.0
+
+  wink-eng-lite-web-model@1.8.1: {}
+
+  wink-helpers@2.0.0: {}
+
+  wink-jaro-distance@2.0.0: {}
+
+  wink-nlp-utils@2.1.0:
+    dependencies:
+      wink-distance: 2.0.2
+      wink-eng-lite-web-model: 1.8.1
+      wink-helpers: 2.0.0
+      wink-nlp: 1.14.3
+      wink-porter2-stemmer: 2.0.1
+      wink-tokenizer: 5.3.0
+
+  wink-nlp@1.14.3: {}
+
+  wink-porter2-stemmer@2.0.1: {}
+
+  wink-tokenizer@5.3.0:
+    dependencies:
+      emoji-regex: 9.2.2

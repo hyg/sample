@@ -1,0 +1,3 @@
+{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"capabilities":{}}}
+{"jsonrpc":"2.0","id":"2","method":"ping"}
+{"jsonrpc":"2.0","id":"3","method":"analyzeBylaws","params":{"decision":[{"id":"user_dc_1","title":"股东会决议条款","description":"股东会会议作出修改公司章程、增加或者减少注册资本的决议，以及公司合并、分立、解散或者变更公司形式的决议，必须经代表三分之二以上表决权的股东通过。","canAmendOthers":true,"canAppointDismiss":true,"selfAmendmentProcedure":"经代表三分之二以上表决权的股东通过"}],"nonDecision":[{"id":"user_ndc_1","title":"公司住所条款","description":"公司住所为XX市XX区XX路XX号。","canAmendOthers":false,"canAppointDismiss":false,"selfAmendmentProcedure":"由董事会决议修改"}],"independent":[]}}

@@ -1,0 +1,26 @@
+{
+  "name": "psmd.mcp",
+  "version": "1.0.0",
+  "description": "MCP for analyzing company bylaws and identifying decision-making clauses.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "bylaws",
+    "analysis"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "mammoth": "^1.10.0",
+    "node-unoconv": "^1.0.5",
+    "readline": "^1.3.0",
+    "vscode-jsonrpc": "^8.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}

@@ -1,0 +1,6 @@
+{
+	"dependencies": {
+		"@nlpjs/ner": "5.0.0-alpha.5",
+		"wink-nlp-utils": "^2.1.0"
+	}
+}
