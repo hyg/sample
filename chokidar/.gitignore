@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# State files
+.state.json
+.state-single.json
+
+# Log files
+*.log
+
+# Generated files
+d.*.md
+d.*.yaml
+
+# Test directories
+ego/
+qwen/
+test-notes/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS generated files
+Thumbs.db
+.DS_Store
