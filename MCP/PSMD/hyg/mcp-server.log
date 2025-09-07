@@ -1,0 +1,8 @@
+2025-09-07T13:21:39.301Z: 客户端能力: {"roots":{}}
+2025-09-07T13:24:48.037Z: 客户端能力: {"roots":{}}
+2025-09-07T13:25:43.677Z: params: {"protocolVersion":"2025-06-18","capabilities":{"roots":{}},"clientInfo":{"name":"claude-code","version":"1.0.89"}}
+2025-09-07T13:25:43.678Z: 客户端能力: {"roots":{}}
+2025-09-07T13:26:17.059Z: params: {"protocolVersion":"2025-06-18","capabilities":{"roots":{}},"clientInfo":{"name":"gemini-cli-mcp-client-PSMD","version":"0.0.1"}}
+2025-09-07T13:26:17.060Z: 客户端能力: {"roots":{}}
+2025-09-07T13:26:51.144Z: params: {"protocolVersion":"2025-06-18","capabilities":{"elicitation":{}},"clientInfo":{"name":"codex-mcp-client","title":"Codex","version":"0.29.0"}}
+2025-09-07T13:26:51.146Z: 客户端能力: {"elicitation":{}}

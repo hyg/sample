@@ -4,5 +4,8 @@
 		"@modelcontextprotocol/sdk": "^1.17.4",
 		"wink-nlp-utils": "^2.1.0",
 		"zod": "3.24.1"
+	},
+	"devDependencies": {
+		"@types/node": "^24.3.1"
 	}
 }
