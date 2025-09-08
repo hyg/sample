@@ -81,7 +81,7 @@ server.registerResource(
     }]
   })
 );
-
+/* 
 server.registerPrompt(
   "top-clause",
   {
@@ -128,7 +128,7 @@ upgradeby: z.string()
       }
     }]
   })
-);
+); */
 
 // Tool that uses LLM sampling to summarize any text
 server.registerTool(
@@ -165,7 +165,7 @@ server.registerTool(
     };
   }
 );
-
+/* 
 server.registerTool(
   "extract",
   {
@@ -233,7 +233,7 @@ term:
       ],
     };
   }
-);
+); */
 
 // Handle server errors
 server.onerror = (error) => {
