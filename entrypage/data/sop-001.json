@@ -1,0 +1,19 @@
+{
+    "id": "001",
+    "title": "原料放行流程",
+    "initial": "A",
+    "states": {
+      "A": { "name": "取样", "role": "QA" },
+      "B": { "name": "理化", "role": "Lab" },
+      "C": { "name": "微生物", "role": "MicroLab" },
+      "D": { "name": "文件复核", "role": "DocCtrl" },
+      "E": { "name": "放行", "role": "QP" }
+    },
+    "trans": [
+      { "from": "A", "to": "B", "guard": "ok" },
+      { "from": "B", "to": "C", "guard": "ok" },
+      { "from": "A", "to": "D", "guard": "ok" },
+      { "from": "C", "to": "E", "guard": "ok" },
+      { "from": "D", "to": "E", "guard": "ok" }
+    ]
+  }

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>合同极简工作台</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav id="sideMenu">
+    <h2>必须完成</h2>
+    <ul id="dutyList"></ul>
+
+    <h2>已启动 SOP</h2>
+    <ul id="sopList"></ul>
+
+    <h2>可启动事件</h2>
+    <ul id="powerList"></ul>
+
+    <h2>未提取利益</h2>
+    <ul id="benefitList"></ul>
+  </nav>
+
+  <main id="content">
+    <p style="color:#999">点击左侧菜单查看详情</p>
+  </main>
+
+  <script src="logic.js"></script>
+  <script src="hfsm.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

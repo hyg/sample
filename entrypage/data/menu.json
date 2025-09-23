@@ -1,0 +1,31 @@
+{
+    "duty": [
+      {
+        "id": "001",
+        "title": "交付货物",
+        "dueDate": "2025-09-30",
+        "status": "Running"
+      }
+    ],
+    "sop": [
+      {
+        "id": "001",
+        "title": "原料放行流程",
+        "status": "Running"
+      }
+    ],
+    "power": [
+      {
+        "id": "001",
+        "title": "行使解除权",
+        "daysLeft": 18
+      }
+    ],
+    "benefit": [
+      {
+        "id": "001",
+        "title": "逾期违约金",
+        "amount": 800
+      }
+    ]
+  }

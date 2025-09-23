@@ -1,0 +1,8 @@
+{
+    "id": "001",
+    "title": "交付货物",
+    "status": "Running",
+    "dueDate": "2025-09-30",
+    "oracle": "delivery-check.wasm",
+    "inputs": ["billOfLadingHash"]
+  }

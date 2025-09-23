@@ -1,0 +1,17 @@
+date: 2025-09-22
+VoucherID: 19250922202000035152946941021301
+AccountingSoftwareID: 
+AccountingEntry:
+  debit:
+    - AccountTitle: raw.food
+      asset: rmb
+      amount: 27.26
+  credit:
+    - AccountTitle: 银行存款
+      asset: rmb
+      amount: 27.26
+comment:
+  - name: 沙棘原浆
+    amount: 2000
+    unit: ml
+    asset: 27.26

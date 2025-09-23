@@ -1,0 +1,7 @@
+{
+    "id": "001",
+    "title": "逾期违约金",
+    "amount": 800,
+    "triggerEvent": "breach-late-delivery",
+    "currency": "CNY"
+  }

@@ -1,0 +1,9 @@
+{
+    "id": "001",
+    "title": "行使解除权",
+    "status": "dormant",
+    "guard": { ">": [{ "var": "breachSeverity" }, 7] },
+    "deadline": "2025-09-10",
+    "maxRepeat": 1,
+    "needConsent": false
+  }
