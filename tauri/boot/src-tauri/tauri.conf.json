@@ -2,9 +2,12 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "boot",
   "version": "0.1.0",
-  "identifier": "com.PSMD.boot",
+  "identifier": "com.PSMD.boot",  
   "build": {
-    "frontendDist": "../src"
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
   },
   "app": {
     "withGlobalTauri": true,
