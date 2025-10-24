@@ -7,7 +7,9 @@
 
 - 299.txt的内容对应AVR.299.yaml;
 - 300.txt对应AVR.300.yaml;
-- 301.txt对应AVR.301.yaml.
+- 301.txt对应AVR.301.yaml;
+- 373.txt对应AVR.373.yaml,AER.363.yaml；
+- 374.txt对应AVR.374.yaml,AER.364.yaml.
 
 ### UI
 
@@ -15,5 +17,7 @@
 - 用户输入299.txt、300.txt格式的多行内容
 - 可选：在输入末尾用"---"作为分隔符开始，后面两行分别输入amount和summary字段的内容
 - 按ctrl-s结束（批量模式）或输入"END"结束（交互式模式）
-- 自动生成AVR.id.yaml和AER.id.yaml文件，保存到目标路径下。其中id是目标路径下最新id递增1。
+- 自动生成AVR.AVRid.yaml和AER.AERid.yaml文件，保存到目标路径下。其中AVRid是目标路径下最新AVRid递增1,AERid是目标路径下最新AERid递增1。如果目标路径下没有对应文件则从1开始排序。
 - 在命令行输出文件名和内容，然后提示："请输入下一份电子凭证"。
+
+未经用户确认不得修改本文档。

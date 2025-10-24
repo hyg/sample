@@ -1,0 +1,36 @@
+date: 2025-10-23
+VoucherID: 4200002930202510237358644836
+AccountingSoftwareID: 
+AccountingEntry:
+  debit:
+    - AccountTitle: raw.food
+      asset: rmb
+      amount: 57.41
+    - AccountTitle: raw.supply
+      asset: rmb
+      amount: 37.74
+  credit:
+    - AccountTitle: 微信零钱
+      asset: rmb
+      amount: 95.15
+comment:
+  - name: 番茄酱
+    amount: 1600
+    unit: g
+    asset: 25.64
+  - name: 秋葵
+    amount: 1400
+    unit: g
+    asset: 12.25
+  - name: 牛磺酸
+    amount: 500
+    unit: g
+    asset: 19.52
+  - name: 洗碗布
+    amount: 3
+    unit: 卷
+    asset: 26.55
+  - name: 洗碗液
+    amount: 800
+    unit: g
+    asset: 11.19
