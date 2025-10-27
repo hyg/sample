@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      xstate:
+        specifier: ^5.23.0
+        version: 5.23.0
+
+packages:
+
+  xstate@5.23.0:
+    resolution: {integrity: sha512-jo126xWXkU6ySQ91n51+H2xcgnMuZcCQpQoD3FQ79d32a6RQvryRh8rrDHnH4WDdN/yg5xNjlIRol9ispMvzeg==}
+
+snapshots:
+
+  xstate@5.23.0: {}
