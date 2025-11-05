@@ -1,0 +1,17 @@
+date: 2025-11-05
+VoucherID: 10001073012025110500939409872171
+AccountingSoftwareID: 
+AccountingEntry:
+  debit:
+    - AccountTitle: raw.food
+      asset: rmb
+      amount: 10.00
+  credit:
+    - AccountTitle: 银行存款
+      asset: rmb
+      amount: 10.00
+comment:
+  - name: 肠粉
+    amount: 1
+    unit: 份
+    asset: 10.00
