@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <script src="FileSaver.min.js"></script>
+    <!-- or https://raw.githubusercontent.com/eligrey/FileSaver.js/master/FileSaver.min.js -->
+    <script src="openpgp.min.6.js"></script>
+    <script>
+        var armorpubkey, armorseckey;
+        var pubkey, seckey;
+        function createkeypair() {
+            var openpgp = window.openpgp;
+            var passphrase = prompt('准备创建密钥，请输入密钥口令');
+            var name = prompt('请输入姓名');
+            //var id = prompt('请输入ID');
+            var email = prompt('请输入Email');
+            var userIDs = [{ name: name, email: email }];
+            //var publicKey,privateKey;
+            var opt = { rsaBits: 4096, userIDs: userIDs, passphrase: passphrase ,config:{showVersion: true, showComment: true, versionString: "test version string",commentString: "test comment"} };
+            openpgp.generateKey(opt).then(function (obj) {
+                alert("privateKey:" + obj.privateKey);
+                alert("已创建成功 publicKey:" + obj.publicKey);
+                alert("revocationCertificate:" + obj.revocationCertificate);
+                //alert(privateKey + "已创建成功。");
+                var pub = new Blob([obj.publicKey], { type: "text/plain;charset=utf-8" });
+                alert("Save the Publc Key");
+                saveAs(pub, "key.pub");
+                var sec = new Blob([obj.privateKey], { type: "text/plain;charset=utf-8" });
+                alert("Save the Private Key");
+                saveAs(sec, "key.sec");
+                var rev = new Blob([obj.revocationCertificate], { type: "text/plain;charset=utf-8" });
+                alert("Save the Revocation Certificate]");
+                saveAs(sec, "key.rev");
+            });
+        }
+
+        function ReadPubKey() {
+            var file = document.getElementById("encryptPubKey").files[0];
+            var reader = new FileReader();
+            reader.onload = function () {
+                armorpubkey = this.result;
+            }
+
+            reader.readAsText(file);
+        }
+
+        function ReadSecKey() {
+            var file = document.getElementById("encryptSecKey").files[0];
+            var reader = new FileReader();
+            reader.onload = function () {
+                armorseckey = this.result;
+            }
+
+            reader.readAsText(file);
+        }
+
+        async function encrypt() {
+            var inputtext = document.getElementById("inputtext");
+            var plaintext = inputtext.value;
+            var plain = document.getElementById("plain");
+            plain.textContent = plaintext;
+
+            var encrypted = document.getElementById("encrypted");
+            var openpgp = window.openpgp;
+            pubkey = await openpgp.key.readArmored(armorpubkey);
+            const options = {
+                message: openpgp.message.fromText(plaintext),       // input as Message object
+                publicKeys: pubkey.keys // for encryption
+            };
+            openpgp.encrypt(options).then(function (ciphertext) {
+                encrypted.textContent = ciphertext.data;
+            }, function (error) {
+                alert(error);
+            });
+        }
+
+        async function decrypt() {
+            var plain = document.getElementById("plain");
+            var encrypted = document.getElementById("encrypted");
+
+            var openpgp = window.openpgp;
+            seckey = await openpgp.key.readArmored(armorseckey);
+            let seckeyObj = seckey.keys[0];
+            let passphrase = prompt("准备解密，请输入密钥口令");
+            await seckeyObj.decrypt(passphrase);
+            var encryptedtext = await openpgp.message.readArmored(encrypted.textContent);
+            const options = {
+                message: encryptedtext,    // parse armored message
+                privateKeys: [seckeyObj]                                 // for decryption
+            }
+            openpgp.decrypt(options).then(function (text) {
+                alert(text.data);
+            }, function (error) {
+                alert(error);
+            });
+        }
+
+        async function signit() {
+            var inputtext = document.getElementById("inputtext");
+            var sig = document.getElementById("sig");
+            var openpgp = window.openpgp;
+
+            seckey = await openpgp.key.readArmored(armorseckey);
+            let seckeyObj = seckey.keys[0];
+            let passphrase = prompt("准备解密，请输入密钥口令");
+            await seckeyObj.decrypt(passphrase);
+
+            options = {
+                message: openpgp.cleartext.fromText(inputtext.value), // CleartextMessage or Message object
+                privateKeys: [seckeyObj]                             // for signing
+            };
+            openpgp.sign(options).then(function (signed) {
+                sig.textContent = signed.data; // '-----BEGIN PGP SIGNED MESSAGE ... END PGP SIGNATURE-----'
+            }, function (error) {
+                alert(error);
+            });
+        }
+
+        async function verifyit() {
+            var sig = document.getElementById("sig");
+            var inputtext = document.getElementById("inputtext");
+            var sigtext = sig.textContent;
+            if (sig.textContent.length == 0) {
+                sig.textContent = inputtext.value;
+            }
+
+            var openpgp = window.openpgp;
+
+            options = {
+                message: await openpgp.cleartext.readArmored(sig.textContent), // parse armored message
+                publicKeys: (await openpgp.key.readArmored(armorpubkey)).keys // for verification
+            };
+
+
+            openpgp.verify(options).then(function (verified) {
+                var validity = verified.signatures[0].valid; // true
+                if (validity) {
+                    alert('signed by key id ' + verified.signatures[0].keyid.toHex() + '\nsigned in date ' + verified.signatures[0].signature.packets[0].created);
+                }
+            }, function (error) {
+                alert(error);
+            });
+        }
+
+    </script>
+</head>
+
+<body>
+    <hr />
+    <input type="button" id="createkey" value="创建密钥" onclick="createkeypair()"></input>
+    <br />
+    <hr />
+    <label>加密 | 读取公钥文件</label><br />
+    <input type="file" id="encryptPubKey" value="读取公钥文件" multiple="" onchange="ReadPubKey()" />
+    <input type="button" id="encrypt" value="加密" onclick="encrypt()" />
+    <input type="button" id="verifyit" value="验证" onclick="verifyit()" /><br />
+    <input type="file" id="encryptSecKey" value="读取私钥文件" multiple="" onchange="ReadSecKey()" />
+    <input type="button" id="decrypt" value="解密" onclick="decrypt()" />
+    <input type="button" id="signit" value="签名" onclick="signit()" />
+    <br />
+    <hr />
+    <textarea cols="40" rows="16" id="inputtext"></textarea>
+    <hr />
+
+    <pre>
+    <p id="plain"></p>
+    <p id="encrypted"></p>
+    <p id="sig"></p>
+    </pre><br /><br />
+
+</body>
+
+</html>
