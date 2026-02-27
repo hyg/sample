@@ -1,0 +1,18 @@
+{
+  "name": "magnet",
+  "version": "1.0.0",
+  "description": "1. 访问 https://www.renwujidian.com/profile/sannomiya-tsubaki ，把2024年10月1日之前发行的番号提取出来，以json结构列出。\r 1. 以每个番号去https://cilisousuo.cc搜索，语法是（以番号ADN-597为例）：https://cilisousuo.cc/search?q=ADN-597 。\r 1. 进入第一个含有番号的搜索结果（URL开头为 https://cilisousuo.cc/magnet/ ），提取其中的磁链，显示出来。\r 1. 对每个番号完成第2、3步骤后，汇集所有收集到的磁链，以每行一个的格式列出。除了换行没有任何标点符号。",
+  "main": "get_magnets.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "js-yaml": "^4.1.1",
+    "jsdom": "^28.1.0",
+    "puppeteer": "^24.37.5"
+  }
+}
