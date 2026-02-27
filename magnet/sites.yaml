@@ -1,0 +1,137 @@
+# 网站配置文件
+# 两类网站：演员资料网站、磁链搜索网站
+
+# 演员资料网站 (Actress profile website)
+# 用途：根据演员姓名和日期（可选）获得演员信息和番号列表
+profileSites:
+  renwujidian:
+    name: 人无极 (Renwujidian)
+    baseUrl: https://www.renwujidian.com
+    
+    # 搜索页面
+    search:
+      # URL模板
+      url: /search/{name}
+      # 搜索结果中profile链接的CSS选择器
+      profileLinkSelector: 'a[href^="/profile/"]'
+    
+    # Profile页面字段提取
+    profile:
+      # 包含基本信息的表格的文本特征
+      infoTableTextPattern: '(出生日期|身高|三围)'
+      # 作品表格的文本特征
+      worksTableTextPattern: '(番号|发行时间)'
+      
+      # 字段提取规则
+      fields:
+        name:
+          pattern: '中文名[：:\s]*([^\n]+?)(?=外文名|呢称|别名|性别|出生日期)'
+        english_name:
+          pattern: '外文名[：:\s]*([^\n]+?)(?=呢称|别名|性别|出生日期)'
+        birthday:
+          pattern: '出生日期[：:\s]*(\d{4})年(\d+)月(\d+)日'
+          format: '{1}-{2:02d}-{3:02d}'
+        height:
+          pattern: '身高[：:\s]*(\d+)\s*cm'
+          type: integer
+        bust:
+          pattern: '三围[：:\s]*B(\d+)[(（](\w+)[)）]-W(\d+)-H(\d+)'
+          capture: 1
+          type: integer
+        waist:
+          pattern: '三围[：:\s]*B(\d+)[(（](\w+)[)）]-W(\d+)-H(\d+)'
+          capture: 3
+          type: integer
+        hip:
+          pattern: '三围[：:\s]*B(\d+)[(（](\w+)[)）]-W(\d+)-H(\d+)'
+          capture: 4
+          type: integer
+        debut_year:
+          pattern: '出道时间[：:\s]*(\d{4})'
+          type: integer
+        blood_type:
+          pattern: '血型[：:\s]*(\w)'
+        birthplace:
+          pattern: '出生地[：:\s]*([^\n]+?)(?=国籍|职业)'
+        agency:
+          pattern: '经纪公司[：:\s]*([^\n]+?)$'
+      
+      # 作品表格提取
+      works:
+        rowSelector: 'tr'
+        columns:
+          code: 1      # 番号
+          date: 2      # 发行时间
+          duration: 3  # 时长
+          maker: 4     # 制作商
+    
+    # 搜索演员profile URL
+    searchActorUrl: '{baseUrl}/search/{name}'
+    profileUrlPrefix: 'https://www.renwujidian.com'
+
+# 磁链搜索网站 (Magnet search website)
+# 用途：根据番号获得磁链
+magnetSites:
+  cilisousuo:
+    name: 磁力搜索 (Cilisousuo)
+    baseUrl: https://cilisousuo.cc
+    
+    # 搜索页面配置
+    search:
+      # URL模板
+      url: /search?q={code}
+      # 搜索结果项选择器
+      itemSelector: 'li.item'
+      # 结果中最多取前几项
+      maxResults: 3
+    
+    # 搜索结果项配置
+    result:
+      # 标题选择器
+      titleSelector: '.result-title'
+      # 链接选择器
+      linkSelector: 'a.link'
+    
+    # 详情页面配置
+    detail:
+      # 磁链输入框选择器
+      magnetInputSelector: '#input-magnet'
+      # 文件列表选择器
+      filesSelector: '.files tbody tr'
+    
+    # 搜索URL
+    searchCodeUrl: '{baseUrl}/search?q={code}'
+    # 页面加载等待时间(毫秒)
+    pageLoadWait: 5000
+    detailPageLoadWait: 3000
+  
+  torrentdownload:
+    name: TorrentDownload.info
+    baseUrl: https://www.torrentdownload.info
+    
+    # 搜索页面配置
+    search:
+      # URL模板
+      url: /search?q={code}
+      # 搜索结果项选择器 - 表格中的链接
+      itemSelector: 'table.table2 tr td'
+      # 结果中最多取前几项
+      maxResults: 3
+    
+    # 搜索结果项配置 - 通过正则匹配从链接中提取
+    result:
+      # 结果行中选择详情页链接的选择器
+      linkSelector: 'div.tt-name a'
+      # 链接URL正则匹配模式 (匹配 /HASH/FILENAME 格式)
+      linkPattern: '^/[A-F0-9]{40}/'
+    
+    # 详情页面配置
+    detail:
+      # 磁链链接选择器
+      magnetLinkSelector: 'a[href^="magnet:"]'
+    
+    # 搜索URL
+    searchCodeUrl: '{baseUrl}/search?q={code}'
+    # 页面加载等待时间(毫秒)
+    pageLoadWait: 3000
+    detailPageLoadWait: 3000

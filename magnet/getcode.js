@@ -3,8 +3,27 @@ const path = require('path');
 const yaml = require('js-yaml');
 const https = require('https');
 const { JSDOM } = require('jsdom');
+const { spawn } = require('child_process');
+const readline = require('readline');
+
+if (process.stdout.setEncoding) {
+    process.stdout.setEncoding('utf8');
+}
+if (process.stderr.setEncoding) {
+    process.stderr.setEncoding('utf8');
+}
 
 const PROFILE_DIR = './profile';
+const SITES_CONFIG = './sites.yaml';
+
+let sitesConfig;
+
+function loadSitesConfig() {
+    if (!sitesConfig) {
+        sitesConfig = yaml.load(fs.readFileSync(SITES_CONFIG, 'utf-8'));
+    }
+    return sitesConfig;
+}
 
 function ensureDir(dir) {
     if (!fs.existsSync(dir)) {
@@ -14,6 +33,14 @@ function ensureDir(dir) {
 
 function encodeSearchName(name) {
     return encodeURIComponent(name);
+}
+
+function formatString(template, params) {
+    let result = template;
+    for (const [key, value] of Object.entries(params)) {
+        result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+    }
+    return result;
 }
 
 async function fetchUrl(url) {
@@ -27,7 +54,32 @@ async function fetchUrl(url) {
     });
 }
 
-function extractProfileData(html, profileUrl) {
+function extractByPattern(text, pattern, options = {}) {
+    const match = text.match(new RegExp(pattern));
+    if (!match) return null;
+    
+    if (options.capture !== undefined) {
+        return match[options.capture];
+    }
+    
+    if (options.format) {
+        let format = options.format;
+        for (let i = 1; i < match.length; i++) {
+            const widthMatch = format.match(new RegExp('\\{' + i + '(?::(\\d+))?d?\\}'));
+            if (widthMatch) {
+                const width = widthMatch[1] ? parseInt(widthMatch[1]) : 1;
+                format = format.replace(widthMatch[0], match[i].padStart(width, '0'));
+            } else {
+                format = format.replace('{' + i + '}', match[i]);
+            }
+        }
+        return format;
+    }
+    
+    return match[1];
+}
+
+function extractProfileData(html, profileUrl, siteConfig) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
     
@@ -50,57 +102,23 @@ function extractProfileData(html, profileUrl) {
         infoText = doc.body.textContent;
     }
     
-    const nameMatch = infoText.match(/中文名[：:\s]*([^\n]+?)(?=外文名|呢称|别名|性别|出生日期)/);
-    if (nameMatch) {
-        data.name = nameMatch[1].trim();
-    }
+    const fields = siteConfig.profile.fields;
     
-    const enNameMatch = infoText.match(/外文名[：:\s]*([^\n]+?)(?=呢称|别名|性别|出生日期)/);
-    if (enNameMatch) {
-        data.english_name = enNameMatch[1].trim();
-    }
-    
-    const birthMatch = infoText.match(/出生日期[：:\s]*(\d{4})年(\d+)月(\d+)日/);
-    if (birthMatch) {
-        data.birthday = `${birthMatch[1]}-${birthMatch[2].padStart(2, '0')}-${birthMatch[3].padStart(2, '0')}`;
-    }
-    
-    const heightMatch = infoText.match(/身高[：:\s]*(\d+)\s*cm/);
-    if (heightMatch) {
-        data.height = parseInt(heightMatch[1]);
-    }
-    
-    const bwhMatch = infoText.match(/三围[：:\s]*B(\d+)[(（](\w+)[)）]-W(\d+)-H(\d+)/);
-    if (bwhMatch) {
-        data.bust = parseInt(bwhMatch[1]);
-        data.waist = parseInt(bwhMatch[3]);
-        data.hip = parseInt(bwhMatch[4]);
-    }
-    
-    const debutMatch = infoText.match(/出道时间[：:\s]*(\d{4})/);
-    if (debutMatch) {
-        data.debut_year = parseInt(debutMatch[1]);
-    }
-    
-    const bloodMatch = infoText.match(/血型[：:\s]*(\w)/);
-    if (bloodMatch) {
-        data.blood_type = bloodMatch[1];
-    }
-    
-    const placeMatch = infoText.match(/出生地[：:\s]*([^\n]+?)(?=国籍|职业)/);
-    if (placeMatch) {
-        data.birthplace = placeMatch[1].trim();
-    }
-    
-    const agencyMatch = infoText.match(/经纪公司[：:\s]*([^\n]+?)$/);
-    if (agencyMatch) {
-        data.agency = agencyMatch[1].trim();
+    for (const [key, fieldConfig] of Object.entries(fields)) {
+        const value = extractByPattern(infoText, fieldConfig.pattern, fieldConfig);
+        if (value) {
+            if (fieldConfig.type === 'integer') {
+                data[key] = parseInt(value);
+            } else {
+                data[key] = value.trim();
+            }
+        }
     }
     
     return data;
 }
 
-function extractWorks(html, endDate) {
+function extractWorks(html, endDate, siteConfig) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
     
@@ -117,10 +135,11 @@ function extractWorks(html, endDate) {
             const cells = rows[i].querySelectorAll('td');
             if (cells.length < 4) continue;
             
-            const code = cells[1]?.textContent?.trim();
-            const dateStr = cells[2]?.textContent?.trim();
-            const duration = cells[3]?.textContent?.trim();
-            const maker = cells[4]?.textContent?.trim();
+            const col = siteConfig.profile.works.columns;
+            const code = cells[col.code]?.textContent?.trim();
+            const dateStr = cells[col.date]?.textContent?.trim();
+            const duration = cells[col.duration]?.textContent?.trim();
+            const maker = cells[col.maker]?.textContent?.trim();
             
             if (!code || !dateStr) continue;
             
@@ -143,15 +162,21 @@ function extractWorks(html, endDate) {
     return works;
 }
 
-async function searchProfileUrl(name) {
-    const searchUrl = `https://www.renwujidian.com/search/${encodeSearchName(name)}`;
+async function searchProfileUrl(name, siteConfig) {
+    const searchUrl = formatString(siteConfig.searchActorUrl, {
+        baseUrl: siteConfig.baseUrl,
+        name: encodeSearchName(name)
+    });
+    
     const html = await fetchUrl(searchUrl);
     const dom = new JSDOM(html);
     const doc = dom.window.document;
     
-    const firstProfileLink = doc.querySelector('a[href^="/profile/"]');
+    const linkSelector = siteConfig.search.profileLinkSelector;
+    const firstProfileLink = doc.querySelector(linkSelector);
+    
     if (firstProfileLink) {
-        return 'https://www.renwujidian.com' + firstProfileLink.href;
+        return siteConfig.profileUrlPrefix + firstProfileLink.href;
     }
     return null;
 }
@@ -163,6 +188,9 @@ async function fetchProfilePage(url) {
 
 async function updateProfile(name, endDate) {
     ensureDir(PROFILE_DIR);
+    
+    const sites = loadSitesConfig();
+    const siteConfig = sites.profileSites.renwujidian;
     
     const profileFile = path.join(PROFILE_DIR, `${name}.yaml`);
     const changes = {
@@ -181,7 +209,7 @@ async function updateProfile(name, endDate) {
         console.log(`[+] 已有profile URL: ${profileUrl}`);
     } else {
         console.log(`[-] 本地不存在profile文件，正在搜索...`);
-        profileUrl = await searchProfileUrl(name);
+        profileUrl = await searchProfileUrl(name, siteConfig);
         if (!profileUrl) {
             throw new Error(`未找到演员 ${name} 的profile页面`);
         }
@@ -191,7 +219,7 @@ async function updateProfile(name, endDate) {
     
     console.log(`[*] 正在获取profile页面...`);
     const html = await fetchProfilePage(profileUrl);
-    const webData = extractProfileData(html, profileUrl);
+    const webData = extractProfileData(html, profileUrl, siteConfig);
     
     for (const [key, value] of Object.entries(webData)) {
         if (value !== undefined && profileData[key] === undefined) {
@@ -201,7 +229,7 @@ async function updateProfile(name, endDate) {
     
     if (endDate) {
         console.log(`[*] 正在提取截止到 ${endDate} 的作品...`);
-        const newWorks = extractWorks(html, endDate);
+        const newWorks = extractWorks(html, endDate, siteConfig);
         
         if (!profileData.works) {
             profileData.works = [];
@@ -223,6 +251,26 @@ async function updateProfile(name, endDate) {
     console.log(`[+] 已保存profile文件: ${profileFile}`);
     
     return changes;
+}
+
+async function askSearchMagnets(name) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    
+    return new Promise((resolve) => {
+        rl.question(`\n[*] 是否搜索磁链? (Y/N): `, async (answer) => {
+            rl.close();
+            if (answer.toLowerCase() === 'y') {
+                console.log(`\n[*] 请在Windows命令行运行以下命令来屏蔽Chromium日志:\n`);
+                console.log(`node getmagnet.js ${name} 2>nul\n`);
+                resolve();
+            } else {
+                resolve();
+            }
+        });
+    });
 }
 
 async function main() {
@@ -273,6 +321,8 @@ async function main() {
         if (!changes.created && changes.updated.length === 0 && changes.newWorks.length === 0) {
             console.log(`[*] 没有需要更新的信息`);
         }
+        
+        await askSearchMagnets(name);
         
     } catch (e) {
         console.error(`[-] 错误: ${e.message}`);
