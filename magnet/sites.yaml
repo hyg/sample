@@ -5,7 +5,7 @@
 # 用途：根据演员姓名和日期（可选）获得演员信息和番号列表
 profileSites:
   renwujidian:
-    name: 人无极 (Renwujidian)
+    name: 人物纪典 (Renwujidian)
     baseUrl: https://www.renwujidian.com
     
     # 搜索页面

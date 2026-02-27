@@ -3,46 +3,25 @@ const path = require('path');
 const yaml = require('js-yaml');
 const puppeteer = require('puppeteer');
 
+const {
+    getMagnetSites,
+    formatString,
+    initEncoding,
+    PROFILE_DIR
+} = require('./common');
+
 process.env.CHROME_PATH = '';
 process.env.DISABLE_DEV_SHM_USAGE = '1';
 
-const PROFILE_DIR = './profile';
-const SITES_CONFIG = './sites.yaml';
+initEncoding();
+
 const CONCURRENCY = 4;
 const SEARCH_DELAY = 2000;
 
-let sitesConfig;
-let magnetSites = [];
 let collectedMagnets = [];
 let profileData = null;
 let profileFile = null;
 let browser = null;
-
-function loadSitesConfig() {
-    if (!sitesConfig) {
-        sitesConfig = yaml.load(fs.readFileSync(SITES_CONFIG, 'utf-8'));
-    }
-    return sitesConfig;
-}
-
-function getMagnetSites() {
-    if (magnetSites.length === 0) {
-        const sites = loadSitesConfig();
-        const siteList = sites.magnetSites;
-        for (const [key, config] of Object.entries(siteList)) {
-            magnetSites.push({ key, ...config });
-        }
-    }
-    return magnetSites;
-}
-
-function formatString(template, params) {
-    let result = template;
-    for (const [key, value] of Object.entries(params)) {
-        result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-    }
-    return result;
-}
 
 function outputMagnets() {
     console.log('');
@@ -61,12 +40,19 @@ function outputMagnets() {
 
 function saveCache() {
     if (profileData && profileFile && collectedMagnets.length > 0) {
-        const magnetLines = collectedMagnets.map(m => m.magnet).filter(m => m).join('\n');
+        const magnetLines = collectedMagnets.map(m => m.magnet).filter(m => m && m.trim()).join('\n');
         profileData.cache = {
             updated_at: new Date().toISOString(),
             magnets: magnetLines
         };
-        fs.writeFileSync(profileFile, yaml.dump(profileData, { allowUnicode: true, lineWidth: -1, noRefs: true }));
+        fs.writeFileSync(profileFile, yaml.dump(profileData, { 
+            allowUnicode: true, 
+            lineWidth: -1, 
+            noRefs: true,
+            styles: {
+                '!!str': '|' 
+            }
+        }));
     }
 }
 
@@ -236,12 +222,19 @@ async function processWork(work, browser, profileData, profileFile, newMagnets) 
         newMagnets.push({ code: work.code, magnet });
         console.log('[' + work.index + '/' + work.total + '] ' + work.code + ' -> Found');
         
-        const magnetLines = newMagnets.map(m => m.magnet).filter(m => m).join('\n');
+        const magnetLines = newMagnets.map(m => m.magnet).filter(m => m && m.trim()).join('\n');
         profileData.cache = {
             updated_at: new Date().toISOString(),
             magnets: magnetLines
         };
-        fs.writeFileSync(profileFile, yaml.dump(profileData, { allowUnicode: true, lineWidth: -1, noRefs: true }));
+        fs.writeFileSync(profileFile, yaml.dump(profileData, { 
+            allowUnicode: true, 
+            lineWidth: -1, 
+            noRefs: true,
+            styles: {
+                '!!str': '|'
+            }
+        }));
     } else {
         console.log('[' + work.index + '/' + work.total + '] ' + work.code + ' -> Not found');
     }

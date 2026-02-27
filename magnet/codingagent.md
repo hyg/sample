@@ -9,36 +9,62 @@
 ### 配置文件 sites.yaml
 
 网站配置抽取到 `sites.yaml` 文件，分为两类：
+- `profileSites`: 演员资料网站
+- `magnetSites`: 磁链搜索网站
 
-```yaml
-profileSites:     # 演员资料网站
-magnetSites:     # 磁链搜索网站
-```
+每个网站配置包含：
+- `baseUrl`: 基础URL
+- `search`: 搜索页面配置（URL模板、选择器等）
+- `result`: 搜索结果解析配置
+- `detail`: 详情页配置
+- `pageLoadWait`: 页面加载等待时间(毫秒)
 
 ### 1. 人物纪典 (renwujidian.com)
 
-搜索演员：
-```
-https://www.renwujidian.com/search/三宫椿
-```
-
-演员profile页面URL格式：
-```
-https://www.renwujidian.com/profile/sannomiya-tsubaki
-```
+搜索演员：`https://www.renwujidian.com/search/{演员名}`
 
 ### 2. 磁力搜索网站
 
-| 网站 | 搜索URL | 特点 |
-|------|---------|------|
-| cilisousuo.cc | `https://cilisousuo.cc/search?q=番号` | 有Cloudflare保护 |
-| TorrentDownload.info | `https://www.torrentdownload.info/search?q=番号` | 备用网站 |
+| 网站 | 搜索URL |
+|------|---------|
+| cilisousuo.cc | `https://cilisousuo.cc/search?q={番号}` |
+| TorrentDownload.info | `https://www.torrentdownload.info/search?q={番号}` |
+
+## 文件结构
+
+```
+magnet/
+├── sites.yaml          # 网站配置（JSON/YAML格式）
+├── common.js          # 公共模块（配置加载、工具函数）
+├── getcode.js         # 获取演员信息和作品番号
+├── getmagnet.js       # 搜索磁力链接
+├── profile/           # 演员profile文件目录
+│   └── 三宫椿.yaml
+├── package.json
+└── node_modules/
+```
+
+## 公共模块 (common.js)
+
+提供以下函数供其他模块调用：
+
+```javascript
+loadSitesConfig()        // 加载sites.yaml配置
+getProfileSites()        // 获取演员资料网站列表
+getMagnetSites()       // 获取磁链搜索网站列表
+formatString(template, params)  // 字符串模板替换
+ensureDir(dir)          // 确保目录存在
+encodeSearchName(name)  // URL编码
+initEncoding()          // 初始化UTF-8编码
+PROFILE_DIR             // profile目录常量
+SITES_CONFIG            // 配置文件路径常量
+```
 
 ## 核心功能
 
 ### 1. getcode.js - 获取演员作品番号
 
-**功能**：从人物纪典(renwujidian.com)获取演员信息和作品番号
+**功能**：从人物纪典获取演员信息和作品番号
 
 **输入**：
 - 参数1：演员中文名（如 `三宫椿`）
@@ -47,35 +73,38 @@ https://www.renwujidian.com/profile/sannomiya-tsubaki
 **输出**：保存演员profile文件到 `profile/演员名.yaml`
 
 **处理流程**：
-1. 检查本地是否存在 `profile/演员名.yaml`
-2. 如不存在：在 renwujidian.com 搜索演员，进入第一个 `/profile/` 页面
-3. 从profile页面提取演员元数据（姓名、英文名、出生日期、身高，三围，出道年份、血型、出生地、经纪公司）
-4. 如提供截止日期，提取该日期之前的作品列表（番号、发行时间、片长、厂商）
-5. 增量更新：已存在的作品不重复添加
-6. 执行结束后询问用户是否搜索磁链
+1. 调用 `getProfileSites()` 获取第一个配置的演员资料网站
+2. 检查本地是否存在 `profile/演员名.yaml`
+3. 如不存在：使用网站的搜索功能查找演员profile页面URL
+4. 获取profile页面，提取演员元数据（使用sites.yaml中的字段提取配置）
+5. 如提供截止日期，提取该日期之前的作品列表
+6. 增量更新：已存在的作品不重复添加
+7. 执行结束后询问用户是否搜索磁链（直接回车默认Y）
 
 ### 2. getmagnet.js - 搜索磁力链接
 
-**功能**：从多个磁力搜索网站搜索作品的磁链
+**功能**：从多个磁链搜索网站搜索作品的磁链
 
 **输入**：演员中文名
 
 **输出**：更新演员profile文件中的magnet字段
 
 **处理流程**：
-1. 读取演员profile文件，清空上次的cache字段
-2. 找出没有magnet字段的作品
-3. 并发搜索（默认4并发，可配置）
-4. 流水线模式：每个任务完成立即启动下一个，保持同时有设定并发数
+1. 调用 `getMagnetSites()` 获取所有配置的磁链搜索网站
+2. 读取演员profile文件，**删除**上次的cache字段（重新开始）
+3. 找出没有magnet字段的作品
+4. 并发搜索（默认4并发，流水线模式）
 5. 对每个番号：
-   - 依次尝试配置的磁链搜索网站
+   - 依次尝试每个磁链搜索网站
+   - 单次尝试：超时或失败立即换网站，不重试
    - 优先匹配搜索结果标题中包含番号的条目
    - 其次检查文件列表中是否包含番号
    - 每个网站最多检查前3个搜索结果
-6. 找到磁链后：
-   - 立即写入该作品数据的 `magnet` 字段
-   - 立即写入该作品数据的 `magnet_updated_at` 时间戳
-   - 立即更新 `cache` 字段（保存本次运行收集到的全部磁链）
+   - 找到磁链后停止尝试其他网站
+6. 找到磁链后立即：
+   - 写入该作品数据的 `magnet` 字段
+   - 写入该作品数据的 `magnet_updated_at` 时间戳
+   - 更新 `cache` 字段
 7. 任何情况退出（正常完成、Ctrl+C、SIGTERM）都会保存cache并输出结果
 
 ## 数据结构
@@ -109,21 +138,36 @@ cache:
     magnet:?xt=urn:btih:xxx2
 ```
 
-### 字段说明
+### 关键实现细节
 
-- `works[].magnet`: 该作品的磁链
-- `works[].magnet_updated_at`: 磁链写入时间
-- `cache.updated_at`: 最后一次运行的时间
-- `cache.magnets`: Tixati导入格式（每行一个磁链），用户可复制使用
+1. **cache.magnets字段格式**：
+   - 使用YAML字面量样式（`|-`或`|`）避免空行
+   - 每行一个磁链，无空行
+   - 使用js-yaml的 `styles: {'!!str': '|'}` 选项
+
+2. **流水线并发**：
+   - 使用Promise数组管理并发任务
+   - 每次任务完成后立即启动下一个
+   - 保持同时有CONCURRENCY个任务运行
+
+3. **信号处理**：
+   - 捕获SIGINT和SIGTERM信号
+   - 清理时保存cache并输出结果
+   - 使用setTimeout延迟退出确保清理完成
 
 ## 技术实现
 
 ### 依赖
 
-- Node.js
-- puppeteer - 浏览器自动化（处理Cloudflare保护）
-- js-yaml - YAML文件读写
-- jsdom - HTML解析
+```json
+{
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "jsdom": "^24.0.0",
+    "puppeteer": "^21.0.0"
+  }
+}
+```
 
 ### 关键配置
 
@@ -133,32 +177,35 @@ const CONCURRENCY = 4;      // 并发数
 const SEARCH_DELAY = 2000;  // 搜索间隔(毫秒)
 ```
 
+### Puppeteer配置
+
+```javascript
+browser = await puppeteer.launch({
+    headless: 'new',
+    dumpio: false,
+    env: {
+        PUPPETEER_SKIP_DOWNLOAD: 'true',
+        PUPPETEER_NO_SANDBOX: '1',
+        PUPPETEER_DISABLE_SETUID_SANDBOX: '1'
+    },
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-logging',
+        '--log-level=3'
+    ]
+});
+```
+
 ### 搜索匹配规则
 
 1. 依次尝试配置的磁链搜索网站
-2. 搜索结果标题包含番号（大写不敏感）
-3. 搜索结果的文件列表包含番号
-4. 每个网站最多检查前3个搜索结果
-5. 找到则停止尝试其他网站
-
-### 退出处理
-
-- SIGINT / SIGTERM 信号捕获
-- 清理时保存cache字段
-- 清理时输出本次收集的磁链
-
-## 文件结构
-
-```
-magnet/
-├── sites.yaml          # 网站配置
-├── getcode.js         # 获取演员信息和作品番号
-├── getmagnet.js       # 搜索磁力链接
-├── profile/           # 演员profile文件目录
-│   └── 三宫椿.yaml
-├── package.json
-└── node_modules/
-```
+2. 每个网站只尝试一次，超时或失败立即换网站
+3. 搜索结果标题包含番号（大写不敏感）
+4. 搜索结果的文件列表包含番号
+5. 每个网站最多检查前3个搜索结果
+6. 找到则停止尝试其他网站
 
 ## 使用示例
 
@@ -168,13 +215,13 @@ node getcode.js 三宫椿
 
 # 2. 获取演员信息及2024年10月1日前的作品
 node getcode.js 三宫椿 20241001
-# 执行结束后会询问是否搜索磁链
+# 执行结束后会询问是否搜索磁链，直接回车默认Y
 
 # 3. 搜索磁链（直接运行）
 node getmagnet.js 三宫椿
 
-# 4. Windows上屏蔽Chromium日志输出
-node getmagnet.js 三宫椿 2>nul
+# 4. Windows上屏蔽Chromium日志（可选）
+node getmagnet.js 三宫椿 2>NUL
 ```
 
 ## 注意事项
@@ -183,4 +230,5 @@ node getmagnet.js 三宫椿 2>nul
 - 网站可能限流，并发数和延迟需合理设置
 - 磁链搜索匹配率取决于网站资源丰富程度
 - 支持配置多个磁链搜索网站，自动依次尝试
-- Windows上Chromium会产生stderr日志，建议使用 `2>nul` 重定向
+- 每个番号对每个网站只尝试一次，不重试
+- cache.magnets使用YAML字面量样式确保无空行

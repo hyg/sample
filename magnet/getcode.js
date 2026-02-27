@@ -6,42 +6,17 @@ const { JSDOM } = require('jsdom');
 const { spawn } = require('child_process');
 const readline = require('readline');
 
-if (process.stdout.setEncoding) {
-    process.stdout.setEncoding('utf8');
-}
-if (process.stderr.setEncoding) {
-    process.stderr.setEncoding('utf8');
-}
+const {
+    loadSitesConfig,
+    getProfileSites,
+    formatString,
+    ensureDir,
+    encodeSearchName,
+    initEncoding,
+    PROFILE_DIR
+} = require('./common');
 
-const PROFILE_DIR = './profile';
-const SITES_CONFIG = './sites.yaml';
-
-let sitesConfig;
-
-function loadSitesConfig() {
-    if (!sitesConfig) {
-        sitesConfig = yaml.load(fs.readFileSync(SITES_CONFIG, 'utf-8'));
-    }
-    return sitesConfig;
-}
-
-function ensureDir(dir) {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-}
-
-function encodeSearchName(name) {
-    return encodeURIComponent(name);
-}
-
-function formatString(template, params) {
-    let result = template;
-    for (const [key, value] of Object.entries(params)) {
-        result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-    }
-    return result;
-}
+initEncoding();
 
 async function fetchUrl(url) {
     return new Promise((resolve, reject) => {
@@ -186,13 +161,10 @@ async function fetchProfilePage(url) {
     return html;
 }
 
-async function updateProfile(name, endDate) {
+async function updateProfile(name, endDate, siteConfig) {
     ensureDir(PROFILE_DIR);
     
-    const sites = loadSitesConfig();
-    const siteConfig = sites.profileSites.renwujidian;
-    
-    const profileFile = path.join(PROFILE_DIR, `${name}.yaml`);
+    const profileFile = path.join(PROFILE_DIR, name + '.yaml');
     const changes = {
         created: false,
         updated: [],
@@ -203,21 +175,21 @@ async function updateProfile(name, endDate) {
     let profileUrl = null;
     
     if (fs.existsSync(profileFile)) {
-        console.log(`[+] 发现本地profile文件: ${profileFile}`);
+        console.log('[+] 发现本地profile文件: ' + profileFile);
         profileData = yaml.load(fs.readFileSync(profileFile, 'utf-8'));
         profileUrl = profileData.profile_url;
-        console.log(`[+] 已有profile URL: ${profileUrl}`);
+        console.log('[+] 已有profile URL: ' + profileUrl);
     } else {
-        console.log(`[-] 本地不存在profile文件，正在搜索...`);
+        console.log('[-] 本地不存在profile文件，正在搜索...');
         profileUrl = await searchProfileUrl(name, siteConfig);
         if (!profileUrl) {
-            throw new Error(`未找到演员 ${name} 的profile页面`);
+            throw new Error('未找到演员 ' + name + ' 的profile页面');
         }
-        console.log(`[+] 找到profile页面: ${profileUrl}`);
+        console.log('[+] 找到profile页面: ' + profileUrl);
         changes.created = true;
     }
     
-    console.log(`[*] 正在获取profile页面...`);
+    console.log('[*] 正在获取profile页面...');
     const html = await fetchProfilePage(profileUrl);
     const webData = extractProfileData(html, profileUrl, siteConfig);
     
@@ -228,7 +200,7 @@ async function updateProfile(name, endDate) {
     }
     
     if (endDate) {
-        console.log(`[*] 正在提取截止到 ${endDate} 的作品...`);
+        console.log('[*] 正在提取截止到 ' + endDate + ' 的作品...');
         const newWorks = extractWorks(html, endDate, siteConfig);
         
         if (!profileData.works) {
@@ -248,7 +220,7 @@ async function updateProfile(name, endDate) {
     }
     
     fs.writeFileSync(profileFile, yaml.dump(profileData, { allowUnicode: true }));
-    console.log(`[+] 已保存profile文件: ${profileFile}`);
+    console.log('[+] 已保存profile文件: ' + profileFile);
     
     return changes;
 }
@@ -260,12 +232,17 @@ async function askSearchMagnets(name) {
     });
     
     return new Promise((resolve) => {
-        rl.question(`\n[*] 是否搜索磁链? (Y/N): `, async (answer) => {
+        rl.question('\n[*] 是否搜索磁链? (Y/N, 直接回车默认Y): ', async (answer) => {
             rl.close();
-            if (answer.toLowerCase() === 'y') {
-                console.log(`\n[*] 请在Windows命令行运行以下命令来屏蔽Chromium日志:\n`);
-                console.log(`node getmagnet.js ${name} 2>nul\n`);
-                resolve();
+            const isYes = answer === '' || answer.toLowerCase() === 'y';
+            if (isYes) {
+                console.log('\n[*] 正在启动磁链搜索...\n');
+                const child = spawn('node', ['getmagnet.js', name], {
+                    stdio: 'inherit'
+                });
+                child.on('close', () => {
+                    resolve();
+                });
             } else {
                 resolve();
             }
@@ -286,46 +263,54 @@ async function main() {
     const name = args[0];
     const endDate = args[1];
     
-    console.log(`========================================`);
-    console.log(`演员: ${name}`);
+    console.log('========================================');
+    console.log('演员: ' + name);
     if (endDate) {
-        console.log(`截止日期: ${endDate}`);
+        console.log('截止日期: ' + endDate);
     }
-    console.log(`========================================\n`);
+    console.log('========================================\n');
+    
+    const profileSites = getProfileSites();
+    if (profileSites.length === 0) {
+        console.error('[-] 未找到演员资料网站配置');
+        process.exit(1);
+    }
+    const siteConfig = profileSites[0];
+    console.log('[*] 使用演员资料网站: ' + siteConfig.name + '\n');
     
     try {
-        const changes = await updateProfile(name, endDate);
+        const changes = await updateProfile(name, endDate, siteConfig);
         
-        console.log(`\n========================================`);
-        console.log(`执行结果`);
-        console.log(`========================================`);
+        console.log('\n========================================');
+        console.log('执行结果');
+        console.log('========================================');
         
         if (changes.created) {
-            console.log(`[+] 新建profile文件`);
+            console.log('[+] 新建profile文件');
         }
         
         if (changes.updated.length > 0) {
-            console.log(`\n[*] 更新了以下信息:`);
+            console.log('\n[*] 更新了以下信息:');
             for (const u of changes.updated) {
-                console.log(`    - ${u.field}: ${u.old} -> ${u.new}`);
+                console.log('    - ' + u.field + ': ' + u.old + ' -> ' + u.new);
             }
         }
         
         if (changes.newWorks.length > 0) {
-            console.log(`\n[*] 新增作品 (${changes.newWorks.length}个):`);
+            console.log('\n[*] 新增作品 (' + changes.newWorks.length + '个):');
             for (const w of changes.newWorks) {
-                console.log(`    - ${w.code} (${w.date})`);
+                console.log('    - ' + w.code + ' (' + w.date + ')');
             }
         }
         
         if (!changes.created && changes.updated.length === 0 && changes.newWorks.length === 0) {
-            console.log(`[*] 没有需要更新的信息`);
+            console.log('[*] 没有需要更新的信息');
         }
         
         await askSearchMagnets(name);
         
     } catch (e) {
-        console.error(`[-] 错误: ${e.message}`);
+        console.error('[-] 错误: ' + e.message);
         process.exit(1);
     }
 }
