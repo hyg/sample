@@ -10,6 +10,70 @@ function encodeBase64Url(buffer) {
   return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
+function toDER(signature) {
+  const r = signature.slice(0, 32);
+  const s = signature.slice(32, 64);
+  
+  const rLen = r[0] >= 0x80 ? 33 : 32;
+  const sLen = s[0] >= 0x80 ? 33 : 32;
+  
+  const totalLen = 2 + rLen + 2 + sLen;
+  
+  const der = Buffer.alloc(1 + 1 + 1 + rLen + 1 + 1 + sLen);
+  let pos = 0;
+  der[pos++] = 0x30;
+  der[pos++] = totalLen;
+  der[pos++] = 0x02;
+  der[pos++] = rLen;
+  if (rLen === 33) der[pos++] = 0x00;
+  r.copy(der, pos); pos += 32;
+  der[pos++] = 0x02;
+  der[pos++] = sLen;
+  if (sLen === 33) der[pos++] = 0x00;
+  s.copy(der, pos);
+  
+  return der;
+}
+
+async function signDIDDocument(privateKey, didDocument, domain) {
+  const created = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const challenge = crypto.randomBytes(16).toString('hex');
+  
+  // Build proof options for canonicalization (without challenge for signing)
+  const proofOptions = {
+    type: 'EcdsaSecp256k1Signature2019',
+    created,
+    verificationMethod: `${didDocument.id}#key-1`,
+    proofPurpose: 'authentication',
+    domain: domain || 'awiki.ai',
+  };
+  
+  // Create document for signing
+  const docToSign = JSON.parse(JSON.stringify(didDocument));
+  docToSign.proof = { ...proofOptions };
+
+  const canonicalJson = canonicalizeJson(docToSign);
+  const messageHash = crypto.createHash('sha256').update(Buffer.from(canonicalJson)).digest();
+
+  // Sign with secp256k1 library - raw R|S format
+  const privateKeyBuf = new Uint8Array(privateKey);
+  const sigResult = secp256k1.ecdsaSign(messageHash, privateKeyBuf);
+  const rawSig = Buffer.from(sigResult.signature);
+  
+  // Build final proof with challenge - use raw R|S format (64 bytes)
+  const proof = {
+    type: 'EcdsaSecp256k1Signature2019',
+    created,
+    verificationMethod: `${didDocument.id}#key-1`,
+    proofPurpose: 'authentication',
+    domain: domain || 'awiki.ai',
+    challenge,
+    proofValue: encodeBase64Url(rawSig),
+  };
+
+  return proof;
+}
+
 function decodeBase64Url(str) {
   str = str.replace(/-/g, '+').replace(/_/g, '/');
   while (str.length % 4) str += '=';
@@ -155,7 +219,8 @@ export class WBAAuth {
     try {
       const payload = {
         did_document: didDocument,
-        name
+        name,
+        is_agent: true
       };
 
       console.log('=== DID Document being sent ===');
@@ -166,6 +231,10 @@ export class WBAAuth {
         method: 'register',
         params: payload,
         id: 1
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.data.error) {
@@ -329,44 +398,6 @@ function derToRs(der) {
   r = Buffer.from(rHex, 'hex');
   s = Buffer.from(sHex, 'hex');
   return Buffer.concat([r, s]);
-}
-
-async function signDIDDocument(privateKey, didDocument, domain) {
-  const created = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-  const challenge = crypto.randomBytes(16).toString('hex');
-  const proof = {
-    type: 'EcdsaSecp256k1Signature2019',
-    verificationMethod: `${didDocument.id}#key-1`,
-    created,
-    proofPurpose: 'authentication',
-    domain: domain || 'awiki.ai',
-    challenge
-  };
-
-  const docToSign = JSON.parse(JSON.stringify(didDocument));
-  docToSign.proof = { ...proof, proofValue: '' };
-  
-  const canonicalJson = canonicalizeJson(docToSign);
-  const messageHash = crypto.createHash('sha256').update(canonicalJson).digest();
-
-  const privateKeyBuf = new Uint8Array(privateKey);
-  const sig = secp256k1.ecdsaSign(messageHash, privateKeyBuf);
-  
-  const rsRaw = Buffer.from(sig.signature);
-  const r = rsRaw.slice(0, 32);
-  const s = rsRaw.slice(32, 64);
-  
-  const CURVE_ORDER = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
-  let sBig = BigInt('0x' + s.toString('hex'));
-  if (sBig > CURVE_ORDER / BigInt(2)) {
-    sBig = CURVE_ORDER - sBig;
-  }
-  const sHex = sBig.toString(16).padStart(64, '0');
-  const sNormalized = Buffer.from(sHex, 'hex');
-  
-  proof.proofValue = encodeBase64Url(Buffer.concat([r, sNormalized]));
-
-  return proof;
 }
 
 function publicKeyToJwk(publicKeyBuffer, curve) {
