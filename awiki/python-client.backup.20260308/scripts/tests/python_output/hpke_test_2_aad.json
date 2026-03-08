@@ -1,0 +1,26 @@
+{
+  "description": "HPKE with different AAD values",
+  "recipient_public_key_hex": "6cf8fe7f96ba2c6ad50c16041846751b841181662d0ad6af0c1dda0e792c7c23",
+  "plaintext": "Hello, HPKE World!",
+  "info": "test-info",
+  "results": [
+    {
+      "aad": "",
+      "enc_hex": "ae64e54b9861c222497c6ba9b1dc042c5eafb085085363134a37eed1c564c432",
+      "ciphertext_hex": "8573f13e1899015315d45e6607f492d06e8d93c8c56437dcff5be5ee35b77fa2d1bd",
+      "decrypted": "Hello, HPKE World!"
+    },
+    {
+      "aad": "session-123",
+      "enc_hex": "6668211668c6495b755100301db0b634af2f3a75826ea055692645371440b949",
+      "ciphertext_hex": "2431acad56db4576e8cc39596e063221321558d617ce7c78a67f806e55075fc8978e",
+      "decrypted": "Hello, HPKE World!"
+    },
+    {
+      "aad": "custom-aad-data",
+      "enc_hex": "a29488105faf8208133528c64fa1b9b1b91aec5edbe3745c597a7424b2451509",
+      "ciphertext_hex": "d38b3bb2d6e4fbce92e3ace9ac3cfe795a7286ce2cb4137fcb2fabde61fa82483326",
+      "decrypted": "Hello, HPKE World!"
+    }
+  ]
+}

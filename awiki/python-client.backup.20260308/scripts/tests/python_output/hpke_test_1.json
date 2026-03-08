@@ -1,0 +1,11 @@
+{
+  "description": "HPKE Seal/Open basic test",
+  "recipient_private_key_hex": "3d6cb797e0c7d84dd0fec8444b7b1933371d48427505ea28dd50ca1e2c1d319d",
+  "recipient_public_key_hex": "6cf8fe7f96ba2c6ad50c16041846751b841181662d0ad6af0c1dda0e792c7c23",
+  "plaintext": "Hello, HPKE World!",
+  "aad": "test-session-id",
+  "info": "test-info",
+  "enc_hex": "dd9c98b7f2d047389eb6d4b2f483beb23292de0b8b6fb0f44235973b3f072e43",
+  "ciphertext_hex": "3e2ea22a5e06a658e7576f6f6c0aaf04d6c7c253a7a949e0cc18f4d32929b6209763",
+  "decrypted": "Hello, HPKE World!"
+}

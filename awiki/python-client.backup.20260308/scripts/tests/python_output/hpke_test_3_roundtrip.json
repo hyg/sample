@@ -1,0 +1,30 @@
+{
+  "description": "Full HPKE round-trip with multiple messages",
+  "sender_public_key_hex": "14fbdd6f5c0d51adbd9136db9d95b3b4b50a31ab8cc07bc07f68e7d449a50f28",
+  "receiver_public_key_hex": "dd303a77f6a0dd3e726a038cfc2c8c6afd44598d82880ce849c66457c4f0a243",
+  "aad": "session",
+  "info": "",
+  "exchange_log": [
+    {
+      "seq": 0,
+      "plaintext": "First message",
+      "enc_hex": "e5fb66059204e2d8ebf3663c9039902fc36784dccdc27abfbc04c386ca3a1247",
+      "ciphertext_hex": "852a94167cc11799b3a2d80a8409b2735c42e6191ccf921480a3603383",
+      "decrypted": "First message"
+    },
+    {
+      "seq": 1,
+      "plaintext": "Second message",
+      "enc_hex": "ce4511e666db2cef4832d6573784feefc066a2f913bfa448391428f6d7be1f41",
+      "ciphertext_hex": "a72931c77492086b478325dcd67691772fc12271380caa73bc2634fa5481",
+      "decrypted": "Second message"
+    },
+    {
+      "seq": 2,
+      "plaintext": "Third message",
+      "enc_hex": "715461a85a7bc22c22255ad84e61fb1662d4a55a2ae32bea8ce1af23495ce76e",
+      "ciphertext_hex": "fadc29fe60d8b3a5d8e67eadd577807d07f501371afc8a9e1cc43f34a8",
+      "decrypted": "Third message"
+    }
+  ]
+}

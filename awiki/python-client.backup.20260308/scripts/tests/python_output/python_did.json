@@ -1,0 +1,54 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/suites/jws-2020/v1",
+    "https://w3id.org/security/suites/secp256k1-2019/v1",
+    "https://w3id.org/security/suites/x25519-2019/v1"
+  ],
+  "id": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0",
+  "verificationMethod": [
+    {
+      "id": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0#key-1",
+      "type": "EcdsaSecp256k1VerificationKey2019",
+      "controller": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "secp256k1",
+        "x": "s5ed-gQx1VHKaOFIzFR2dfZ9g2zeLZ6UOog3LnEZ8Fs",
+        "y": "lOuRaaj4os_PiSDXIgMDRE17hH9Kj9HGASupt9zQnJc",
+        "kid": "gh2JesXJIdCjYqcCcHT14B4D3lfvz0COP5tBrgW-wQY"
+      }
+    },
+    {
+      "id": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0#key-2",
+      "type": "EcdsaSecp256r1VerificationKey2019",
+      "controller": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": "8iV-4uwU-Mh4FwBs61agjgSi2jj4HJT9blMJQcTMQ0c",
+        "y": "bIe1DxM-U_xuAMN3ElZcd10k3nP-It8hF-1NS9RQQdQ"
+      }
+    },
+    {
+      "id": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0#key-3",
+      "type": "X25519KeyAgreementKey2019",
+      "controller": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0",
+      "publicKeyMultibase": "z9mCAxhjk1a4VLoTuaLSko2EfmhMzyiBjk1QUYzS7W6rW"
+    }
+  ],
+  "authentication": [
+    "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0#key-1"
+  ],
+  "keyAgreement": [
+    "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0#key-3"
+  ],
+  "proof": {
+    "type": "EcdsaSecp256k1Signature2019",
+    "created": "2026-03-07T08:01:32Z",
+    "verificationMethod": "did:wba:awiki.ai:user:k1_hs8dmz5YKPLrVRhGzgkhQ9HBu9-DPHt4o2wPZfKaUj0#key-1",
+    "proofPurpose": "authentication",
+    "domain": "awiki.ai",
+    "proofValue": "9mRtHNAsDCOstHNk3T7rA3qUhJ2YxjJxfqOETWE8QQ6E51st_2hgexkWblAw096gOkybCJUWeJ5gBLfiy9b7og"
+  }
+}

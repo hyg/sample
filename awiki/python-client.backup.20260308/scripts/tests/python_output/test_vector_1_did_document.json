@@ -1,0 +1,38 @@
+{
+  "did": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY",
+  "kid": "Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY",
+  "jwk": {
+    "kty": "EC",
+    "crv": "secp256k1",
+    "x": "5nWTszKLanTa1BCv21BHEqTUM8pF7pbTbjoyKXRd-Z4",
+    "y": "SdkE0GD4ET6fOQzZ-7jeANLV_gAsa3l5PxnjaI3qJaU",
+    "kid": "Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY"
+  },
+  "did_document": {
+    "@context": [
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/suites/jws-2020/v1",
+      "https://w3id.org/security/suites/secp256k1-2019/v1"
+    ],
+    "id": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY",
+    "verificationMethod": [
+      {
+        "id": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1",
+        "type": "EcdsaSecp256k1VerificationKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY",
+        "publicKeyJwk": {
+          "kty": "EC",
+          "crv": "secp256k1",
+          "x": "5nWTszKLanTa1BCv21BHEqTUM8pF7pbTbjoyKXRd-Z4",
+          "y": "SdkE0GD4ET6fOQzZ-7jeANLV_gAsa3l5PxnjaI3qJaU",
+          "kid": "Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY"
+        }
+      }
+    ],
+    "authentication": [
+      "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1"
+    ]
+  },
+  "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg1qnQM7Ntl+9Gs/XkbjNx\nXbwMwaT66Qq5K38Q2Le3PL6hRANCAATmdZOzMotqdNrUEK/bUEcSpNQzykXultNu\nOjIpdF35nknZBNBg+BE+nzkM2fu43gDS1f4ALGt5eT8Z42iN6iWl\n-----END PRIVATE KEY-----\n",
+  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE5nWTszKLanTa1BCv21BHEqTUM8pF7pbT\nbjoyKXRd+Z5J2QTQYPgRPp85DNn7uN4A0tX+ACxreXk/GeNojeolpQ==\n-----END PUBLIC KEY-----\n"
+}

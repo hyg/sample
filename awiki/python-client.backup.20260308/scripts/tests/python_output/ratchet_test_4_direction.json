@@ -1,0 +1,20 @@
+{
+  "description": "Direction determination by DID lexicographic order",
+  "results": [
+    {
+      "local_did": "did:wba:awiki.ai:user:alice",
+      "peer_did": "did:wba:awiki.ai:user:bob",
+      "is_initiator": true
+    },
+    {
+      "local_did": "did:wba:awiki.ai:user:bob",
+      "peer_did": "did:wba:awiki.ai:user:alice",
+      "is_initiator": false
+    },
+    {
+      "local_did": "did:wba:awiki.ai:user:charlie",
+      "peer_did": "did:wba:awiki.ai:user:alpha",
+      "is_initiator": false
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+DIDWba did="did:wba:awiki.ai:user:k1_HFHuJDV-uBp1QV5AfBZMJ1Wt3EwOXcBIntgI5jzMgDI", nonce="ee80e5fecb8caee4c2c2cf89b25c94af", timestamp="2026-03-06T07:25:32Z", verification_method="key-1", signature="xfAP_68lmg1ANqsNrpfb__L0eFJ8vryj2nq6J0HZJTQAq66IQRA5YZncKY7eDJoIxrGYS6s-oBOaQNOjv-9zGw"

@@ -1,0 +1,82 @@
+{
+  "description": "W3C Proof step-by-step test vectors",
+  "input": {
+    "document": {
+      "@context": [
+        "https://www.w3.org/ns/did/v1",
+        "https://w3id.org/security/suites/jws-2020/v1",
+        "https://w3id.org/security/suites/secp256k1-2019/v1"
+      ],
+      "id": "did:wba:awiki.ai:user:k1_test123",
+      "verificationMethod": [
+        {
+          "id": "did:wba:awiki.ai:user:k1_test123#key-1",
+          "type": "EcdsaSecp256k1VerificationKey2019",
+          "controller": "did:wba:awiki.ai:user:k1_test123",
+          "publicKeyJwk": {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "WC0xMjM0NTY3ODkwYWJjZGVm",
+            "y": "YWJjZGVmMTIzNDU2Nzg5MA"
+          }
+        }
+      ],
+      "authentication": [
+        "did:wba:awiki.ai:user:k1_test123#key-1"
+      ]
+    },
+    "proof_options": {
+      "type": "EcdsaSecp256k1Signature2019",
+      "created": "2026-03-07T00:00:00Z",
+      "verificationMethod": "did:wba:awiki.ai:user:k1_test123#key-1",
+      "proofPurpose": "authentication",
+      "domain": "awiki.ai",
+      "challenge": "test-challenge-12345"
+    }
+  },
+  "step1_canonicalization": {
+    "doc_canonical": "{\"@context\":[\"https://www.w3.org/ns/did/v1\",\"https://w3id.org/security/suites/jws-2020/v1\",\"https://w3id.org/security/suites/secp256k1-2019/v1\"],\"authentication\":[\"did:wba:awiki.ai:user:k1_test123#key-1\"],\"id\":\"did:wba:awiki.ai:user:k1_test123\",\"verificationMethod\":[{\"controller\":\"did:wba:awiki.ai:user:k1_test123\",\"id\":\"did:wba:awiki.ai:user:k1_test123#key-1\",\"publicKeyJwk\":{\"crv\":\"secp256k1\",\"kty\":\"EC\",\"x\":\"WC0xMjM0NTY3ODkwYWJjZGVm\",\"y\":\"YWJjZGVmMTIzNDU2Nzg5MA\"},\"type\":\"EcdsaSecp256k1VerificationKey2019\"}]}",
+    "doc_canonical_hex": "7b2240636f6e74657874223a5b2268747470733a2f2f7777772e77332e6f72672f6e732f6469642f7631222c2268747470733a2f2f773369642e6f72672f73656375726974792f7375697465732f6a77732d323032302f7631222c2268747470733a2f2f773369642e6f72672f73656375726974792f7375697465732f736563703235366b312d323031392f7631225d2c2261757468656e7469636174696f6e223a5b226469643a7762613a6177696b692e61693a757365723a6b315f74657374313233236b65792d31225d2c226964223a226469643a7762613a6177696b692e61693a757365723a6b315f74657374313233222c22766572696669636174696f6e4d6574686f64223a5b7b22636f6e74726f6c6c6572223a226469643a7762613a6177696b692e61693a757365723a6b315f74657374313233222c226964223a226469643a7762613a6177696b692e61693a757365723a6b315f74657374313233236b65792d31222c227075626c69634b65794a776b223a7b22637276223a22736563703235366b31222c226b7479223a224543222c2278223a22574330784d6a4d304e5459334f446b7759574a6a5a47566d222c2279223a2259574a6a5a47566d4d54497a4e4455324e7a67354d41227d2c2274797065223a224563647361536563703235366b31566572696669636174696f6e4b657932303139227d5d7d",
+    "doc_canonical_length": 513,
+    "options_canonical": "{\"challenge\":\"test-challenge-12345\",\"created\":\"2026-03-07T00:00:00Z\",\"domain\":\"awiki.ai\",\"proofPurpose\":\"authentication\",\"type\":\"EcdsaSecp256k1Signature2019\",\"verificationMethod\":\"did:wba:awiki.ai:user:k1_test123#key-1\"}",
+    "options_canonical_hex": "7b226368616c6c656e6765223a22746573742d6368616c6c656e67652d3132333435222c2263726561746564223a22323032362d30332d30375430303a30303a30305a222c22646f6d61696e223a226177696b692e6169222c2270726f6f66507572706f7365223a2261757468656e7469636174696f6e222c2274797065223a224563647361536563703235366b315369676e617475726532303139222c22766572696669636174696f6e4d6574686f64223a226469643a7762613a6177696b692e61693a757365723a6b315f74657374313233236b65792d31227d",
+    "options_canonical_length": 220
+  },
+  "step2_hashing": {
+    "doc_hash_hex": "56944fd90287c2c7db8169020f183c3c605ac4ee43a1aa9272e44c59b8bf3b2e",
+    "options_hash_hex": "657b77222e8effd0442301d00f021e576a00b7e47ad8768fb40e234f2b19cbdd"
+  },
+  "step3_signing_input": {
+    "to_be_signed_hex": "657b77222e8effd0442301d00f021e576a00b7e47ad8768fb40e234f2b19cbdd56944fd90287c2c7db8169020f183c3c605ac4ee43a1aa9272e44c59b8bf3b2e",
+    "to_be_signed_length": 64
+  },
+  "step4_signing": {
+    "private_key_hex": "0838f5ec16d69a1e4668f623b6dd12d54db2fbc07ff8068d5b3db5f6b0813263",
+    "public_key_x_hex": "5064e51b03ff2b08672aad82d880db8d063e7b14aa0385dd5e4f2f38e0e66477",
+    "public_key_y_hex": "79e84fbb1708dd5dc996f0825a79144fa4d1ab51a80883e8b34002af086fff2f",
+    "der_signature_hex": "3046022100f3052ad1b9b637b08139dc7cdcf0e9b3a305a4b748e1f312e298b982e779db5d022100d4bbbf99ddc18d91be47f1f7e2644899d1322e2e5618db7956bdb5b192a196b0",
+    "r_hex": "f3052ad1b9b637b08139dc7cdcf0e9b3a305a4b748e1f312e298b982e779db5d",
+    "s_hex": "d4bbbf99ddc18d91be47f1f7e2644899d1322e2e5618db7956bdb5b192a196b0",
+    "rs_signature_hex": "f3052ad1b9b637b08139dc7cdcf0e9b3a305a4b748e1f312e298b982e779db5dd4bbbf99ddc18d91be47f1f7e2644899d1322e2e5618db7956bdb5b192a196b0",
+    "rs_signature_normalized_hex": "f3052ad1b9b637b08139dc7cdcf0e9b3a305a4b748e1f312e298b982e779db5d2b444066223e726e41b80e081d9bb764e97caeb8592fc4c26914a8db3d94aa91",
+    "s_was_normalized": true
+  },
+  "step5_base64url": {
+    "proof_value": "8wUq0bm2N7CBOdx83PDps6MFpLdI4fMS4pi5gud5210rREBmIj5ybkG4Dggdm7dk6XyuuFkvxMJpFKjbPZSqkQ",
+    "proof_value_length": 86
+  },
+  "step6_complete_proof": {
+    "proof": {
+      "type": "EcdsaSecp256k1Signature2019",
+      "created": "2026-03-07T00:00:00Z",
+      "verificationMethod": "did:wba:awiki.ai:user:k1_test123#key-1",
+      "proofPurpose": "authentication",
+      "domain": "awiki.ai",
+      "challenge": "test-challenge-12345",
+      "proofValue": "8wUq0bm2N7CBOdx83PDps6MFpLdI4fMS4pi5gud5210rREBmIj5ybkG4Dggdm7dk6XyuuFkvxMJpFKjbPZSqkQ"
+    }
+  },
+  "step7_verification": {
+    "result": true
+  }
+}

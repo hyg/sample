@@ -1,0 +1,6 @@
+{
+  "description": "Chain key derivation from root seed",
+  "root_seed_hex": "a217dfaff05300f5114a6af400006a0238536ad3f57c8a2e9bf3047fcc08cf25",
+  "init_chain_key_hex": "bacf1bde6eded1c081adc212214a52ff03fd8352659ebccd036ebe7df8814663",
+  "resp_chain_key_hex": "a532b82c10477d3927c11a2f3544ee8769bfab61c46a65cf2b032cb7e514f763"
+}

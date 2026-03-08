@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-03-07T16:04:23.539921+00:00",
+  "identity": {
+    "did": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+    "public_key_x_b64": "-LnnfN6SgEjAUasZl0mjJ4WOE17W5Td9hICCmMtqQuU",
+    "public_key_y_b64": "U_nNyBsUxFWIYvlmsUqhNwMhgB1Q4OXuunj9C4fLvL4"
+  },
+  "did_document": {
+    "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+    "verification_methods": [
+      {
+        "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-1",
+        "type": "EcdsaSecp256k1VerificationKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+        "publicKeyJwk": {
+          "kty": "EC",
+          "crv": "secp256k1",
+          "x": "-LnnfN6SgEjAUasZl0mjJ4WOE17W5Td9hICCmMtqQuU",
+          "y": "U_nNyBsUxFWIYvlmsUqhNwMhgB1Q4OXuunj9C4fLvL4",
+          "kid": "nxxbQXw-pyLb1wzfEDtWdanw6GDr_xD15GUj5H_jOP4"
+        }
+      },
+      {
+        "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-2",
+        "type": "EcdsaSecp256r1VerificationKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+        "publicKeyJwk": {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "If3_aLM4I6L2VkoIwPDRPn3A9SQdjZYHJRvmwo_RgDc",
+          "y": "zoaEA32JSVA0pILBNjwynqdysExbowl8EwHOimUzU-A"
+        }
+      },
+      {
+        "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-3",
+        "type": "X25519KeyAgreementKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+        "publicKeyMultibase": "zFy5kevFaPJsYCZyyihtoS7p9QmK3H375UziPRQ464mXM"
+      }
+    ]
+  },
+  "signature_generation": {
+    "auth_data": {
+      "nonce": "HziwDG4RBMcshYiEYf9jECqkErBzsrk_",
+      "timestamp": "2026-03-07T16:04:22Z",
+      "aud": "awiki.ai",
+      "did": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0"
+    },
+    "canonical_json": "{\"aud\":\"awiki.ai\",\"did\":\"did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0\",\"nonce\":\"HziwDG4RBMcshYiEYf9jECqkErBzsrk_\",\"timestamp\":\"2026-03-07T16:04:22Z\"}",
+    "content_hash": "9282ffb44cf2ee39bbc5e5247c5f97f77ac048692e022edc7d3df8c04ae31d97",
+    "signature_der_hex": "3045022100d210fabbd8a7123e6dd0e5adefc9556f50745b8542712bcb891e019f53c76cc3022069b7751c604240f127678374c1a37a8f476c43dca61dc509767fdbf9d1c5d7a2",
+    "signature_der_length": 71,
+    "r": "95015698256435304238222204225040083248022900910542940341743998430144121760963",
+    "s": "47816990383435731470853656847084518244887365746823897987198514464125843003298",
+    "rs_sig_hex": "d210fabbd8a7123e6dd0e5adefc9556f50745b8542712bcb891e019f53c76cc369b7751c604240f127678374c1a37a8f476c43dca61dc509767fdbf9d1c5d7a2",
+    "signature_b64url": "MEUCIQDSEPq72KcSPm3Q5a3vyVVvUHRbhUJxK8uJHgGfU8dswwIgabd1HGBCQPEnZ4N0waN6j0dsQ9ymHcUJdn_b-dHF16I",
+    "authorization_header": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0\", nonce=\"HziwDG4RBMcshYiEYf9jECqkErBzsrk_\", timestamp=\"2026-03-07T16:04:22Z\", verification_method=\"key-1\", signature=\"MEUCIQDSEPq72KcSPm3Q5a3vyVVvUHRbhUJxK8uJHgGfU8dswwIgabd1HGBCQPEnZ4N0waN6j0dsQ9ymHcUJdn_b-dHF16I\""
+  },
+  "http_request": {
+    "url": "https://awiki.ai/user-service/did-auth/rpc",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "verify",
+      "params": {
+        "authorization": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0\", nonce=\"HziwDG4RBMcshYiEYf9jECqkErBzsrk_\", timestamp=\"2026-03-07T16:04:22Z\", verification_method=\"key-1\", signature=\"MEUCIQDSEPq72KcSPm3Q5a3vyVVvUHRbhUJxK8uJHgGfU8dswwIgabd1HGBCQPEnZ4N0waN6j0dsQ9ymHcUJdn_b-dHF16I\"",
+        "domain": "awiki.ai"
+      },
+      "id": 1
+    }
+  },
+  "http_response": {
+    "status_code": 200,
+    "headers": {
+      "server": "nginx/1.18.0 (Ubuntu)",
+      "date": "Sat, 07 Mar 2026 16:04:22 GMT",
+      "content-type": "application/json",
+      "content-length": "147",
+      "connection": "keep-alive",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-frame-options": "SAMEORIGIN",
+      "x-content-type-options": "nosniff",
+      "x-xss-protection": "1; mode=block"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "result": null,
+      "error": {
+        "code": -32000,
+        "message": "Signature verification failed: Signature verification failed",
+        "data": null
+      },
+      "id": 1
+    }
+  }
+}

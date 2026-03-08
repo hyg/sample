@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-03-08T03:49:43.209Z",
+  "test_name": "Final Cross-Platform Message Test",
+  "identities": {
+    "nodejs": {
+      "did": "did:wba:awiki.ai:user:k1_ZC4d5CFobUfciijgHmNZ3w0WzkX3_-PHWHShgZv06zc",
+      "pem_length": 123,
+      "has_jwt": true
+    },
+    "python": {
+      "did": "did:wba:awiki.ai:user:k1_DV_IfpDG5Ri9bJdNI4xGrp-gCUU8bv2OypaRQmIynIM",
+      "has_jwt": true
+    }
+  },
+  "results": [
+    {
+      "test": "Node.js -> Python",
+      "success": true,
+      "result": {
+        "id": "d9c811c2-c3f7-49e0-b7ed-b2ec7b20df79",
+        "sender_name": null,
+        "content": "[CROSS-PLATFORM TEST] Node.js to Python - 2026-03-08T03:49:41.389Z",
+        "type": "text",
+        "sent_at": null,
+        "created_at": "2026-03-08T11:49:42",
+        "server_seq": 1,
+        "client_msg_id": "8130b0de-1beb-4b98-a385-941f2ee81b23",
+        "sender_did": "did:wba:awiki.ai:user:k1_ZC4d5CFobUfciijgHmNZ3w0WzkX3_-PHWHShgZv06zc",
+        "receiver_did": "did:wba:awiki.ai:user:k1_DV_IfpDG5Ri9bJdNI4xGrp-gCUU8bv2OypaRQmIynIM",
+        "group_did": null
+      }
+    },
+    {
+      "test": "Python -> Node.js",
+      "success": true,
+      "result": {
+        "id": "7a81a175-aa21-42a9-b264-cc3c418b1731",
+        "sender_name": null,
+        "content": "[CROSS-PLATFORM TEST] Python to Node.js - 2026-03-08T03:49:43.024Z",
+        "type": "text",
+        "sent_at": null,
+        "created_at": "2026-03-08T11:49:43",
+        "server_seq": 2,
+        "client_msg_id": "550e7734-3c77-4481-bd3b-640c0fb9d71d",
+        "sender_did": "did:wba:awiki.ai:user:k1_DV_IfpDG5Ri9bJdNI4xGrp-gCUU8bv2OypaRQmIynIM",
+        "receiver_did": "did:wba:awiki.ai:user:k1_ZC4d5CFobUfciijgHmNZ3w0WzkX3_-PHWHShgZv06zc",
+        "group_did": null
+      }
+    }
+  ]
+}

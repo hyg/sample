@@ -1,0 +1,68 @@
+{
+  "did": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE",
+  "unique_id": "k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE",
+  "user_id": "10268c98-d338-4e32-af34-1b9d40e2a842",
+  "private_key_pem": "-----BEGIN PRIVATE KEY-----\nMDACAQAwCQYHKoZIzj0BAQQgimBlxBHfFzQfWyUb5osjyzouKbuBEsBUCNCE6O1M\n9+4=\n-----END PRIVATE KEY-----",
+  "private_key_hex": "8a6065c411df17341f5b251be68b23cb3a2e29bb8112c05408d084e8ed4cf7ee",
+  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMFYwCgYHKoZIzj0CAQYFK4EEAAoDQgAE4kkigNrfle4flITs0dKw9HWEjtxPU1+R\nKmNYVzyGqcZBkuarvQd2vc6Vr7OhWqEGm6WYaJDzo/w0EQFHmCFYpg==\n-----END PUBLIC KEY-----",
+  "jwt_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS1jZDRjYjI3ZiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6d2JhOmF3aWtpLmFpOnVzZXI6azFfNVQzakQzNE40NUtSV1c2MVJocjBRRHZlLURxSDdNNmxzN01LWGhGNXhhRSIsImlzcyI6InVzZXItc2VydmljZSIsImlhdCI6MTc3Mjk1MDQ4NCwiZXhwIjoxNzcyOTU0MDg0LCJ0eXBlIjoiYWNjZXNzIn0.laB7dYY4iyLltG3G9PBQ03cKu4a4hTqAe5J6YtQwEKZERq8nNNwSUcQmaW68Gb_lNb7mTMyHlyYq1y_5LwWBxIQhhQhZSZzxnTl21pdK0EelFJi4DWNisZfrn-whNdLTOtgd_irMbvXk6KAbA8-Sg4jzRIVHOEPENxJjCDYIedSt7qbWmVtzEcfSm0fI1DErOWZ9xXU_G924ZTUbF29o3cHWkltjQbpIjAmBZMq5KQPDvPXpdHKrEsfdxpot9Xfs8P-1xtQPsKVsTVbGTNDRPMZyywr8dgxN8w16HeHjDdzn8mKKrvaxTuxT_GNhRpRLFOXWrghwVpeQWc2GQZejJg",
+  "name": "NodeTest1",
+  "did_document": {
+    "@context": [
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/suites/jws-2020/v1",
+      "https://w3id.org/security/suites/secp256k1-2019/v1",
+      "https://w3id.org/security/suites/x25519-2019/v1"
+    ],
+    "id": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE",
+    "verificationMethod": [
+      {
+        "id": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE#key-1",
+        "type": "EcdsaSecp256k1VerificationKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE",
+        "publicKeyJwk": {
+          "kty": "EC",
+          "crv": "secp256k1",
+          "x": "4kkigNrfle4flITs0dKw9HWEjtxPU1-RKmNYVzyGqcY",
+          "y": "QZLmq70Hdr3Ola-zoVqhBpulmGiQ86P8NBEBR5ghWKY",
+          "kid": "5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE"
+        }
+      },
+      {
+        "id": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE#key-2",
+        "type": "EcdsaSecp256r1VerificationKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE",
+        "publicKeyJwk": {
+          "kty": "EC",
+          "crv": "P-256",
+          "x": "1Hwx-aDRatJAXRWbcV4LST6zdlki56vEQLDTt2aADCo",
+          "y": "K7_oLaJd_Oae-juzFHZU-i2BaTcAdA9uhPZj6RNmv88"
+        }
+      },
+      {
+        "id": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE#key-3",
+        "type": "X25519KeyAgreementKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE",
+        "publicKeyMultibase": "zBQP4vmbdiqFysyEbq5mvCgJPwKvY1vWgqmvJ69SyjRCW"
+      }
+    ],
+    "authentication": [
+      "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE#key-1"
+    ],
+    "keyAgreement": [
+      "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE#key-3"
+    ],
+    "proof": {
+      "type": "EcdsaSecp256k1Signature2019",
+      "created": "2026-03-08T06:14:44Z",
+      "verificationMethod": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE#key-1",
+      "proofPurpose": "authentication",
+      "domain": "awiki.ai",
+      "challenge": "b75713ee0065a6258e9597337509137a",
+      "proofValue": "iayzS0iKdR5hG7_OZQ8CUFimkFq_6deyqqApCP6OlH0sS_JlPZoIR7czBH_jPmqZn8nDHggDleIgFgXIuvzI-w"
+    }
+  },
+  "created_at": "2026-03-08T06:14:45.061Z",
+  "e2ee_signing_private_pem": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgL4Sr0TxT345Mol0j\nhZrK5o5cNQbeKerX3Nt3Z/9Ju0GhRANCAATUfDH5oNFq0kBdFZtxXgtJPrN2WSLn\nq8RAsNO3ZoAMKiu/6C2iXfzmnvo7sxR2VPotgWk3AHQPboT2Y+kTZr/P\n-----END PRIVATE KEY-----\n",
+  "e2ee_agreement_private_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VuBCIEILjR2qcX62dIPJEPUP43+BzxDl8ONpVuTG8fSLuLfm9A\n-----END PRIVATE KEY-----\n"
+}

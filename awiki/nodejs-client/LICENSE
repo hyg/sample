@@ -1,0 +1,81 @@
+MIT License
+
+Copyright (c) 2026 [Your Name]
+
+**AI-Generated Code Notice**: This software includes code that was generated 
+with the assistance of artificial intelligence (AI) tools. The human author 
+has reviewed, modified, and integrated the AI-generated code.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## AI-Generated Code Disclosure
+
+### Human Authorship
+
+This project was created with substantial assistance from AI coding assistants. 
+The human author's contributions include:
+
+- **Project Architecture**: Designed overall structure and module organization
+- **Code Review**: Reviewed all AI-generated code for correctness and security
+- **Testing**: Created and executed test suites
+- **Integration**: Integrated AI-generated components
+- **Documentation**: Wrote all documentation and usage guides
+- **Maintenance**: Ongoing maintenance and bug fixes
+
+### AI Tools Used
+
+This project was developed using AI coding assistants including but not limited to:
+- Large Language Models (LLMs) for code generation
+- AI-powered code completion tools
+- AI-assisted debugging and optimization
+
+### Legal Considerations
+
+**Copyright Status**: The copyright status of AI-generated code varies by 
+jurisdiction. In some jurisdictions, AI-generated content may not be eligible 
+for copyright protection. The human author claims copyright only to the extent 
+permissible by law, including original contributions, selection, arrangement, 
+and modifications of AI-generated code.
+
+**No Warranty**: Due to the AI-assisted nature of this code, NO WARRANTY is 
+provided. Users assume all risks associated with using this software.
+
+**Third-Party Code**: AI tools may generate code similar to existing open-source 
+projects. While efforts have been made to ensure originality, users should 
+conduct their own review if concerned about potential similarities.
+
+### Attribution
+
+This Node.js implementation is based on the Python 
+[awiki-agent-id-message](https://github.com/AgentConnect/awiki-agent-id-message) 
+project (Apache License 2.0). The AI was prompted to create a compatible 
+Node.js implementation based on analysis of the Python source code.
+
+### Third-Party Licenses
+
+All third-party library licenses are included in the NOTICE.md file.
+
+---
+
+## Contact
+
+For questions about AI-generated code in this project, please open an issue 
+on GitHub.

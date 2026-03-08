@@ -1,0 +1,64 @@
+{
+  "name": "nodejs-awiki",
+  "version": "1.0.0",
+  "description": "awiki DID identity management and E2EE messaging for AI Agents",
+  "type": "module",
+  "main": "lib/anp/__init__.js",
+  "bin": {
+    "awiki": "./bin/awiki.js",
+    "awiki-setup-identity": "./scripts/setup_identity.js",
+    "awiki-send-message": "./scripts/send_message.js",
+    "awiki-check-inbox": "./scripts/check_inbox.js",
+    "awiki-register-handle": "./scripts/register_handle.js",
+    "awiki-get-profile": "./scripts/get_profile.js",
+    "awiki-update-profile": "./scripts/update_profile.js",
+    "awiki-manage-relationship": "./scripts/manage_relationship.js",
+    "awiki-manage-group": "./scripts/manage_group.js",
+    "awiki-manage-content": "./scripts/manage_content.js",
+    "awiki-e2ee-messaging": "./scripts/e2ee_messaging.js",
+    "awiki-ws-listener": "./scripts/ws_listener.js"
+  },
+  "scripts": {
+    "setup-identity": "node scripts/setup_identity.js",
+    "send-message": "node scripts/send_message.js",
+    "check-inbox": "node scripts/check_inbox.js",
+    "register-handle": "node scripts/register_handle.js",
+    "get-profile": "node scripts/get_profile.js",
+    "update-profile": "node scripts/update_profile.js",
+    "manage-relationship": "node scripts/manage_relationship.js",
+    "manage-group": "node scripts/manage_group.js",
+    "manage-content": "node scripts/manage_content.js",
+    "e2ee-messaging": "node scripts/e2ee_messaging.js",
+    "ws-listener": "node scripts/ws_listener.js",
+    "test": "node --test tests/*.test.js",
+    "test:python-compare": "node tests/compare_with_python.js"
+  },
+  "keywords": [
+    "awiki",
+    "did",
+    "e2ee",
+    "agent",
+    "identity",
+    "messaging",
+    "hpke",
+    "encryption"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@noble/ciphers": "^2.1.1",
+    "@noble/curves": "^1.4.0",
+    "@noble/hashes": "^1.4.0",
+    "axios": "^1.6.0",
+    "canonicalize": "^2.0.0",
+    "multiformats": "^13.0.0",
+    "secp256k1": "^5.0.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

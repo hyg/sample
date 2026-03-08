@@ -1,0 +1,23 @@
+{
+  "test": "Multiple Registered DIDs JWT Verification",
+  "timestamp": "2026-03-07T14:23:27.220Z",
+  "results": [
+    {
+      "name": "pythonagent",
+      "success": false,
+      "error": "Signature verification failed: Signature verification failed"
+    },
+    {
+      "name": "testfresh",
+      "success": false,
+      "error": "Signature verification failed: Signature verification failed"
+    },
+    {
+      "name": "nodeagentfinal",
+      "success": false,
+      "error": "error:1E08010C:DECODER routines::unsupported"
+    }
+  ],
+  "success_count": 0,
+  "total": 3
+}

@@ -1,0 +1,6 @@
+{
+  "auth_data_canonical": "{\"did\":\"did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY\",\"nonce\":\"65be130eae26dac3173c027254d77fb7\",\"service\":\"awiki.ai\",\"timestamp\":\"2026-03-06T07:45:30Z\"}",
+  "auth_hash_hex": "a7021e68893456d798eb7aef53b4e03a00bb9b4139112579db301d307675dad1",
+  "auth_signature_b64url": "xcWL1ItcXlaWsuOws0kZADatrRMgGz4sw2oTpkE7FFsTzZ3f7K9tU7rsYFVCtCWgXPctl-tiepJvcw6-gl2MIA",
+  "auth_header": "DIDWba did=\"did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY\", nonce=\"65be130eae26dac3173c027254d77fb7\", timestamp=\"2026-03-06T07:45:30Z\", verification_method=\"key-1\", signature=\"xcWL1ItcXlaWsuOws0kZADatrRMgGz4sw2oTpkE7FFsTzZ3f7K9tU7rsYFVCtCWgXPctl-tiepJvcw6-gl2MIA\""
+}

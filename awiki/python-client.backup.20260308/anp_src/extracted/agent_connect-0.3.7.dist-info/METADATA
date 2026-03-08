@@ -1,0 +1,158 @@
+Metadata-Version: 2.4
+Name: agent-connect
+Version: 0.3.7
+Summary: An SDK that enables agents to connect with each other, allowing them to perform identity authentication, end-to-end encrypted communication, automatic protocol negotiation based on LLMs, and efficient data exchange.
+Project-URL: Homepage, https://agent-network-protocol.com/
+Project-URL: Repository, https://github.com/agent-network-protocol/AgentConnect
+Project-URL: Documentation, https://github.com/agent-network-protocol/AgentNetworkProtocol
+Author-email: changshan <chgaowei@gmail.com>
+License: MIT
+License-File: LICENSE
+Keywords: agent,authentication,communication,encryption,protocol
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.8
+Requires-Dist: aiohttp>=3.10.10
+Requires-Dist: asn1crypto>=1.5.1
+Requires-Dist: base58>=2.1.1
+Requires-Dist: canonicaljson>=2.0.0
+Requires-Dist: cryptography>=43.0.3
+Requires-Dist: ecdsa>=0.19.0
+Requires-Dist: jcs>=0.2.1
+Requires-Dist: jsonschema>=4.23.0
+Requires-Dist: pydantic<3.0.0,>=2.9.2
+Requires-Dist: pyjwt>=2.9.0
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: requests>=2.32.3
+Requires-Dist: websockets>=13.1
+Provides-Extra: api
+Requires-Dist: fastapi<1.0.0,>=0.115.4; extra == 'api'
+Requires-Dist: openai>=1.54.3; extra == 'api'
+Requires-Dist: uvicorn<1.0.0,>=0.32.0; extra == 'api'
+Description-Content-Type: text/markdown
+
+<div align="center">
+  
+[English](README.md) | [中文](README.cn.md)
+
+</div>
+
+# AgentConnect
+
+## What is AgentConnect
+
+AgentConnect is an open-source SDK implementation of the [Agent Network Protocol (ANP)](https://github.com/agent-network-protocol/AgentNetworkProtocol).
+
+The goal of Agent Network Protocol (ANP) is to become the **HTTP of the Intelligent Agent Internet Era**, building an open, secure, and efficient collaborative network for billions of intelligent agents.
+
+<p align="center">
+  <img src="/images/agentic-web.png" width="50%" alt="Agentic Web"/>
+</p>
+
+## Core Modules
+
+### Authentication
+Agent identity authentication system based on DID-WBA (Decentralized Identifier - Web-Based Authentication):
+- **Identity Management**: Create and manage agent DID documents
+- **Identity Verification**: Provide end-to-end identity authentication and authorization
+- **Secure Communication**: Ensure security and trustworthiness of inter-agent communication
+
+### ANP Crawler (Agent Discovery & Interaction)
+Discovery and interaction tools for the agent network:
+- **Agent Discovery**: Automatically discover and parse agent description documents
+- **Interface Parsing**: Parse JSON-RPC interfaces and convert them to callable tools
+- **Protocol Interaction**: Support communication with agents that comply with ANP protocol
+
+## Usage
+
+### Option 1: Install via pip
+```bash
+pip install agent-connect
+```
+
+### Option 2: Source Installation (Recommended for Developers)
+
+```bash
+# 下载源码
+git clone https://github.com/agent-network-protocol/AgentConnect.git
+cd AgentConnect
+
+# 使用UV配置环境
+uv sync
+
+# 运行示例
+uv run python examples/python/did_wba_examples/create_did_document.py
+```
+
+## Example Demonstration
+
+### DID-WBA Authentication Example
+Location: `examples/python/did_wba_examples/`
+
+#### Main Examples
+- **Create DID Document** (`create_did_document.py`)  
+  Demonstrate how to generate DID documents and key pairs for agents
+  
+- **Authenticate and Verify** (`authenticate_and_verify.py`)  
+  Demonstrate the complete DID-WBA authentication and verification process
+
+#### Running Examples
+```bash
+# Create DID Document
+uv run python examples/python/did_wba_examples/create_did_document.py
+
+# Authentication Demonstration
+uv run python examples/python/did_wba_examples/authenticate_and_verify.py
+```
+
+**Detailed Documentation**: [DID-WBA Example](examples/python/did_wba_examples/README.md)
+
+### ANP Crawler Agent Interaction Example
+Location: `examples/python/anp_crawler_examples/`
+
+#### Main Examples
+- **Simple Example** (`simple_amap_example.py`)  
+  Quick Start: Connect to AMAP service and call the map search interface
+  
+- **Complete Example** (`amap_crawler_example.py`)  
+  Complete Demonstration: Agent discovery, interface parsing, and tool calling
+
+#### Running Examples
+```bash
+# Quick Experience
+uv run python examples/python/anp_crawler_examples/simple_amap_example.py
+
+# Complete Function Demonstration
+uv run python examples/python/anp_crawler_examples/amap_crawler_example.py
+```
+
+**Detailed Documentation**: [ANP Crawler Example](examples/python/anp_crawler_examples/README.md)
+
+## Tool Recommendations
+
+### ANP Network Explorer Tool
+Use the web interface to explore the agent network using natural language: [ANP Network Explorer Tool](https://service.agent-network-protocol.com/anp-explorer/)
+
+### DID Document Generator Tool
+Command line tool to quickly generate DID documents:
+```bash
+uv run python tools/did_generater/generate_did_doc.py <did> [--agent-description-url URL]
+```
+
+## Contact Us
+
+- **Author**：GaoWei Chang  
+- **Email**：chgaowei@gmail.com  
+- **Website**：[https://agent-network-protocol.com/](https://agent-network-protocol.com/)  
+- **Discord**：[https://discord.gg/sFjBKTY7sB](https://discord.gg/sFjBKTY7sB)  
+- **GitHub**：[https://github.com/agent-network-protocol/AgentNetworkProtocol](https://github.com/agent-network-protocol/AgentNetworkProtocol)
+- **WeChat**：flow10240
+
+## License
+
+This project is open-sourced under the MIT License. Detailed information please refer to [LICENSE](LICENSE) file.
+
+---
+
+**Copyright (c) 2024 GaoWei Chang**

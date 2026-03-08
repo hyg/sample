@@ -1,0 +1,53 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://awiki.ai/user-service/did-auth/rpc",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "verify",
+      "params": {
+        "authorization": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_4pfzOaJ3z4fJ1QLdk0YF_sDKuCBjC1ETCfzh_h7D0UE\", nonce=\"f32cf4c6bfbc27724ee3fbffc182a227\", timestamp=\"2026-03-07T11:35:24Z\", verification_method=\"key-1\", signature=\"MEUCIQCHwWWsZPB4X_8ZjvmIXCnK9K4-mGkFjqcxrm7U8WPiWAIgcjDNq07mtUb2eDGjNFcrTBgOXUkFJ4CK2TtWbSwAqms\"",
+        "domain": "awiki.ai"
+      },
+      "id": 1
+    },
+    "auth_header": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_4pfzOaJ3z4fJ1QLdk0YF_sDKuCBjC1ETCfzh_h7D0UE\", nonce=\"f32cf4c6bfbc27724ee3fbffc182a227\", timestamp=\"2026-03-07T11:35:24Z\", verification_method=\"key-1\", signature=\"MEUCIQCHwWWsZPB4X_8ZjvmIXCnK9K4-mGkFjqcxrm7U8WPiWAIgcjDNq07mtUb2eDGjNFcrTBgOXUkFJ4CK2TtWbSwAqms\"",
+    "auth_data_signed": {
+      "nonce": "f32cf4c6bfbc27724ee3fbffc182a227",
+      "timestamp": "2026-03-07T11:35:24Z",
+      "aud": "awiki.ai",
+      "did": "did:wba:awiki.ai:user:k1_4pfzOaJ3z4fJ1QLdk0YF_sDKuCBjC1ETCfzh_h7D0UE"
+    },
+    "canonical_json": "{\"aud\":\"awiki.ai\",\"did\":\"did:wba:awiki.ai:user:k1_4pfzOaJ3z4fJ1QLdk0YF_sDKuCBjC1ETCfzh_h7D0UE\",\"nonce\":\"f32cf4c6bfbc27724ee3fbffc182a227\",\"timestamp\":\"2026-03-07T11:35:24Z\"}",
+    "content_hash": "675d6f422530731d58cbc9b9599ff3f5d0574ac37b6c61529c36f0daeee962c9",
+    "signature_der": "304502210087c165ac64f0785fff198ef9885c29caf4ae3e9869058ea731ae6ed4f163e25802207230cdab4ee6b546f67831a334572b4c180e5d490527808ad93b566d2c00aa6b",
+    "signature_b64url": "MEUCIQCHwWWsZPB4X_8ZjvmIXCnK9K4-mGkFjqcxrm7U8WPiWAIgcjDNq07mtUb2eDGjNFcrTBgOXUkFJ4CK2TtWbSwAqms"
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "server": "nginx/1.18.0 (Ubuntu)",
+      "date": "Sat, 07 Mar 2026 11:35:22 GMT",
+      "content-type": "application/json",
+      "content-length": "147",
+      "connection": "keep-alive",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-frame-options": "SAMEORIGIN",
+      "x-content-type-options": "nosniff",
+      "x-xss-protection": "1; mode=block"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "result": null,
+      "error": {
+        "code": -32000,
+        "message": "Signature verification failed: Signature verification failed",
+        "data": null
+      },
+      "id": 1
+    }
+  }
+}

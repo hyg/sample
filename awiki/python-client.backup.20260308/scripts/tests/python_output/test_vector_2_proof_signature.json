@@ -1,0 +1,42 @@
+{
+  "doc_to_sign_canonical": "{\"@context\":[\"https://www.w3.org/ns/did/v1\",\"https://w3id.org/security/suites/jws-2020/v1\",\"https://w3id.org/security/suites/secp256k1-2019/v1\"],\"authentication\":[\"did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1\"],\"id\":\"did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY\",\"proof\":{\"challenge\":\"bfe0bb52754d697300edfc4425c4c4ee\",\"created\":\"2026-03-06T07:45:30Z\",\"domain\":\"awiki.ai\",\"proofPurpose\":\"authentication\",\"proofValue\":\"\",\"type\":\"EcdsaSecp256k1Signature2019\",\"verificationMethod\":\"did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1\"},\"verificationMethod\":[{\"controller\":\"did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY\",\"id\":\"did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1\",\"publicKeyJwk\":{\"crv\":\"secp256k1\",\"kid\":\"Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY\",\"kty\":\"EC\",\"x\":\"5nWTszKLanTa1BCv21BHEqTUM8pF7pbTbjoyKXRd-Z4\",\"y\":\"SdkE0GD4ET6fOQzZ-7jeANLV_gAsa3l5PxnjaI3qJaU\"},\"type\":\"EcdsaSecp256k1VerificationKey2019\"}]}",
+  "content_hash_hex": "65c9f88e139e0ca99a7912aca4380e52caab29c15f20520d080b6e31e59927bd",
+  "signature_der_hex": "3045022100de878e0441646c1ffdf141f48ca736008e2597fa6c186e5795f576e32b1de0ea022001aa3f989b5d2fa78d4997fad9494fe1d5bf653e4a4fe7f70dd2269a51f0fd67",
+  "signature_r_hex": "de878e0441646c1ffdf141f48ca736008e2597fa6c186e5795f576e32b1de0ea",
+  "signature_s_hex": "01aa3f989b5d2fa78d4997fad9494fe1d5bf653e4a4fe7f70dd2269a51f0fd67",
+  "signature_b64url": "3oeOBEFkbB_98UH0jKc2AI4ll_psGG5XlfV24ysd4OoBqj-Ym10vp41Jl_rZSU_h1b9lPkpP5_cN0iaaUfD9Zw",
+  "signed_document": {
+    "@context": [
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/suites/jws-2020/v1",
+      "https://w3id.org/security/suites/secp256k1-2019/v1"
+    ],
+    "id": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY",
+    "verificationMethod": [
+      {
+        "id": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1",
+        "type": "EcdsaSecp256k1VerificationKey2019",
+        "controller": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY",
+        "publicKeyJwk": {
+          "kty": "EC",
+          "crv": "secp256k1",
+          "x": "5nWTszKLanTa1BCv21BHEqTUM8pF7pbTbjoyKXRd-Z4",
+          "y": "SdkE0GD4ET6fOQzZ-7jeANLV_gAsa3l5PxnjaI3qJaU",
+          "kid": "Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY"
+        }
+      }
+    ],
+    "authentication": [
+      "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1"
+    ],
+    "proof": {
+      "type": "EcdsaSecp256k1Signature2019",
+      "verificationMethod": "did:wba:awiki.ai:user:k1_Kl0jAVA6tQ4scMcxSaLj-Jc8bpOBN_oyaVmnZmkffGY#key-1",
+      "created": "2026-03-06T07:45:30Z",
+      "proofPurpose": "authentication",
+      "domain": "awiki.ai",
+      "challenge": "bfe0bb52754d697300edfc4425c4c4ee",
+      "proofValue": "3oeOBEFkbB_98UH0jKc2AI4ll_psGG5XlfV24ysd4OoBqj-Ym10vp41Jl_rZSU_h1b9lPkpP5_cN0iaaUfD9Zw"
+    }
+  }
+}

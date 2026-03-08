@@ -1,0 +1,17 @@
+{
+  "local_did": "did:wba:awiki.ai:user:k1_5T3jD34N45KRWW61Rhr0QDve-DqH7M6ls7MKXhF5xaE",
+  "sessions": {
+    "did:wba:awiki.ai:user:k1_ADf43nq1-HCBYNuT29CCtceSdCzwOUGVXSfZikb6I8M": {
+      "sessionId": "225a16dfe26066576b837c0460d7a707",
+      "peerDid": "did:wba:awiki.ai:user:k1_ADf43nq1-HCBYNuT29CCtceSdCzwOUGVXSfZikb6I8M",
+      "ephemeralSk": "7d51bc9b05af2b4fb0c122cceaeeab248450acaa09f0d079318a5d88cfcbd194",
+      "ephemeralPk": "e27ea988173258904ab6849fab83c2ecf2f6c616854437fe20946911a07fad00",
+      "sendChainKey": null,
+      "recvChainKey": null,
+      "sendSeq": 0,
+      "recvSeq": 0,
+      "state": "initiated"
+    }
+  },
+  "updated_at": "2026-03-08T06:19:31.754Z"
+}

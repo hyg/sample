@@ -1,0 +1,112 @@
+{
+  "request": {
+    "url": "https://awiki.ai/user-service/did-auth/rpc",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "register",
+      "params": {
+        "did_document": {
+          "@context": [
+            "https://www.w3.org/ns/did/v1",
+            "https://w3id.org/security/suites/jws-2020/v1",
+            "https://w3id.org/security/suites/secp256k1-2019/v1",
+            "https://w3id.org/security/suites/x25519-2019/v1"
+          ],
+          "id": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA",
+          "verificationMethod": [
+            {
+              "id": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA#key-1",
+              "type": "EcdsaSecp256k1VerificationKey2019",
+              "controller": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "secp256k1",
+                "x": "U2P9gL0w0v-wzR8txIFj_P6WBpCsvcs1iHOEygHebRo",
+                "y": "EFCM6L0MpvL9OiPzey67g4tHkAeP2V3rkmCAywZ6Srs",
+                "kid": "L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA"
+              }
+            },
+            {
+              "id": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA#key-2",
+              "type": "EcdsaSecp256r1VerificationKey2019",
+              "controller": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "P-256",
+                "x": "g6rYys_hZMWaA8Yye-3YZUgZ3UTHpCPZp11w8tN7mwE",
+                "y": "VLLOkQam4iUIe1l_8Fr-jj9MJu-Sl0ocSHFxQbKUJVU"
+              }
+            },
+            {
+              "id": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA#key-3",
+              "type": "X25519KeyAgreementKey2019",
+              "controller": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA",
+              "publicKeyMultibase": "zz3YZnhDpqJ57mZUqrwsEhvHkcgXEfGX5csMnNibwEmwQz"
+            }
+          ],
+          "authentication": [
+            "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA#key-1"
+          ],
+          "keyAgreement": [
+            "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA#key-3"
+          ],
+          "proof": {
+            "type": "EcdsaSecp256k1Signature2019",
+            "created": "2026-03-07T09:14:16Z",
+            "verificationMethod": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA#key-1",
+            "proofPurpose": "authentication",
+            "domain": "awiki.ai",
+            "challenge": "f67ae9b44e218c3a01155265d614c349",
+            "proofValue": "jYlwnpXyE1bkPuaCaJBiPCPFId7kXu4BKF3Z-e4drTBDCltlepE4yMmIt_5WJlWz9sW2vk6NI6NUo6IcErQgXg"
+          }
+        },
+        "name": "NodeJSCaptureTest",
+        "is_agent": true
+      },
+      "id": 1
+    }
+  },
+  "response": {
+    "status_code": 200,
+    "headers": {
+      "server": "nginx/1.18.0 (Ubuntu)",
+      "date": "Sat, 07 Mar 2026 09:14:15 GMT",
+      "content-type": "application/json",
+      "content-length": "263",
+      "connection": "keep-alive",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-frame-options": "SAMEORIGIN",
+      "x-content-type-options": "nosniff",
+      "x-xss-protection": "1; mode=block"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "result": {
+        "did": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA",
+        "user_id": "daeffa05-6fbd-4449-94e2-654a2a4415ac",
+        "message": "Registration successful",
+        "handle": null,
+        "full_handle": null,
+        "access_token": null
+      },
+      "error": null,
+      "id": 1
+    }
+  },
+  "identity": {
+    "did": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA",
+    "proof": {
+      "type": "EcdsaSecp256k1Signature2019",
+      "created": "2026-03-07T09:14:16Z",
+      "verificationMethod": "did:wba:awiki.ai:user:k1_L2THBzjjkOuZcJdmHUnGCuefbxjm1007dotExMz6NZA#key-1",
+      "proofPurpose": "authentication",
+      "domain": "awiki.ai",
+      "challenge": "f67ae9b44e218c3a01155265d614c349",
+      "proofValue": "jYlwnpXyE1bkPuaCaJBiPCPFId7kXu4BKF3Z-e4drTBDCltlepE4yMmIt_5WJlWz9sW2vk6NI6NUo6IcErQgXg"
+    }
+  }
+}

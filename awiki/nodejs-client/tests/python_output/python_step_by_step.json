@@ -1,0 +1,28 @@
+{
+  "did": "did:wba:awiki.ai:user:k1_v3kdPnNeY6mE2d7Ip_m1NjNxPfRUcy2e9N0Oq4Ny15M",
+  "private_key_hex": "181aec9da8e6594c5baf87645756a8b5d1b9a13b34a647f9445a8d0260951d59",
+  "public_key_x_hex": "d0287b8ac5686098c388d6740d7a72bf189cd3f45de920bb4190c7186f080743",
+  "public_key_y_hex": "4e51160d323e208aee8a38d72c320cf4dac2effd5ad5d9cb94b3ad929ff2bc11",
+  "nonce": "00112233445566778899aabbccddeeff",
+  "timestamp": "2026-03-07T12:00:00Z",
+  "domain_field": "aud",
+  "service_domain": "awiki.ai",
+  "data_to_sign": {
+    "nonce": "00112233445566778899aabbccddeeff",
+    "timestamp": "2026-03-07T12:00:00Z",
+    "aud": "awiki.ai",
+    "did": "did:wba:awiki.ai:user:k1_v3kdPnNeY6mE2d7Ip_m1NjNxPfRUcy2e9N0Oq4Ny15M"
+  },
+  "canonical_json": "{\"aud\":\"awiki.ai\",\"did\":\"did:wba:awiki.ai:user:k1_v3kdPnNeY6mE2d7Ip_m1NjNxPfRUcy2e9N0Oq4Ny15M\",\"nonce\":\"00112233445566778899aabbccddeeff\",\"timestamp\":\"2026-03-07T12:00:00Z\"}",
+  "canonical_json_hex": "7b22617564223a226177696b692e6169222c22646964223a226469643a7762613a6177696b692e61693a757365723a6b315f76336b64506e4e6559366d4532643749705f6d314e6a4e785066525563793265394e304f71344e7931354d222c226e6f6e6365223a223030313132323333343435353636373738383939616162626363646465656666222c2274696d657374616d70223a22323032362d30332d30375431323a30303a30305a227d",
+  "content_hash": "7f9c83be14a7c411a0f7a0895315d83117ce2122e985b4fe8f6c787bdca05bb6",
+  "der_signature": "304402207abc3e6c6b4373e8f980e645c7b817977796c7f214bef7f118f87821da15da5c02203790d7a35efbe99ce11564684d38fb5a807436ffc5a840f64419523c0aa8737e",
+  "r": "55514765606580740372882376178055381470099341146693343832693288634296105818716",
+  "s": "25133120929346591649888905862000576417633101627996483133626392623601804669822",
+  "r_bytes_hex": "7abc3e6c6b4373e8f980e645c7b817977796c7f214bef7f118f87821da15da5c",
+  "s_bytes_hex": "3790d7a35efbe99ce11564684d38fb5a807436ffc5a840f64419523c0aa8737e",
+  "rs_signature_hex": "7abc3e6c6b4373e8f980e645c7b817977796c7f214bef7f118f87821da15da5c3790d7a35efbe99ce11564684d38fb5a807436ffc5a840f64419523c0aa8737e",
+  "signature_b64url": "erw-bGtDc-j5gOZFx7gXl3eWx_IUvvfxGPh4IdoV2lw3kNejXvvpnOEVZGhNOPtagHQ2_8WoQPZEGVI8Cqhzfg",
+  "auth_header": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_v3kdPnNeY6mE2d7Ip_m1NjNxPfRUcy2e9N0Oq4Ny15M\", nonce=\"00112233445566778899aabbccddeeff\", timestamp=\"2026-03-07T12:00:00Z\", verification_method=\"key-1\", signature=\"erw-bGtDc-j5gOZFx7gXl3eWx_IUvvfxGPh4IdoV2lw3kNejXvvpnOEVZGhNOPtagHQ2_8WoQPZEGVI8Cqhzfg\"",
+  "s_is_high": false
+}

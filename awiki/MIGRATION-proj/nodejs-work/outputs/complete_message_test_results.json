@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-03-08T03:57:15.366Z",
+  "test_name": "Complete Message Test (Plain + E2EE)",
+  "identities": {
+    "nodejs": {
+      "did": "did:wba:awiki.ai:user:k1_ZC4d5CFobUfciijgHmNZ3w0WzkX3_-PHWHShgZv06zc",
+      "has_jwt": true,
+      "has_e2ee_keys": true
+    },
+    "python": {
+      "did": "did:wba:awiki.ai:user:k1_DV_IfpDG5Ri9bJdNI4xGrp-gCUU8bv2OypaRQmIynIM",
+      "has_jwt": true,
+      "has_e2ee_keys": true
+    }
+  },
+  "results": {
+    "plain": [
+      {
+        "success": true,
+        "type": "plain"
+      },
+      {
+        "success": true,
+        "type": "plain"
+      }
+    ],
+    "e2ee": [
+      {
+        "success": true,
+        "type": "e2ee",
+        "plaintext": "[E2EE] Secret message from Node.js! 2026-03-08T03:57:13.885Z"
+      },
+      {
+        "success": true,
+        "type": "e2ee",
+        "plaintext": "[E2EE] Secret message from Python! 2026-03-08T03:57:15.120Z"
+      }
+    ]
+  },
+  "summary": {
+    "total_passed": 4,
+    "total_tests": 4,
+    "plain_passed": 2,
+    "plain_tests": 2,
+    "e2ee_passed": 2,
+    "e2ee_tests": 2
+  }
+}

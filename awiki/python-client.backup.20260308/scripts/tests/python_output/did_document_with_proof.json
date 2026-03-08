@@ -1,0 +1,34 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/suites/jws-2020/v1",
+    "https://w3id.org/security/suites/secp256k1-2019/v1"
+  ],
+  "id": "did:wba:awiki.ai:user:k1_HFHuJDV-uBp1QV5AfBZMJ1Wt3EwOXcBIntgI5jzMgDI",
+  "verificationMethod": [
+    {
+      "id": "did:wba:awiki.ai:user:k1_HFHuJDV-uBp1QV5AfBZMJ1Wt3EwOXcBIntgI5jzMgDI#key-1",
+      "type": "EcdsaSecp256k1VerificationKey2019",
+      "controller": "did:wba:awiki.ai:user:k1_HFHuJDV-uBp1QV5AfBZMJ1Wt3EwOXcBIntgI5jzMgDI",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "secp256k1",
+        "x": "cfBetXVnHU_UvOJu1E42UZDPvN64UoFxpxe1NlJszw0",
+        "y": "3FImKg08heidqVDWb61q8PPyP5Ws145eUatyD-24b8g",
+        "kid": "HFHuJDV-uBp1QV5AfBZMJ1Wt3EwOXcBIntgI5jzMgDI"
+      }
+    }
+  ],
+  "authentication": [
+    "did:wba:awiki.ai:user:k1_HFHuJDV-uBp1QV5AfBZMJ1Wt3EwOXcBIntgI5jzMgDI#key-1"
+  ],
+  "proof": {
+    "type": "EcdsaSecp256k1Signature2019",
+    "verificationMethod": "did:wba:awiki.ai:user:k1_HFHuJDV-uBp1QV5AfBZMJ1Wt3EwOXcBIntgI5jzMgDI#key-1",
+    "created": "2026-03-06T07:25:32Z",
+    "proofPurpose": "authentication",
+    "domain": "awiki.ai",
+    "challenge": "1785d1c68c3a46a44e47b92e492673f8",
+    "proofValue": "tYmb_tFeVZ3MVP6bBmN8BgWur4jiUkqk97l15QXofNkicPDwdAa_cohKRVPXxvKIGir8-m-OkAZrndxMfCzGjQ"
+  }
+}

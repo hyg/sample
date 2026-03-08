@@ -1,0 +1,25 @@
+{
+  "did": "did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE",
+  "proof": {
+    "type": "EcdsaSecp256k1Signature2019",
+    "created": "2026-03-07T08:58:27Z",
+    "verificationMethod": "did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-1",
+    "proofPurpose": "authentication",
+    "domain": "awiki.ai",
+    "proofValue": "Pyk9QOBOqoIgQaxB_knn1m7s8d6hbKip09MyLwt51epFarIOMniuibNcWju8xOHRoG8ekKtfLZZv77YE02uACg"
+  },
+  "proof_options": {
+    "type": "EcdsaSecp256k1Signature2019",
+    "created": "2026-03-07T08:58:27Z",
+    "verificationMethod": "did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-1",
+    "proofPurpose": "authentication",
+    "domain": "awiki.ai"
+  },
+  "doc_canonical": "{\"@context\":[\"https://www.w3.org/ns/did/v1\",\"https://w3id.org/security/suites/jws-2020/v1\",\"https://w3id.org/security/suites/secp256k1-2019/v1\",\"https://w3id.org/security/suites/x25519-2019/v1\"],\"authentication\":[\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-1\"],\"id\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE\",\"keyAgreement\":[\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-3\"],\"verificationMethod\":[{\"controller\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE\",\"id\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-1\",\"publicKeyJwk\":{\"crv\":\"secp256k1\",\"kid\":\"MTWA8cgUQS7ELOqrU3AuZPqapgHq48kUAh0OIpYAjyA\",\"kty\":\"EC\",\"x\":\"YlrnteE1W5x0eCfmkklGjnCSozRFlbvQZ4t-4wi3OZc\",\"y\":\"lxDIcN3N5_VRNUfc8wF3zJLhNVwP2pWHWTl6Q-Swv3o\"},\"type\":\"EcdsaSecp256k1VerificationKey2019\"},{\"controller\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE\",\"id\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-2\",\"publicKeyJwk\":{\"crv\":\"P-256\",\"kty\":\"EC\",\"x\":\"kDylEz_4DBAKYs7Wy90GTp_sw4CB4t9tZgT8PWqjp78\",\"y\":\"vfqSjlczCCSuQzq--JUmRMEUYo44ss3mEIlooXea2S0\"},\"type\":\"EcdsaSecp256r1VerificationKey2019\"},{\"controller\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE\",\"id\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-3\",\"publicKeyMultibase\":\"zDecvC22A253CC31XQuUXfyXHvZt57ybWWdFLH99wE34T\",\"type\":\"X25519KeyAgreementKey2019\"}]}",
+  "options_canonical": "{\"created\":\"2026-03-07T08:58:27Z\",\"domain\":\"awiki.ai\",\"proofPurpose\":\"authentication\",\"type\":\"EcdsaSecp256k1Signature2019\",\"verificationMethod\":\"did:wba:awiki.ai:user:k1_YW8sFIb-80dgQLrwK7j23itwGN7tuGmvgoFeYmcm1bE#key-1\"}",
+  "doc_hash_hex": "28a4c88264c8fc45bb4402e4539031250e9373706434d88eeff214a69a90bd7c",
+  "options_hash_hex": "d7bf15ced806e84ffbbdfca408eeb184c53c9676dccf74a4000e3c725e5f165c",
+  "to_be_signed_hex": "d7bf15ced806e84ffbbdfca408eeb184c53c9676dccf74a4000e3c725e5f165c28a4c88264c8fc45bb4402e4539031250e9373706434d88eeff214a69a90bd7c",
+  "doc_canonical_length": 1518,
+  "options_canonical_length": 221
+}

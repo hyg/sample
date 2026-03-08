@@ -1,0 +1,48 @@
+{
+  "contexts_match": true,
+  "num_verification_methods_match": true,
+  "proof_fields": {
+    "type": {
+      "python": "EcdsaSecp256k1Signature2019",
+      "nodejs": "EcdsaSecp256k1Signature2019",
+      "match": true
+    },
+    "created": {
+      "python": "2026-03-07T08:44:46Z",
+      "nodejs": "2026-03-07T08:44:46Z",
+      "match": true
+    },
+    "verificationMethod": {
+      "python": "did:wba:awiki.ai:user:k1_RtJPVYYnXndTvEGWFmyCWA9W0qC7btyHjnX1BClHoWQ#key-1",
+      "nodejs": "did:wba:awiki.ai:user:k1_MGheRUQOm3M4pdmVcarr-w_LS2GSRjfM8LuwGeNXKZY#key-1",
+      "match": false
+    },
+    "proofPurpose": {
+      "python": "authentication",
+      "nodejs": "authentication",
+      "match": true
+    },
+    "domain": {
+      "python": "awiki.ai",
+      "nodejs": "awiki.ai",
+      "match": true
+    },
+    "proofValue": {
+      "python": "Zb9fBdMBAlMU8pp7ibXqDGh7it243Eutei4reV5n7JuDjRUes3ZZpmzZqjfhN2jdrpi3IzZXJfAwHsk0yZFNYA",
+      "nodejs": "JJh3yiVGXnBAn_HMkm4GrIv0exCfpvvUlTzlNV5ak7Q0XIUmHePmo5l74piBR7SKq_GrTWD2VJ4Ae7v3l0sE4A",
+      "match": false
+    }
+  },
+  "keyAgreement_match": false,
+  "critical_checks": {
+    "contexts": true,
+    "num_verification_methods": true,
+    "proof_type": true,
+    "proof_purpose": true,
+    "proof_domain": true,
+    "proof_has_challenge": true,
+    "proofValue_length": true,
+    "keyAgreement": false
+  },
+  "all_pass": false
+}

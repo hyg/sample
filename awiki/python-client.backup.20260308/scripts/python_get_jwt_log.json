@@ -1,0 +1,124 @@
+{
+  "timestamp": "2026-03-07T17:23:31.756391+00:00",
+  "function": "get_jwt_via_wba",
+  "input": {
+    "userServiceUrl": "https://awiki.ai",
+    "did": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+    "did_document": {
+      "@context": [
+        "https://www.w3.org/ns/did/v1",
+        "https://w3id.org/security/suites/jws-2020/v1",
+        "https://w3id.org/security/suites/secp256k1-2019/v1",
+        "https://w3id.org/security/suites/x25519-2019/v1"
+      ],
+      "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+      "verificationMethod": [
+        {
+          "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-1",
+          "type": "EcdsaSecp256k1VerificationKey2019",
+          "controller": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+          "publicKeyJwk": {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "-LnnfN6SgEjAUasZl0mjJ4WOE17W5Td9hICCmMtqQuU",
+            "y": "U_nNyBsUxFWIYvlmsUqhNwMhgB1Q4OXuunj9C4fLvL4",
+            "kid": "nxxbQXw-pyLb1wzfEDtWdanw6GDr_xD15GUj5H_jOP4"
+          }
+        },
+        {
+          "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-2",
+          "type": "EcdsaSecp256r1VerificationKey2019",
+          "controller": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+          "publicKeyJwk": {
+            "kty": "EC",
+            "crv": "P-256",
+            "x": "If3_aLM4I6L2VkoIwPDRPn3A9SQdjZYHJRvmwo_RgDc",
+            "y": "zoaEA32JSVA0pILBNjwynqdysExbowl8EwHOimUzU-A"
+          }
+        },
+        {
+          "id": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-3",
+          "type": "X25519KeyAgreementKey2019",
+          "controller": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+          "publicKeyMultibase": "zFy5kevFaPJsYCZyyihtoS7p9QmK3H375UziPRQ464mXM"
+        }
+      ],
+      "authentication": [
+        "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-1"
+      ],
+      "keyAgreement": [
+        "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-3"
+      ],
+      "proof": {
+        "type": "EcdsaSecp256k1Signature2019",
+        "created": "2026-03-07T15:05:59Z",
+        "verificationMethod": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0#key-1",
+        "proofPurpose": "authentication",
+        "domain": "awiki.ai",
+        "challenge": "72e161dd9596ef82addc45134f659667",
+        "proofValue": "ms8leOFBiWs_V0AF5VXc6E6pNpYD0iqJucdgr7cT-VyWN6Cu7Uq31jr40n16KmTLL5Kt9OVppaNyvJsftvEC0g"
+      }
+    },
+    "private_key": {
+      "type": "secp256k1",
+      "public_key_x_b64": "-LnnfN6SgEjAUasZl0mjJ4WOE17W5Td9hICCmMtqQuU",
+      "public_key_y_b64": "U_nNyBsUxFWIYvlmsUqhNwMhgB1Q4OXuunj9C4fLvL4"
+    },
+    "domain": "awiki.ai"
+  },
+  "auth_header_generation": {
+    "version": "1.1",
+    "domain_field": "aud",
+    "generated_header": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0\", nonce=\"ba554e56e56abb789e6c267883a2d2c1\", timestamp=\"2026-03-07T17:23:30Z\", verification_method=\"key-1\", signature=\"g3btXLSvrcxGiUydw0tSO0u_18s1UyDAqsO7APMFEybtDr7oWuQ08nfFS999xLn2Dgbc6PJlR2YQ3Gpumvl47A\"",
+    "parsed_components": [
+      "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS1jZDRjYjI3ZiIsInR5cCI6IkpXVCJ9",
+      "eyJzdWIiOiJkaWQ6d2JhOmF3aWtpLmFpOnVzZXI6azFfYi1YcVZuTEtkSy0yOXZBa21EOUxadUgzaFlCWER4aG5acUFXaWVHSmZrMCIsImlzcyI6InVzZXItc2VydmljZSIsImlhdCI6MTc3MjkwNDIxMCwiZXhwIjoxNzcyOTA3ODEwLCJ0eXBlIjoiYWNjZXNzIn0",
+      "gbZtcYIx2_5YhgpuKj5Owii1VHRtVZhsPa-zc-k1zWKBgL9NRvafaE-krisOZCNLx4z9vCm3kz7ybtw6Q_D1S3lzRDVMESqdOppxcXwLtLpK6SkwI2aO4GGPffINbS0zEkVUM8SSBn4CDRoaZDYsVanUgeSkWJZ1AjUiNUf7lkjy3PF3YZ76liz48la5pXodv_3RhhieK-Ypn4N05fmEp7nEklnNuwl1SO3bpCV2yvV8vonz7oNH5HIG5Vpv1rHw7Rk2CPsdy-Ozq60pfTDtFKfjkvaIeAQPXQ0Rv-F3kMLlU8RjSuj8RQMQc1SZeQix60j0GSiGw62hBJ35-ztRvQ"
+    ]
+  },
+  "http_request": {
+    "url": "https://awiki.ai/user-service/did-auth/rpc",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "method": "verify",
+      "params": {
+        "authorization": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0\", nonce=\"ba554e56e56abb789e6c267883a2d2c1\", timestamp=\"2026-03-07T17:23:30Z\", verification_method=\"key-1\", signature=\"g3btXLSvrcxGiUydw0tSO0u_18s1UyDAqsO7APMFEybtDr7oWuQ08nfFS999xLn2Dgbc6PJlR2YQ3Gpumvl47A\"",
+        "domain": "awiki.ai"
+      },
+      "id": 1
+    }
+  },
+  "http_response": {
+    "status_code": 200,
+    "headers": {
+      "server": "nginx/1.18.0 (Ubuntu)",
+      "date": "Sat, 07 Mar 2026 17:23:30 GMT",
+      "content-type": "application/json",
+      "content-length": "772",
+      "connection": "keep-alive",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "x-frame-options": "SAMEORIGIN",
+      "x-content-type-options": "nosniff",
+      "x-xss-protection": "1; mode=block"
+    },
+    "body": {
+      "jsonrpc": "2.0",
+      "result": {
+        "did": "did:wba:awiki.ai:user:k1_b-XqVnLKdK-29vAkmD9LZuH3hYBXDxhnZqAWieGJfk0",
+        "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS1jZDRjYjI3ZiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6d2JhOmF3aWtpLmFpOnVzZXI6azFfYi1YcVZuTEtkSy0yOXZBa21EOUxadUgzaFlCWER4aG5acUFXaWVHSmZrMCIsImlzcyI6InVzZXItc2VydmljZSIsImlhdCI6MTc3MjkwNDIxMCwiZXhwIjoxNzcyOTA3ODEwLCJ0eXBlIjoiYWNjZXNzIn0.gbZtcYIx2_5YhgpuKj5Owii1VHRtVZhsPa-zc-k1zWKBgL9NRvafaE-krisOZCNLx4z9vCm3kz7ybtw6Q_D1S3lzRDVMESqdOppxcXwLtLpK6SkwI2aO4GGPffINbS0zEkVUM8SSBn4CDRoaZDYsVanUgeSkWJZ1AjUiNUf7lkjy3PF3YZ76liz48la5pXodv_3RhhieK-Ypn4N05fmEp7nEklnNuwl1SO3bpCV2yvV8vonz7oNH5HIG5Vpv1rHw7Rk2CPsdy-Ozq60pfTDtFKfjkvaIeAQPXQ0Rv-F3kMLlU8RjSuj8RQMQc1SZeQix60j0GSiGw62hBJ35-ztRvQ",
+        "token_type": "bearer"
+      },
+      "error": null,
+      "id": 1
+    }
+  },
+  "output": {
+    "success": true,
+    "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS1jZDRjYjI3ZiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6d2JhOmF3aWtpLmFpOnVzZXI6azFfYi1YcVZuTEtkSy0yOXZBa21EOUxadUgzaFlCWER4aG5acUFXaWVHSmZrMCIsImlzcyI6InVzZXItc2VydmljZSIsImlhdCI6MTc3MjkwNDIxMCwiZXhwIjoxNzcyOTA3ODEwLCJ0eXBlIjoiYWNjZXNzIn0.gbZtcYIx2_5YhgpuKj5Owii1VHRtVZhsPa-zc-k1zWKBgL9NRvafaE-krisOZCNLx4z9vCm3kz7ybtw6Q_D1S3lzRDVMESqdOppxcXwLtLpK6SkwI2aO4GGPffINbS0zEkVUM8SSBn4CDRoaZDYsVanUgeSkWJZ1AjUiNUf7lkjy3PF3YZ76liz48la5pXodv_3RhhieK-Ypn4N05fmEp7nEklnNuwl1SO3bpCV2yvV8vonz7oNH5HIG5Vpv1rHw7Rk2CPsdy-Ozq60pfTDtFKfjkvaIeAQPXQ0Rv-F3kMLlU8RjSuj8RQMQc1SZeQix60j0GSiGw62hBJ35-ztRvQ",
+    "error": null
+  }
+}
