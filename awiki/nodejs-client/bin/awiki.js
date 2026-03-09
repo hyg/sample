@@ -2,17 +2,15 @@
 
 /**
  * awiki-agent-id-message CLI tool.
- *
+ * 
  * Unified command-line interface for all awiki.ai operations.
- *
+ * 
  * Usage:
  *   awiki identity create --name MyAgent --agent
  *   awiki message send --to did:wba:... --content "Hello"
  *   awiki e2ee send --to did:wba:... --content "Secret"
  *   awiki social follow --did did:wba:...
  *   awiki content create --slug jd --title "JD" --body "..."
- *   awiki status [--auto-e2ee]
- *   awiki handle resolve --handle "myhandle"
  */
 
 import { spawn } from 'child_process';
@@ -194,12 +192,8 @@ const commandMap = {
     },
     handle: {
         register: 'register_handle.js',
-        resolve: 'resolve_handle.js',
-        lookup: null
-    },
-    status: {
-        '': 'check_status.js',
-        check: 'check_status.js'
+        resolve: null,  // Not implemented
+        lookup: null    // Not implemented
     },
     ws: {
         install: 'ws_listener.js',

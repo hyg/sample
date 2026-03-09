@@ -1,12 +1,32 @@
 /**
- * Scripts Utils Module
- * 
- * Compatible with Python scripts/utils/ module.
+ * Utils module - common utilities.
+ *
+ * @module utils
  */
 
+export { createSDKConfig } from './config.js';
+export {
+    saveIdentity,
+    loadIdentity,
+    updateJwt,
+    listIdentities,
+    deleteIdentity,
+    getCredentialPath
+} from './credential_store.js';
+export {
+    JsonRpcError,
+    rpcCall,
+    authenticatedRpcCall
+} from './rpc.js';
 
 export default {
-    credentialStore: await import('./credential_store.js'),
-    config: await import('./config.js'),
-    resolve: await import('./resolve.js')
+    createSDKConfig,
+    saveIdentity,
+    loadIdentity,
+    updateJwt,
+    listIdentities,
+    deleteIdentity,
+    JsonRpcError,
+    rpcCall,
+    authenticatedRpcCall
 };

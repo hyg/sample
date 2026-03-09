@@ -6,6 +6,9 @@
  * Uses JSON-RPC 2.0 endpoints: /user-service/handle/rpc and /user-service/did-auth/rpc.
  */
 
+import { createIdentity } from './identity.js';
+import { rpcCall } from './rpc.js';
+import { getJwtViaWba } from './auth.js';
 
 const HANDLE_RPC = '/user-service/handle/rpc';
 const DID_AUTH_RPC = '/user-service/did-auth/rpc';

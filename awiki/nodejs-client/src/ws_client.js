@@ -7,6 +7,8 @@
  * Receives: new_message, e2ee_message, relationship_update, group_update
  */
 
+import WebSocket from 'ws';
+import { EventEmitter } from 'events';
 
 const WS_URL = 'wss://awiki.ai/ws';
 
@@ -94,6 +96,7 @@ export class WSClient extends EventEmitter {
     }
     
     /**
+     * Disconnect from WebSocket server.
      */
     disconnect() {
         if (this.ws) {

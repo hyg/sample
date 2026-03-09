@@ -1,9 +1,14 @@
 /**
  * JSON-RPC 2.0 client helper functions.
- * 
- * Compatible with Python's rpc.py.
- * 
- * @module utils/rpc
+ *
+ * Compatible with Python's scripts/utils/rpc.py.
+ *
+ * [INPUT]: httpx.AsyncClient, endpoint path, method name, params, DIDWbaAuthHeader
+ * [OUTPUT]: rpcCall() helper, authenticatedRpcCall() with 401 retry, JsonRpcError exception class
+ *
+ * [PROTOCOL]:
+ * 1. Update this header when logic changes
+ * 2. Check the folder's CLAUDE.md after updates
  */
 
 import axios from 'axios';
@@ -12,12 +17,7 @@ import axios from 'axios';
  * JSON-RPC error response exception.
  */
 export class JsonRpcError extends Error {
-    /**
-     * @param {number} code - Error code
-     * @param {string} message - Error message
-     * @param {any} [data] - Error data
-     */
-    constructor(code, message, data) {
+    constructor(code, message, data = null) {
         super(`JSON-RPC error ${code}: ${message}`);
         this.code = code;
         this.message = message;
@@ -28,59 +28,54 @@ export class JsonRpcError extends Error {
 
 /**
  * Send a JSON-RPC 2.0 request and return the result.
- * 
- * @param {Object} client - Axios client instance
- * @param {string} endpoint - RPC endpoint path
- * @param {string} method - RPC method name
- * @param {Object} [params] - Method parameters
- * @param {number|string} [requestId=1] - Request ID
- * @returns {Promise<any>} Result value
- * @throws {JsonRpcError} When the server returns a JSON-RPC error
+ *
+ * @param {Object} client - axios client.
+ * @param {string} endpoint - RPC endpoint path (e.g., "/did-auth/rpc").
+ * @param {string} method - RPC method name (e.g., "register").
+ * @param {Object} params - Method parameters.
+ * @param {number|string} requestId - Request ID.
+ * @returns {Promise<Object>} Result value.
+ * @throws {JsonRpcError} When the server returns a JSON-RPC error.
+ * @throws {Error} On HTTP layer errors.
  */
 export async function rpcCall(client, endpoint, method, params = {}, requestId = 1) {
     const payload = {
         jsonrpc: '2.0',
         method,
-        params: params || {},
-        id: requestId
+        params,
+        id: requestId,
     };
-    
+
     const resp = await client.post(endpoint, payload);
-    
-    if (resp.status >= 300) {
-        throw new Error(`HTTP error ${resp.status}: ${resp.statusText}`);
+
+    if (resp.data.error) {
+        const error = resp.data.error;
+        throw new JsonRpcError(error.code, error.message, error.data);
     }
-    
-    const body = resp.data;
-    
-    if (body.error !== null && body.error !== undefined) {
-        const error = body.error;
-        throw new JsonRpcError(
-            error.code,
-            error.message,
-            error.data
-        );
-    }
-    
-    return body.result;
+
+    return resp.data.result;
 }
 
 /**
  * JSON-RPC 2.0 request with automatic 401 retry.
- * 
+ *
  * Uses DIDWbaAuthHeader to manage authentication headers and token caching.
  * On 401, automatically clears the expired token and regenerates DIDWba auth header to retry.
- * 
- * @param {Object} client - Axios client instance
- * @param {string} endpoint - RPC endpoint path
- * @param {string} method - RPC method name
- * @param {Object} [params] - Method parameters
- * @param {number|string} [requestId=1] - Request ID
- * @param {Object} [auth] - DIDWbaAuthHeader instance
- * @param {string} [credentialName='default'] - Credential name (for persisting new JWT)
- * @param {Function} [onTokenUpdate] - Callback when token is updated
- * @returns {Promise<any>} Result value
- * @throws {JsonRpcError} When the server returns a JSON-RPC error
+ *
+ * Compatible with Python's authenticated_rpc_call().
+ *
+ * @param {Object} client - axios client (with baseURL set).
+ * @param {string} endpoint - RPC endpoint path.
+ * @param {string} method - RPC method name.
+ * @param {Object} params - Method parameters.
+ * @param {number|string} requestId - Request ID.
+ * @param {Object} options - Options object.
+ * @param {Object} options.auth - DIDWbaAuthHeader instance.
+ * @param {string} options.credentialName - Credential name (for persisting new JWT).
+ * @param {Function} options.updateJwtCallback - Callback to persist new JWT.
+ * @returns {Promise<Object>} Result value.
+ * @throws {JsonRpcError} When the server returns a JSON-RPC error.
+ * @throws {Error} On HTTP layer errors (non-401).
  */
 export async function authenticatedRpcCall(
     client,
@@ -88,67 +83,49 @@ export async function authenticatedRpcCall(
     method,
     params = {},
     requestId = 1,
-    { auth, credentialName = 'default', onTokenUpdate } = {}
+    { auth, credentialName = 'default', updateJwtCallback = null } = {}
 ) {
-    const serverUrl = client.defaults.baseURL;
+    const serverUrl = client.defaults.baseURL || '';
     const payload = {
         jsonrpc: '2.0',
         method,
-        params: params || {},
-        id: requestId
+        params,
+        id: requestId,
     };
-    
+
     // Get authentication headers
-    let authHeaders = {};
-    if (auth) {
-        authHeaders = auth.getAuthHeader(serverUrl);
-    }
-    
+    let authHeaders = auth.getAuthHeader(serverUrl);
     let resp = await client.post(endpoint, payload, { headers: authHeaders });
-    
+
     // 401 -> clear expired token -> re-authenticate -> retry
     if (resp.status === 401) {
-        if (auth) {
-            auth.clearToken(serverUrl);
-            authHeaders = auth.getAuthHeader(serverUrl, true);
-            resp = await client.post(endpoint, payload, { headers: authHeaders });
-        } else {
-            throw new Error('401 Unauthorized but no auth provider available');
-        }
+        auth.clearToken(serverUrl);
+        authHeaders = auth.getAuthHeader(serverUrl, true); // force_new=True
+        resp = await client.post(endpoint, payload, { headers: authHeaders });
     }
-    
-    if (resp.status >= 300) {
-        throw new Error(`HTTP error ${resp.status}: ${resp.statusText}`);
+
+    // Throw error if still 401
+    if (resp.status === 401) {
+        throw new Error('Authentication failed: unable to obtain valid token');
     }
-    
+
     // Success: cache new token from response headers
-    const authHeaderValue = resp.headers['authorization'] || resp.headers['Authorization'] || '';
-    if (auth && authHeaderValue) {
-        const newToken = auth.updateToken(serverUrl, { 'Authorization': authHeaderValue });
-        if (newToken) {
-            // Save new JWT to credential file
-            if (onTokenUpdate) {
-                onTokenUpdate(credentialName, newToken);
-            } else {
-                // Default: use credential_store.updateJwt
-                const { updateJwt } = await import('../credential_store.js');
-                updateJwt(credentialName, newToken);
-            }
-        }
+    // Note: axios response header keys are lowercase
+    const authHeaderValue = resp.headers.get?.('authorization') || resp.headers['authorization'] || '';
+    const newToken = auth.updateToken(serverUrl, { Authorization: authHeaderValue });
+
+    // Persist new JWT to credential file
+    if (newToken && updateJwtCallback) {
+        await updateJwtCallback(credentialName, newToken);
     }
-    
-    const body = resp.data;
-    
-    if (body.error !== null && body.error !== undefined) {
-        const error = body.error;
-        throw new JsonRpcError(
-            error.code,
-            error.message,
-            error.data
-        );
+
+    // Check for JSON-RPC error
+    if (resp.data.error) {
+        const error = resp.data.error;
+        throw new JsonRpcError(error.code, error.message, error.data);
     }
-    
-    return body.result;
+
+    return resp.data.result;
 }
 
 export default {

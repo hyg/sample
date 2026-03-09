@@ -10,7 +10,7 @@
 import crypto from 'crypto';
 import { sha256 } from '@noble/hashes/sha256';
 import { secp256k1 } from '@noble/curves/secp256k1';
-import { generateW3cProof } from '../../lib/anp/proof/proof.js';
+import { generateW3cProof } from '../w3c_proof.js';
 import { base58btc } from 'multiformats/bases/base58';
 
 /**
