@@ -13,6 +13,11 @@
  *   node scripts/manage_relationship.js --followers
  */
 
+import { loadIdentity } from './utils/credential_store.js';
+import { createSDKConfig } from './utils/config.js';
+import { createUserServiceClient } from './utils/client.js';
+import { authenticatedRpcCall } from './utils/rpc.js';
+import { resolveToDid } from './utils/resolve.js';
 
 const RPC_ENDPOINT = '/user-service/did/relationships/rpc';
 

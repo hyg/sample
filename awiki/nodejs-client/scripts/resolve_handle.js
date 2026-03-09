@@ -9,6 +9,10 @@
  *   node scripts/resolve_handle.js --handle "myhandle"
  */
 
+import { loadIdentity } from './utils/credential_store.js';
+import { createSDKConfig } from './utils/config.js';
+import { createUserServiceClient } from './utils/client.js';
+import { authenticatedRpcCall } from './utils/rpc.js';
 
 const HANDLE_RPC = '/user-service/handle/rpc';
 

@@ -13,10 +13,10 @@
  */
 
 import { loadIdentity } from './utils/credential_store.js';
-import { createSDKConfig } from './utils/utils/config.js';
-import { createMoltMessageClient } from './utils/utils/client.js';
-import { authenticatedRpcCall } from './utils/utils/rpc.js';
-import { resolveToDid } from './utils/utils/resolve.js';
+import { createSDKConfig } from './utils/config.js';
+import { createMoltMessageClient } from './utils/client.js';
+import { authenticatedRpcCall } from './utils/rpc.js';
+import { resolveToDid } from './utils/resolve.js';
 
 const MESSAGE_RPC = '/message/rpc';
 
