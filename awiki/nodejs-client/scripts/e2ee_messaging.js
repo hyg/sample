@@ -11,6 +11,15 @@
  *   node scripts/e2ee_messaging.js --process --peer did:wba:...  # Process inbox
  */
 
+import { loadIdentity, saveIdentity, createAuthenticator } from './utils/credential_store.js';
+import { createSDKConfig } from './utils/config.js';
+import { createMoltMessageClient } from './utils/client.js';
+import { authenticatedRpcCall } from './utils/rpc.js';
+import { resolveToDid } from './utils/resolve.js';
+import { E2eeClient, SUPPORTED_E2EE_VERSION } from './utils/e2ee.js';
+import { saveE2eeState, loadE2eeState } from './utils/e2ee_store.js';
+import { beginSendAttempt, recordLocalFailure, recordRemoteFailure, markSendSuccess } from './utils/e2ee_outbox.js';
+import crypto from 'crypto';
 
 const MESSAGE_RPC = '/message/rpc';
 
@@ -24,6 +33,7 @@ function loadOrCreateE2eeClient(cred, credentialName) {
     const state = loadE2eeState(credentialName);
     
     if (state && state.local_did === cred.did) {
+        const client = E2eeClient.fromState(state);
         // Override with credential keys if available
         if (cred.e2ee_signing_private_pem && cred.e2ee_agreement_private_pem) {
             return new E2eeClient(cred.did, cred.e2ee_signing_private_pem, cred.e2ee_agreement_private_pem);
@@ -49,7 +59,10 @@ function saveE2eeClient(client, credentialName) {
 /**
  * Send message helper.
  */
-async function sendMessage(client, senderDid, receiverDid, msgType, content, jwt) {
+async function sendMessage(client, senderDid, receiverDid, msgType, content, auth, credentialName) {
+    // Convert content object to JSON string (matching Python behavior)
+    const contentStr = typeof content === 'object' ? JSON.stringify(content) : content;
+    
     return await authenticatedRpcCall(
         client,
         MESSAGE_RPC,
@@ -57,12 +70,12 @@ async function sendMessage(client, senderDid, receiverDid, msgType, content, jwt
         {
             sender_did: senderDid,
             receiver_did: receiverDid,
-            content: content,
+            content: contentStr,
             type: msgType,
             client_msg_id: crypto.randomUUID()
         },
         1,
-        { auth: null, credentialName: null }
+        { auth, credentialName }
     );
 }
 
@@ -71,40 +84,48 @@ async function sendMessage(client, senderDid, receiverDid, msgType, content, jwt
  */
 async function initiateHandshake(peerDid, credentialName = 'default') {
     const config = createSDKConfig();
-    const cred = loadIdentity(credentialName);
     
-    if (!cred) {
-        console.error(`Credential '${credentialName}' not found`);
+    // Create authenticator (DID signature-based authentication)
+    const authResult = await createAuthenticator(credentialName, config);
+    
+    if (!authResult) {
+        console.error(`Credential '${credentialName}' unavailable; please create an identity first`);
         process.exit(1);
     }
     
+    const { auth, data } = authResult;
     const resolvedDid = await resolveToDid(peerDid, config);
-    const e2eeClient = loadOrCreateE2eeClient(cred, credentialName);
+    const e2eeClient = loadOrCreateE2eeClient(data, credentialName);
     const moltClient = createMoltMessageClient(config);
-    
+
     try {
         // Initiate handshake
         const { msg_type, content } = await e2eeClient.initiateHandshake(resolvedDid);
-        
-        // Send e2ee_init message
-        await sendMessage(
+
+        // Send e2ee_init message with DID signature authentication
+        await authenticatedRpcCall(
             moltClient,
-            cred.did,
-            resolvedDid,
-            msg_type,
-            content,
-            cred.jwt_token
+            MESSAGE_RPC,
+            'send',
+            {
+                sender_did: data.did,
+                receiver_did: resolvedDid,
+                content: content.content || content,
+                type: msg_type
+            },
+            1,
+            { auth, credentialName }
         );
-        
+
         // Save E2EE state
         saveE2eeClient(e2eeClient, credentialName);
-        
+
         console.log('E2EE session initiated:');
         console.log(`  session_id: ${content.session_id}`);
         console.log(`  peer_did: ${resolvedDid}`);
         console.log('Session is ACTIVE; you can send encrypted messages now');
     } catch (error) {
-        console.error('Error:', error.message);
+        console.error('Error:', error.response?.data || error.message);
         process.exit(1);
     } finally {
         moltClient.close();
@@ -163,6 +184,7 @@ async function sendEncrypted(peerDid, plaintext, credentialName = 'default') {
 }
 
 /**
+ * Process E2EE messages from inbox.
  */
 async function processInbox(peerDid, credentialName = 'default') {
     const config = createSDKConfig();
@@ -188,6 +210,7 @@ async function processInbox(peerDid, credentialName = 'default') {
             { auth: null, credentialName: null }
         );
         
+        // Filter E2EE messages from peer
         const e2eeMessages = (inbox.messages || [])
             .filter(msg => E2EE_MSG_TYPES.has(msg.type) && msg.sender_did === resolvedDid)
             .sort((a, b) => {
@@ -199,9 +222,11 @@ async function processInbox(peerDid, credentialName = 'default') {
             });
         
         if (e2eeMessages.length === 0) {
+            console.log('No E2EE messages from peer');
             return;
         }
         
+        console.log(`Processing ${e2eeMessages.length} E2EE message(s) from ${resolvedDid}...`);
         
         for (const msg of e2eeMessages) {
             console.log(`\nProcessing ${msg.type} (seq: ${msg.server_seq || 'N/A'})...`);
@@ -303,6 +328,7 @@ Options:
   --handshake <did>      Initiate E2EE session with peer
   --send <did>           Send encrypted message to peer
   --content <text>       Message content (required for --send)
+  --process              Process E2EE messages from inbox
   --peer <did>           Peer DID (required for --process)
   --credential <name>    Credential name (default: default)
   --help, -h             Show this help message

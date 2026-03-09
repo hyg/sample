@@ -116,7 +116,7 @@ async function getStatus(targetDid, credentialName = 'default') {
         const result = await authenticatedRpcCall(
             client,
             RPC_ENDPOINT,
-            'getRelationship',
+            'get_relationship',
             { target_did: resolvedDid },
             1,
             { auth: null, credentialName }
@@ -153,7 +153,7 @@ async function getFollowing(credentialName = 'default', limit = 50, offset = 0) 
         const result = await authenticatedRpcCall(
             client,
             RPC_ENDPOINT,
-            'getFollowing',
+            'get_following',
             { limit, offset },
             1,
             { auth: null, credentialName }
@@ -194,7 +194,7 @@ async function getFollowers(credentialName = 'default', limit = 50, offset = 0) 
         const result = await authenticatedRpcCall(
             client,
             RPC_ENDPOINT,
-            'getFollowers',
+            'get_followers',
             { limit, offset },
             1,
             { auth: null, credentialName }
