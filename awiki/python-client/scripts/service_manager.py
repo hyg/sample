@@ -1,6 +1,6 @@
 """Cross-platform service manager: install/uninstall/start/stop/status for ws_listener background process.
 
-[INPUT]: sys.platform, subprocess, pathlib
+[INPUT]: sys.platform, subprocess, pathlib, SDKConfig, logging_config
 [OUTPUT]: ServiceManager (base), MacOSServiceManager, LinuxServiceManager, WindowsServiceManager, get_service_manager()
 [POS]: Abstraction layer between ws_listener.py CLI and OS-specific service management (launchd / systemd / Task Scheduler)
 
@@ -20,8 +20,17 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
+from utils.config import SDKConfig
+from utils.logging_config import find_latest_log_file, get_log_dir, get_log_file_path
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _SERVICE_LABEL = "com.awiki.ws-listener"
+
+
+def _application_log_path() -> Path:
+    """Return the current or latest application log file path under <DATA_DIR>/logs."""
+    log_dir = get_log_dir(SDKConfig())
+    return find_latest_log_file(log_dir) or get_log_file_path(log_dir)
 
 
 class ServiceManager(ABC):
@@ -119,6 +128,7 @@ class MacOSServiceManager(ServiceManager):
         if result.returncode == 0:
             print("Service installed and started")
             print(f"  Logs: tail -f {logs / 'stderr.log'}")
+            print(f"  App logs: tail -f {_application_log_path()}")
         else:
             print(f"launchctl load failed: {result.stderr.strip()}")
 
@@ -157,6 +167,8 @@ class MacOSServiceManager(ServiceManager):
             "platform": "macOS (launchd)",
             "installed": self._plist_path.exists(),
             "service_file": str(self._plist_path),
+            "application_log_dir": str(get_log_dir(SDKConfig())),
+            "application_log_path": str(_application_log_path()),
         }
         if self._plist_path.exists():
             result = self._launchctl("list")
@@ -177,6 +189,9 @@ class MacOSServiceManager(ServiceManager):
             if stderr_log.exists():
                 output["log_size_bytes"] = stderr_log.stat().st_size
                 output["log_path"] = str(stderr_log)
+            app_log = _application_log_path()
+            if app_log.exists():
+                output["application_log_size_bytes"] = app_log.stat().st_size
         else:
             output["running"] = False
         return output
@@ -274,6 +289,7 @@ class LinuxServiceManager(ServiceManager):
             print("Service installed and started")
             print(f"  Logs: journalctl --user -u {self._UNIT_NAME} -f")
             print(f"  File logs: tail -f {logs / 'stderr.log'}")
+            print(f"  App logs: tail -f {_application_log_path()}")
             print()
             print("Hint: For headless servers (SSH-only, no GUI session), run:")
             print("  sudo loginctl enable-linger $USER")
@@ -315,6 +331,8 @@ class LinuxServiceManager(ServiceManager):
             "platform": "Linux (systemd)",
             "installed": self._unit_path.exists(),
             "service_file": str(self._unit_path),
+            "application_log_dir": str(get_log_dir(SDKConfig())),
+            "application_log_path": str(_application_log_path()),
         }
         if self._unit_path.exists():
             result = self._systemctl("is-active", self._UNIT_NAME)
@@ -337,6 +355,9 @@ class LinuxServiceManager(ServiceManager):
             if stderr_log.exists():
                 output["log_size_bytes"] = stderr_log.stat().st_size
                 output["log_path"] = str(stderr_log)
+            app_log = _application_log_path()
+            if app_log.exists():
+                output["application_log_size_bytes"] = app_log.stat().st_size
         else:
             output["running"] = False
         return output
@@ -444,6 +465,7 @@ class WindowsServiceManager(ServiceManager):
             print(f"Task created but start failed: {run_result.stderr.strip()}")
 
         print(f"  Logs: {logs}")
+        print(f"  App logs: {_application_log_path()}")
 
     def uninstall(self) -> None:
         if not self.is_installed():
@@ -498,6 +520,8 @@ class WindowsServiceManager(ServiceManager):
             "platform": "Windows (Task Scheduler)",
             "installed": installed,
             "task_name": self._TASK_NAME,
+            "application_log_dir": str(get_log_dir(SDKConfig())),
+            "application_log_path": str(_application_log_path()),
         }
         if installed:
             result = subprocess.run(
@@ -511,6 +535,9 @@ class WindowsServiceManager(ServiceManager):
             if stderr_log.exists():
                 output["log_size_bytes"] = stderr_log.stat().st_size
                 output["log_path"] = str(stderr_log)
+            app_log = _application_log_path()
+            if app_log.exists():
+                output["application_log_size_bytes"] = app_log.stat().st_size
         else:
             output["running"] = False
         return output

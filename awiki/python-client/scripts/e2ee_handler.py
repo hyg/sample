@@ -31,6 +31,7 @@ from utils.e2ee import (
 )
 
 logger = logging.getLogger(__name__)
+_E2EE_USER_NOTICE = "This is an encrypted message."
 
 # E2EE message type sets
 _E2EE_ALL_TYPES = frozenset({"e2ee_init", "e2ee_ack", "e2ee_msg", "e2ee_rekey", "e2ee_error"})
@@ -226,6 +227,7 @@ class E2eeHandler:
         decrypted_params["type"] = original_type
         decrypted_params["content"] = plaintext
         decrypted_params["_e2ee"] = True
+        decrypted_params["_e2ee_notice"] = _E2EE_USER_NOTICE
         logger.info(
             "E2EE message decrypted successfully: sender=%s original_type=%s",
             params.get("sender_did", "")[:20], original_type,

@@ -12,11 +12,11 @@
  *   node scripts/check_inbox.js --mark-read id1,id2 # Mark messages as read
  */
 
-import { loadIdentity } from './utils/credential_store.js';
-import { createSDKConfig } from './utils/config.js';
-import { createMoltMessageClient } from './utils/client.js';
-import { authenticatedRpcCall } from './utils/rpc.js';
-import { resolveToDid } from './utils/resolve.js';
+import { loadIdentity } from '../src/credential_store.js';
+import { createSDKConfig } from '../src/utils/config.js';
+import { createMoltMessageClient } from '../src/utils/client.js';
+import { authenticatedRpcCall } from '../src/utils/rpc.js';
+import { resolveToDid } from '../src/utils/resolve.js';
 
 const MESSAGE_RPC = '/message/rpc';
 

@@ -12,11 +12,11 @@
  *   node scripts/get_profile.js --resolve did:wba:... # Resolve DID document
  */
 
-import { loadIdentity } from './utils/credential_store.js';
-import { createSDKConfig } from './utils/config.js';
-import { createUserServiceClient } from './utils/client.js';
-import { authenticatedRpcCall } from './utils/rpc.js';
-import { resolveToDid } from './utils/resolve.js';
+import { loadIdentity } from '../src/credential_store.js';
+import { createSDKConfig } from '../src/utils/config.js';
+import { createUserServiceClient } from '../src/utils/client.js';
+import { authenticatedRpcCall } from '../src/utils/rpc.js';
+import { resolveToDid } from '../src/utils/resolve.js';
 
 const PROFILE_RPC = '/user-service/did/profile/rpc';
 

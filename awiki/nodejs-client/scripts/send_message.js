@@ -2,19 +2,19 @@
 
 /**
  * Send a message to a specified DID.
- * 
+ *
  * Compatible with Python's send_message.py.
- * 
+ *
  * Usage:
  *   node scripts/send_message.js --to "did:wba:awiki.ai:user:abc123" --content "Hello!"
  *   node scripts/send_message.js --to "did:wba:awiki.ai:user:abc123" --content "hello" --type text
  */
 
-import { createSDKConfig } from './utils/config.js';
-import { createMoltMessageClient } from './utils/client.js';
-import { loadIdentity } from './utils/credential_store.js';
-import { getJwtViaWba } from './utils/auth.js';
-import { resolveToDid } from './utils/resolve.js';
+import { createSDKConfig } from '../src/utils/config.js';
+import { createMoltMessageClient } from '../src/utils/client.js';
+import { loadIdentity, createAuthenticator } from '../src/credential_store.js';
+import { authenticatedRpcCall } from '../src/utils/rpc.js';
+import { resolveToDid } from '../src/utils/resolve.js';
 import crypto from 'crypto';
 
 const MESSAGE_RPC = '/message/rpc';
@@ -29,51 +29,55 @@ async function sendMessage({
     credentialName = 'default'
 }) {
     const config = createSDKConfig();
-    
+
     // Load credential
     const cred = loadIdentity(credentialName);
     if (!cred) {
         console.error(`Credential '${credentialName}' not found`);
         process.exit(1);
     }
-    
+
     const senderDid = cred.did;
-    
+
     // Resolve receiver to DID
     const receiverDid = await resolveToDid(receiver, config);
 
-    // Get JWT
-    let jwt = cred.jwt_token;
-    if (!jwt) {
-        console.error('No JWT found. Please run setup_identity first.');
+    // Create authenticator (will handle JWT refresh on 401 automatically)
+    const authResult = await createAuthenticator(credentialName, config);
+    if (!authResult) {
+        console.error(`Cannot create authenticator for '${credentialName}'`);
         process.exit(1);
     }
 
+    const { auth } = authResult;
     const client = createMoltMessageClient(config);
-    const authHeader = `Bearer ${jwt}`;
-    
+
     try {
-        const result = await client.post(
+        const result = await authenticatedRpcCall(
+            client,
             MESSAGE_RPC,
+            'send',
             {
-                jsonrpc: '2.0',
-                method: 'send',
-                params: {
-                    sender_did: senderDid,
-                    receiver_did: receiverDid,
-                    content: content,
-                    type: msgType,
-                    client_msg_id: crypto.randomUUID()
-                },
-                id: 1
+                sender_did: senderDid,
+                receiver_did: receiverDid,
+                content: content,
+                type: msgType,
+                client_msg_id: crypto.randomUUID()
             },
-            { headers: { 'Authorization': authHeader } }
+            1,
+            { auth, credentialName }
         );
-        
+
         console.log('Message sent successfully:');
-        console.log(JSON.stringify(result.data.result, null, 2));
+        console.log(JSON.stringify(result, null, 2));
     } catch (e) {
-        console.error('Error:', e.response?.data || e.message);
+        console.error('Error:', e.message);
+        if (e.message.includes('JWT refresh failed')) {
+            console.error('\nJWT refresh failed. Please check:');
+            console.error('1. Private key is correct');
+            console.error('2. DID document is valid');
+            console.error('3. Network connection to awiki.ai');
+        }
         process.exit(1);
     }
 }
@@ -84,10 +88,10 @@ async function sendMessage({
 function parseArgs() {
     const args = process.argv.slice(2);
     const result = {};
-    
+
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
-        
+
         if (arg === '--to' && args[i + 1]) {
             result.to = args[++i];
         } else if (arg === '--content' && args[i + 1]) {
@@ -100,7 +104,7 @@ function parseArgs() {
             result.help = true;
         }
     }
-    
+
     return result;
 }
 
@@ -115,42 +119,36 @@ Usage:
   node scripts/send_message.js [options]
 
 Options:
-  --to <did>              Receiver DID or handle (required)
+  --to <did|handle>       Receiver DID or handle (required)
   --content <text>        Message content (required)
-  --type <type>          Message type (default: text)
-  --credential <name>    Credential name (default: default)
-  --help, -h             Show this help message
+  --type <type>           Message type: text, event (default: text)
+  --credential <name>     Credential name (default: default)
+  -h, --help              Show this help message
 
 Examples:
-  node scripts/send_message.js --to "did:wba:awiki.ai:user:bob" --content "Hello!"
-  node scripts/send_message.js --to "alice.awiki.ai" --content "Hello Alice!"
+  node scripts/send_message.js --to "did:wba:awiki.ai:user:abc123" --content "Hello!"
+  node scripts/send_message.js --to "alice.awiki.ai" --content "Hi Alice" --credential myagent
 `);
 }
 
 /**
  * Main entry point.
  */
-async function main() {
+function main() {
     const args = parseArgs();
-    
-    if (args.help || (!args.to && !args.content)) {
+
+    if (args.help) {
         printHelp();
-        return;
+        process.exit(0);
     }
-    
-    if (!args.to) {
-        console.error('Error: --to is required');
-        printHelp();
-        process.exit(1);
-    }
-    
-    if (!args.content) {
-        console.error('Error: --content is required');
+
+    if (!args.to || !args.content) {
+        console.error('Error: --to and --content are required');
         printHelp();
         process.exit(1);
     }
-    
-    await sendMessage({
+
+    sendMessage({
         receiver: args.to,
         content: args.content,
         msgType: args.type || 'text',
@@ -158,10 +156,4 @@ async function main() {
     });
 }
 
-main().catch(err => {
-    console.error('Error:', err.message);
-    if (err.response) {
-        console.error('Response:', err.response.data);
-    }
-    process.exit(1);
-});
+main();

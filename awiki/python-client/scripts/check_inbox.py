@@ -14,7 +14,7 @@ Usage:
     uv run python scripts/check_inbox.py --mark-read msg_id_1 msg_id_2
 
 [INPUT]: SDK (RPC calls), credential_store (load identity credentials), local_store,
-         E2EE runtime helpers and outbox tracking
+         E2EE runtime helpers, outbox tracking, logging_config
 [OUTPUT]: Inbox message list / chat history / mark-read result, with immediate
           private E2EE protocol processing and plaintext decryption when possible
 [POS]: Message receiving and processing script
@@ -38,8 +38,7 @@ from utils import (
     authenticated_rpc_call,
     resolve_to_did,
 )
-
-logger = logging.getLogger(__name__)
+from utils.logging_config import configure_logging
 from credential_store import create_authenticator, load_identity
 from e2ee_outbox import record_remote_failure
 from e2ee_store import load_e2ee_state, save_e2ee_state
@@ -50,11 +49,14 @@ from utils.e2ee import (
 )
 import local_store
 
+logger = logging.getLogger(__name__)
+
 
 MESSAGE_RPC = "/message/rpc"
 _E2EE_MSG_TYPES = {"e2ee_init", "e2ee_ack", "e2ee_msg", "e2ee_rekey", "e2ee_error"}
 _E2EE_SESSION_SETUP_TYPES = {"e2ee_init", "e2ee_rekey"}
 _E2EE_TYPE_ORDER = {"e2ee_init": 0, "e2ee_ack": 1, "e2ee_rekey": 2, "e2ee_msg": 3, "e2ee_error": 4}
+_E2EE_USER_NOTICE = "This is an encrypted message."
 
 
 def _message_sort_key(message: dict[str, Any]) -> tuple[Any, ...]:
@@ -70,6 +72,29 @@ def _message_sort_key(message: dict[str, Any]) -> tuple[Any, ...]:
         message.get("created_at", ""),
         _E2EE_TYPE_ORDER.get(message.get("type"), 99),
     )
+
+
+def _decorate_user_visible_e2ee_message(
+    message: dict[str, Any],
+    *,
+    original_type: str,
+    plaintext: str,
+) -> dict[str, Any]:
+    """Decorate a decrypted E2EE message for user-facing output."""
+    rendered = dict(message)
+    rendered["type"] = original_type
+    rendered["content"] = plaintext
+    rendered["_e2ee"] = True
+    rendered["_e2ee_notice"] = _E2EE_USER_NOTICE
+    rendered.pop("title", None)
+    return rendered
+
+
+def _strip_hidden_user_fields(message: dict[str, Any]) -> dict[str, Any]:
+    """Remove fields intentionally hidden from user-facing output."""
+    rendered = dict(message)
+    rendered.pop("title", None)
+    return rendered
 
 
 def _load_or_create_e2ee_client(local_did: str, credential_name: str) -> E2eeClient:
@@ -142,13 +167,13 @@ async def _auto_process_e2ee_messages(
             msg_type = msg.get("type", "")
             sender_did = msg.get("sender_did", "")
             if msg_type not in _E2EE_MSG_TYPES:
-                rendered_messages.append(msg)
+                rendered_messages.append(_strip_hidden_user_fields(msg))
                 continue
 
             try:
                 content = json.loads(msg.get("content", ""))
             except (TypeError, json.JSONDecodeError):
-                rendered_messages.append(msg)
+                rendered_messages.append(_strip_hidden_user_fields(msg))
                 continue
 
             if msg_type == "e2ee_msg":
@@ -157,14 +182,15 @@ async def _auto_process_e2ee_messages(
                         credential_name,
                         msg,
                     )
-                    rendered_messages.append(rendered or msg)
+                    rendered_messages.append(rendered or _strip_hidden_user_fields(msg))
                     continue
                 try:
                     original_type, plaintext = e2ee_client.decrypt_message(content)
-                    rendered = dict(msg)
-                    rendered["type"] = original_type
-                    rendered["content"] = plaintext
-                    rendered["_e2ee"] = True
+                    rendered = _decorate_user_visible_e2ee_message(
+                        msg,
+                        original_type=original_type,
+                        plaintext=plaintext,
+                    )
                     rendered_messages.append(rendered)
                     processed_ids.append(msg["id"])
                 except Exception as exc:
@@ -225,12 +251,14 @@ def _render_local_outgoing_e2ee_message(
     msg_id = message.get("id") or message.get("msg_id")
     if not msg_id:
         return None
+    credential = load_identity(credential_name)
     try:
         conn = local_store.get_connection()
         local_store.ensure_schema(conn)
         stored = local_store.get_message_by_id(
             conn,
             msg_id=msg_id,
+            owner_did=credential.get("did") if credential else None,
             credential_name=credential_name,
         )
         conn.close()
@@ -241,11 +269,11 @@ def _render_local_outgoing_e2ee_message(
     if stored is None or not stored.get("is_e2ee"):
         return None
 
-    rendered = dict(message)
-    rendered["type"] = stored.get("content_type", message.get("type"))
-    rendered["content"] = stored.get("content", message.get("content"))
-    rendered["_e2ee"] = True
-    return rendered
+    return _decorate_user_visible_e2ee_message(
+        message,
+        original_type=stored.get("content_type", message.get("type", "text")),
+        plaintext=stored.get("content", message.get("content", "")),
+    )
 
 
 async def check_inbox(credential_name: str = "default", limit: int = 20) -> None:
@@ -391,11 +419,17 @@ def _store_inbox_messages(
                 "group_did": msg.get("group_did"),
                 "content_type": msg.get("type", "text"),
                 "content": str(msg.get("content", "")),
+                "title": msg.get("title"),
                 "server_seq": msg.get("server_seq"),
                 "sent_at": msg.get("sent_at") or msg.get("created_at"),
                 "sender_name": msg.get("sender_name"),
             })
-        local_store.store_messages_batch(conn, batch, credential_name=credential_name)
+        local_store.store_messages_batch(
+            conn,
+            batch,
+            owner_did=my_did,
+            credential_name=credential_name,
+        )
         # Record senders in contacts
         seen_dids: set[str] = set()
         for msg in messages:
@@ -403,7 +437,10 @@ def _store_inbox_messages(
             if s and s not in seen_dids:
                 seen_dids.add(s)
                 local_store.upsert_contact(
-                    conn, did=s, name=msg.get("sender_name"),
+                    conn,
+                    owner_did=my_did,
+                    did=s,
+                    name=msg.get("sender_name"),
                 )
         conn.close()
     except Exception:
@@ -436,11 +473,17 @@ def _store_history_messages(
                 "group_did": msg.get("group_did"),
                 "content_type": msg.get("type", "text"),
                 "content": str(msg.get("content", "")),
+                "title": msg.get("title"),
                 "server_seq": msg.get("server_seq"),
                 "sent_at": msg.get("sent_at") or msg.get("created_at"),
                 "sender_name": msg.get("sender_name"),
             })
-        local_store.store_messages_batch(conn, batch, credential_name=credential_name)
+        local_store.store_messages_batch(
+            conn,
+            batch,
+            owner_did=my_did,
+            credential_name=credential_name,
+        )
         # Record senders in contacts
         seen_dids: set[str] = set()
         for msg in messages:
@@ -448,7 +491,10 @@ def _store_history_messages(
             if s and s not in seen_dids:
                 seen_dids.add(s)
                 local_store.upsert_contact(
-                    conn, did=s, name=msg.get("sender_name"),
+                    conn,
+                    owner_did=my_did,
+                    did=s,
+                    name=msg.get("sender_name"),
                 )
         conn.close()
     except Exception:
@@ -456,6 +502,9 @@ def _store_history_messages(
 
 
 def main() -> None:
+    configure_logging(level=logging.INFO, console_level=None, mirror_stdio=True)
+    logger.info("check_inbox CLI started")
+
     parser = argparse.ArgumentParser(description="Check inbox and manage messages")
     parser.add_argument("--history", type=str, help="View chat history with a specific DID or handle")
     parser.add_argument("--mark-read", nargs="+", type=str,

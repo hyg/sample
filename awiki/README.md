@@ -47,32 +47,6 @@ git clone https://github.com/AgentConnect/awiki-agent-id-message.git python-clie
 
 ---
 
-## 目录结构
-
-```
-awiki/
-├── python-client/          # Python 客户端原始代码
-│   ├── scripts/           # Python 脚本
-│   ├── anp_src/           # ANP 库源代码
-│   └── tests/             # Python 测试输出
-│
-├── nodejs-client/         # Node.js 客户端代码
-│   ├── src/              # 核心库
-│   ├── scripts/          # 脚本工具
-│   ├── bin/              # CLI 工具
-│   ├── tests/            # 测试文件
-│   └── .credentials/     # 凭证存储
-│
-├── MIGRATION-proj/       # 迁移工具和文档
-│   ├── tools/            # 迁移工具脚本
-│   ├── docs/             # 支撑性文档
-│   └── npm-publish/      # NPM 发布工具
-│
-└── nodejs-server/        # Node.js 服务端实现（推测）
-    ├── src/              # 服务端代码
-    └── tests/            # 服务端测试
-```
-
 ---
 
 ## 各文件夹说明
@@ -113,28 +87,6 @@ awiki/
 
 ---
 
-### MIGRATION-proj/python-work/ (Python 工作区)
-
-**内容**: Python 代码分析、测试、修改的工作区
-- analysis/ - 分析脚本和输出
-- tests/ - 测试脚本和结果
-- experiments/ - 实验性修改
-- patches/ - 补丁文件
-
-**用途**:
-- 运行分析脚本
-- 执行测试
-- 实验性修改
-- 生成补丁
-
-**规则**:
-- ✅ 所有 Python 修改都在此文件夹下
-- ✅ 保持 python-client/ 原始性
-- ✅ 使用补丁文件记录修改
-- ✅ 定期清理临时文件
-
----
-
 ### nodejs-client
 
 **内容**: Node.js 最新版本的代码
@@ -149,89 +101,7 @@ awiki/
 - NPM 包发布源
 - 日常开发和维护
 
-**维护**: 通过 MIGRATION-proj 工具从 Python 版本同步更新
-
 ---
-
-### MIGRATION-proj
-
-**内容**: 迁移工具和文档
-
-#### tools/
-- `compare_python_nodejs.js` - Python/Node.js 代码对比工具
-- `generate_migration_plan.js` - 生成迁移计划
-- `sync_from_python.js` - 从 Python 同步更新工具
-- `api_diff_checker.js` - API 差异检查器
-
-#### docs/
-- `PYTHON_NODEJS_COMPARISON.md` - Python/Node.js 对比文档
-- `API_SPECIFICATION.md` - API 规范文档
-- `MIGRATION_GUIDE.md` - 迁移指南
-- `TEST_VECTORS.md` - 测试向量文档
-- `E2EE_SPECIFICATION.md` - E2EE 规范文档
-
-#### npm-publish/
-- `publish.sh` - NPM 发布脚本
-- `version_bump.js` - 版本号更新工具
-- `changelog_generator.js` - CHANGELOG 生成器
-- `package_validator.js` - package.json 验证工具
-
-**用途**:
-- 自动化迁移流程
-- 维护文档
-- NPM 发布管理
-
----
-
-### nodejs-server
-
-**内容**: 根据 client 端代码和文档推测的 server 端功能
-
-#### 推测的功能模块
-
-1. **DID 认证服务** (`/user-service/did-auth/rpc`)
-   - `register` - 注册 DID
-   - `verify` - 验证 DID 签名，颁发 JWT
-   - `get_me` - 获取用户信息
-
-2. **消息服务** (`/message/rpc`)
-   - `send` - 发送消息
-   - `get_inbox` - 获取收件箱
-   - `get_history` - 获取聊天历史
-   - `mark_read` - 标记已读
-
-3. **Handle 服务** (`/user-service/handle/rpc`)
-   - `sendOtp` - 发送 OTP
-   - `registerHandle` - 注册 Handle
-   - `lookup` - 查找 Handle
-
-4. **个人资料服务** (`/user-service/did/profile/rpc`)
-   - `getProfile` - 获取资料
-   - `updateProfile` - 更新资料
-   - `resolve` - 解析 DID
-
-5. **社交关系服务** (`/user-service/did/relationships/rpc`)
-   - `follow` - 关注
-   - `unfollow` - 取消关注
-   - `getRelationship` - 获取关系状态
-   - `getFollowing` - 获取关注列表
-   - `getFollowers` - 获取粉丝列表
-   - `createGroup` - 创建群组
-   - `inviteToGroup` - 邀请入群
-   - `joinGroup` - 加入群组
-   - `getGroupMembers` - 获取群成员
-
-6. **内容页面服务** (`/content/rpc`)
-   - `create` - 创建页面
-   - `listContents` - 列出页面
-   - `getContent` - 获取页面
-   - `update` - 更新页面
-   - `rename` - 重命名页面
-   - `delete` - 删除页面
-
-7. **WebSocket 服务** (`/ws`)
-   - 实时消息推送
-   - 连接管理
 
 #### 实现状态
 
@@ -259,58 +129,46 @@ awiki/
 ```
 1. 更新 python-client/ 目录
    ↓
-2. 运行 MIGRATION-proj/tools/sync_from_python.js
+2. 分析差异，生成迁移计划
    ↓
-3. 分析差异，生成迁移计划
+3. 更新测试计划。
    ↓
 4. 手动/自动更新 nodejs-client/
    ↓
 5. 运行测试验证
    ↓
-6. 通过 MIGRATION-proj/npm-publish/ 发布新版本
+6. 清理文件，git提交
+   ↓
+7. 更新nodejs-client/ 的readme.md，skill.md，通过 npm 发布新版本
 ```
 
 ### 2. 日常开发
 
 ```
-1. 在 nodejs-client/ 开发
+1. 收到bug report
    ↓
 2. 运行 nodejs-client/tests/ 测试
    ↓
-3. 提交代码
+3. 修改、提交代码
    ↓
-4. 定期与 python-client/ 同步
+4. git提交，npm发布
 ```
 
-### 3. 服务端开发
+### 3. awiki.ai返回错误码
 
 ```
-1. 分析 client 端 API 调用
+1. 使用相同参数调用python版本代码，收集收发数据包。
    ↓
-2. 在 nodejs-server/ 实现对应功能
+2. 如果python版本功能正常，逐行仔细分析代码的实现细节，移植到nodejs版本
    ↓
-3. 使用 client 端测试
-   ↓
-4. 完善服务端实现
+3. 重新测试nodejs版本，直到功能一致。
 ```
 
----
-
-## 文档维护
-
-### 核心文档
-
-| 文档 | 位置 | 说明 |
-|------|------|------|
-| API 规范 | `MIGRATION-proj/docs/API_SPECIFICATION.md` | 完整 API 文档 |
-| 迁移指南 | `MIGRATION-proj/docs/MIGRATION_GUIDE.md` | Python→Node.js 迁移指南 |
-| 测试向量 | `MIGRATION-proj/docs/TEST_VECTORS.md` | 测试向量文档 |
-| E2EE 规范 | `MIGRATION-proj/docs/E2EE_SPECIFICATION.md` | E2EE 加密规范 |
 
 ### 更新流程
 
 1. Python 版本更新 → 更新 `python-client/`
-2. 运行对比工具 → 生成差异报告
+2. 运行git对比工具 → 生成差异报告
 3. 更新 `nodejs-client/`
 4. 更新相关文档
 5. 提交所有更改

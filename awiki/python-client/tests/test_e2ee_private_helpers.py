@@ -15,6 +15,8 @@ sys.path.insert(0, str(_scripts_dir))
 import e2ee_messaging
 import e2ee_handler
 import check_inbox
+import check_status
+import send_message as send_message_script
 from utils import e2ee as e2ee_utils
 
 
@@ -107,3 +109,42 @@ class TestOutgoingHistoryRender:
             {"id": "missing"},
         )
         assert rendered is None
+
+
+class TestUserVisibleE2eePresentation:
+    """User-facing E2EE output should stay minimal and stable."""
+
+    def test_check_inbox_decorates_decrypted_message_with_minimal_notice(self):
+        rendered = check_inbox._decorate_user_visible_e2ee_message(
+            {"id": "m1", "type": "e2ee_msg", "content": "ciphertext"},
+            original_type="text",
+            plaintext="hello",
+        )
+
+        assert rendered["type"] == "text"
+        assert rendered["content"] == "hello"
+        assert rendered["_e2ee"] is True
+        assert rendered["_e2ee_notice"] == "This is an encrypted message."
+
+    def test_cli_renders_minimal_encrypted_message_text(self):
+        rendered = e2ee_messaging._render_user_visible_e2ee_text("secret")
+
+        assert "encrypted message" in rendered.lower()
+        assert rendered.endswith("secret")
+
+    def test_check_status_hides_protocol_only_message_types(self):
+        assert check_status._is_user_visible_message_type("text") is True
+        assert check_status._is_user_visible_message_type("e2ee_init") is False
+        assert check_status._is_user_visible_message_type("e2ee_msg") is False
+
+    def test_check_inbox_strips_hidden_title_field(self):
+        rendered = check_inbox._strip_hidden_user_fields(
+            {"id": "m1", "content": "hello", "title": "secret-title"}
+        )
+        assert "title" not in rendered
+
+    def test_send_message_result_strips_hidden_title_field(self):
+        rendered = send_message_script._strip_hidden_result_fields(
+            {"id": "m1", "title": "hidden", "content": "hello"}
+        )
+        assert "title" not in rendered

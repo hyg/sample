@@ -13,11 +13,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from utils.config import SDKConfig
+
+logger = logging.getLogger(__name__)
 
 # Routing mode constants
 ROUTING_MODES = ("agent-all", "smart", "wake-all")
@@ -113,6 +116,11 @@ class ListenerConfig:
         Returns:
             ListenerConfig instance.
         """
+        logger.info(
+            "Loading listener config config_path=%s mode_override=%s",
+            config_path,
+            mode_override,
+        )
         data: dict = {}
 
         # 1. Read from config file or settings.json
@@ -161,7 +169,7 @@ class ListenerConfig:
         )
 
         # 5. Build ListenerConfig
-        return cls(
+        result = cls(
             mode=data.get("mode", "smart"),
             agent_webhook_url=data.get("agent_webhook_url", "http://127.0.0.1:18789/hooks/agent"),
             wake_webhook_url=data.get("wake_webhook_url", "http://127.0.0.1:18789/hooks/wake"),
@@ -171,6 +179,13 @@ class ListenerConfig:
             e2ee_save_interval=float(data.get("e2ee_save_interval", 30.0)),
             e2ee_decrypt_fail_action=data.get("e2ee_decrypt_fail_action", "drop"),
         )
+        logger.info(
+            "Loaded listener config mode=%s agent_webhook=%s wake_webhook=%s",
+            result.mode,
+            result.agent_webhook_url,
+            result.wake_webhook_url,
+        )
+        return result
 
 
 __all__ = ["ListenerConfig", "ROUTING_MODES", "RoutingRules"]

@@ -12,6 +12,10 @@
  *   node scripts/update_profile.js --name "Name" --bio "Bio"
  */
 
+import { loadIdentity } from '../src/credential_store.js';
+import { createSDKConfig } from '../src/utils/config.js';
+import { createUserServiceClient } from '../src/utils/client.js';
+import { authenticatedRpcCall } from '../src/utils/rpc.js';
 
 const PROFILE_RPC = '/user-service/did/profile/rpc';
 
@@ -27,6 +31,7 @@ async function updateProfile(updates, credentialName = 'default') {
         process.exit(1);
     }
     
+    // Build profile object from updates
     const profile = {};
     if (updates.name !== undefined) {
         profile.name = updates.name;

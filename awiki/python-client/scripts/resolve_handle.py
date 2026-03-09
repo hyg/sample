@@ -7,7 +7,7 @@ Usage:
     # Look up handle by DID
     uv run python scripts/resolve_handle.py --did "did:wba:awiki.ai:alice:k1_abc123"
 
-[INPUT]: SDK (handle resolution), user-service RPC
+[INPUT]: SDK (handle resolution), user-service RPC, logging_config
 [OUTPUT]: Handle/DID mapping information
 [POS]: CLI for Handle resolution and reverse lookup
 
@@ -19,13 +19,18 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
 import sys
 
 from utils import SDKConfig, create_user_service_client, resolve_handle, lookup_handle
+from utils.logging_config import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 async def do_resolve(handle: str | None, did: str | None) -> None:
     """Resolve Handle or look up by DID."""
+    logger.info("Resolving identifier handle=%s did=%s", handle, did)
     config = SDKConfig()
 
     async with create_user_service_client(config) as client:
@@ -43,12 +48,18 @@ async def do_resolve(handle: str | None, did: str | None) -> None:
 
 
 def main() -> None:
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(description="Resolve Handle / look up Handle by DID")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--handle", type=str, help="Handle to resolve (e.g., alice)")
     group.add_argument("--did", type=str, help="DID to look up handle for")
 
     args = parser.parse_args()
+    logger.info(
+        "resolve_handle CLI started mode=%s",
+        "handle" if args.handle else "did",
+    )
     asyncio.run(do_resolve(handle=args.handle, did=args.did))
 
 

@@ -16,6 +16,11 @@
  *   node scripts/manage_content.js --delete --slug jd
  */
 
+import { loadIdentity } from '../src/credential_store.js';
+import { createSDKConfig } from '../src/utils/config.js';
+import { createUserServiceClient } from '../src/utils/client.js';
+import { authenticatedRpcCall } from '../src/utils/rpc.js';
+import { readFileSync } from 'fs';
 
 const CONTENT_RPC = '/content/rpc';
 
@@ -351,6 +356,7 @@ Options:
   --slug <slug>            Page slug (required for most operations)
   --title <title>          Page title
   --body <body>            Page body (Markdown)
+  --body-file <file>       Read body from a file
   --visibility <vis>       Visibility: public, draft, unlisted (default: public)
   --list                   List all content pages
   --get                    Get a specific content page
@@ -375,6 +381,7 @@ Examples:
 // Main
 const options = parseArgs();
 
+// Read body from file if specified
 if (options.bodyFile) {
     try {
         options.body = readFileSync(options.bodyFile, 'utf-8');

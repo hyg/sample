@@ -13,7 +13,8 @@ Usage:
     # Resolve a DID document
     uv run python scripts/get_profile.py --resolve "did:wba:localhost:user:abc123"
 
-[INPUT]: SDK (RPC calls), credential_store (load identity credentials)
+[INPUT]: SDK (RPC calls), credential_store (load identity credentials),
+         logging_config
 [OUTPUT]: Profile information as JSON output
 [POS]: Profile query script
 
@@ -25,18 +26,22 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 
 from utils import SDKConfig, create_user_service_client, rpc_call, authenticated_rpc_call
+from utils.logging_config import configure_logging
 from credential_store import create_authenticator
 
 
 PROFILE_RPC = "/user-service/did/profile/rpc"
+logger = logging.getLogger(__name__)
 
 
 async def get_my_profile(credential_name: str = "default") -> None:
     """View own Profile."""
+    logger.info("Fetching own profile credential=%s", credential_name)
     config = SDKConfig()
     auth_result = create_authenticator(credential_name, config)
     if auth_result is None:
@@ -54,6 +59,7 @@ async def get_my_profile(credential_name: str = "default") -> None:
 
 async def get_public_profile(*, did: str | None = None, handle: str | None = None) -> None:
     """View public Profile of a specific DID or handle."""
+    logger.info("Fetching public profile did=%s handle=%s", did, handle)
     params: dict[str, str] = {}
     if did:
         params["did"] = did
@@ -73,6 +79,7 @@ async def get_public_profile(*, did: str | None = None, handle: str | None = Non
 
 async def resolve_did(did: str) -> None:
     """Resolve a DID document."""
+    logger.info("Resolving DID document did=%s", did)
     config = SDKConfig()
     async with create_user_service_client(config) as client:
         resolved = await rpc_call(
@@ -82,6 +89,8 @@ async def resolve_did(did: str) -> None:
 
 
 def main() -> None:
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(description="View DID Profile")
     parser.add_argument("--did", type=str, help="View public Profile of a specific DID")
     parser.add_argument("--handle", type=str, help="View public Profile of a specific handle")
@@ -90,6 +99,11 @@ def main() -> None:
                         help="Credential name (default: default)")
 
     args = parser.parse_args()
+    logger.info(
+        "get_profile CLI started credential=%s mode=%s",
+        args.credential,
+        "resolve" if args.resolve else "public" if args.did or args.handle else "self",
+    )
 
     if args.resolve:
         asyncio.run(resolve_did(args.resolve))

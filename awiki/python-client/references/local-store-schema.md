@@ -3,17 +3,18 @@
 SQLite local storage schema for offline message persistence and contact management.
 
 Database path: `<DATA_DIR>/database/awiki.db` (WAL mode, `check_same_thread=False`).
-Single shared database for all credentials.
+Single shared database for all credentials and local DIDs.
 
 ## Tables
 
 ### contacts
 
-Stores contact information indexed by DID. Contacts are global (DID is unique across credentials).
+Stores contact information scoped by the local owner DID.
 
 | Column | Type | Constraint | Description |
 |--------|------|------------|-------------|
-| did | TEXT | PRIMARY KEY | Contact's DID |
+| owner_did | TEXT | PRIMARY KEY (with `did`) | Local DID that owns this contact record |
+| did | TEXT | PRIMARY KEY (with `owner_did`) | Contact's DID |
 | name | TEXT | | Display name |
 | handle | TEXT | | Short name (handle) |
 | nick_name | TEXT | | Nickname |
@@ -27,11 +28,14 @@ Stores contact information indexed by DID. Contacts are global (DID is unique ac
 
 ### messages
 
-Stores all messages (incoming and outgoing). The `credential_name` column distinguishes which identity sent/received a message, and the composite primary key `(msg_id, credential_name)` allows the same server message to be stored for multiple local identities.
+Stores all messages (incoming and outgoing). The `owner_did` column isolates data
+per local DID identity, and the composite primary key `(msg_id, owner_did)`
+allows the same server message to be stored for multiple local identities.
 
 | Column | Type | Constraint | Description |
 |--------|------|------------|-------------|
-| msg_id | TEXT | PRIMARY KEY (with `credential_name`) | Message identifier scoped by credential owner |
+| msg_id | TEXT | PRIMARY KEY (with `owner_did`) | Message identifier scoped by local DID owner |
+| owner_did | TEXT | NOT NULL | Local DID that owns this message |
 | thread_id | TEXT | NOT NULL | Thread identifier (see Thread ID Format) |
 | direction | INTEGER | NOT NULL, DEFAULT 0 | 0 = incoming, 1 = outgoing |
 | sender_did | TEXT | | Sender's DID |
@@ -40,6 +44,7 @@ Stores all messages (incoming and outgoing). The `credential_name` column distin
 | group_did | TEXT | | Group DID (for group messages) |
 | content_type | TEXT | DEFAULT 'text' | Content MIME type |
 | content | TEXT | | Message content |
+| title | TEXT | | Message title (optional, plaintext even for E2EE) |
 | server_seq | INTEGER | | Server-assigned sequence number |
 | sent_at | TEXT | | Server-side send timestamp (ISO 8601) |
 | stored_at | TEXT | NOT NULL | Local storage timestamp (ISO 8601) |
@@ -47,13 +52,13 @@ Stores all messages (incoming and outgoing). The `credential_name` column distin
 | is_read | INTEGER | DEFAULT 0 | 1 if message has been read |
 | sender_name | TEXT | | Display name of sender |
 | metadata | TEXT | | JSON metadata |
-| credential_name | TEXT | NOT NULL, DEFAULT '' | Credential identity that owns this message |
+| credential_name | TEXT | NOT NULL, DEFAULT '' | Credential alias used when the message was stored |
 
 #### Indexes
 
-- `idx_messages_thread`: `(thread_id, sent_at)` — efficient thread query
-- `idx_messages_direction`: `(direction)` — inbox/outbox filtering
-- `idx_messages_sender`: `(sender_did)` — sender lookup
+- `idx_messages_owner_thread`: `(owner_did, thread_id, sent_at)` — owner-scoped thread query
+- `idx_messages_owner_direction`: `(owner_did, direction)` — owner-scoped inbox/outbox filtering
+- `idx_messages_owner_sender`: `(owner_did, sender_did)` — owner-scoped sender lookup
 - `idx_messages_credential`: `(credential_name)` — credential-based filtering
 
 ## Views
@@ -64,6 +69,7 @@ Aggregated thread summary.
 
 | Column | Type | Description |
 |--------|------|-------------|
+| owner_did | TEXT | Local DID owner |
 | thread_id | TEXT | Thread identifier |
 | message_count | INTEGER | Total messages in thread |
 | unread_count | INTEGER | Unread incoming messages |
@@ -72,11 +78,11 @@ Aggregated thread summary.
 
 ### inbox
 
-All incoming messages (`direction = 0`), ordered by timestamp descending.
+All incoming messages (`direction = 0`), with `owner_did` preserved.
 
 ### outbox
 
-All outgoing messages (`direction = 1`), ordered by timestamp descending.
+All outgoing messages (`direction = 1`), with `owner_did` preserved.
 
 ## Thread ID Format
 
@@ -87,11 +93,15 @@ Thread IDs are deterministic and symmetric:
 
 ## Schema Versioning
 
-Schema version tracked via `PRAGMA user_version`. Current version: **3**.
+Schema version tracked via `PRAGMA user_version`. Current version: **6**.
 
 Migration history:
 - v1 → v2: adds `credential_name TEXT` column and `idx_messages_credential` index
 - v2 → v3: rebuilds `messages` so deduplication happens per `(msg_id, credential_name)`
+- v3 → v4: adds `e2ee_outbox` table for encrypted send tracking
+- v4 → v5: adds `title TEXT` column to `messages` table
+- v5 → v6: adds explicit `owner_did` isolation to `contacts`, `messages`, and
+  `e2ee_outbox`, and rebuilds views to group by owner DID
 
 ## Safety Rules (execute_sql)
 

@@ -1,8 +1,0 @@
-{
-  "doc_canonical_match": true,
-  "options_canonical_match": true,
-  "doc_hash_match": true,
-  "options_hash_match": true,
-  "to_be_signed_match": true,
-  "proof_value_match": true
-}

@@ -4,7 +4,7 @@ Usage:
     python scripts/query_db.py "SELECT * FROM threads LIMIT 10"
     python scripts/query_db.py "SELECT * FROM messages WHERE credential_name='alice' LIMIT 10"
 
-[INPUT]: local_store (SQLite connection + execute_sql)
+[INPUT]: local_store (SQLite connection + execute_sql), logging_config
 [OUTPUT]: JSON query results to stdout
 [POS]: CLI entry point for ad-hoc local database queries
 
@@ -17,12 +17,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 
 import local_store
+from utils.logging_config import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(description="Query local SQLite database")
     parser.add_argument("sql", type=str, help="SQL statement to execute")
     parser.add_argument(
@@ -31,6 +37,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+    logger.info("query_db CLI started sql=%s", args.sql)
 
     conn = local_store.get_connection()
     local_store.ensure_schema(conn)
@@ -38,7 +45,9 @@ def main() -> None:
     try:
         result = local_store.execute_sql(conn, args.sql)
         print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
+        logger.info("query_db completed rows=%d", len(result) if isinstance(result, list) else 1)
     except ValueError as exc:
+        logger.warning("query_db rejected sql: %s", exc)
         print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
         sys.exit(1)
     finally:

@@ -15,7 +15,8 @@ Usage:
     # Delete a saved identity
     uv run python scripts/setup_identity.py --delete myid
 
-[INPUT]: SDK (identity creation, registration, authentication), credential_store (credential persistence + authenticator factory)
+[INPUT]: SDK (identity creation, registration, authentication), credential_store
+         (credential persistence + authenticator factory), logging_config
 [OUTPUT]: Create/load/list/delete DID identities
 [POS]: Identity management entry script; must be called before first use
 
@@ -27,6 +28,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -40,6 +42,7 @@ from utils import (
     authenticated_rpc_call,
     rpc_call,
 )
+from utils.logging_config import configure_logging
 from credential_store import (
     save_identity,
     load_identity,
@@ -49,6 +52,8 @@ from credential_store import (
     create_authenticator,
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def create_new_identity(
     name: str,
@@ -57,6 +62,12 @@ async def create_new_identity(
     is_agent: bool = False,
 ) -> None:
     """Create a new DID identity and save it."""
+    logger.info(
+        "Creating new identity credential=%s display_name=%s is_agent=%s",
+        credential_name,
+        display_name or name,
+        is_agent,
+    )
     config = SDKConfig()
     print(f"Service configuration:")
     print(f"  user-service: {config.user_service_url}")
@@ -96,6 +107,7 @@ async def create_new_identity(
 
 async def load_saved_identity(credential_name: str = "default") -> None:
     """Load a saved identity and verify it."""
+    logger.info("Loading saved identity credential=%s", credential_name)
     data = load_identity(credential_name)
     if data is None:
         print(f"Credential '{credential_name}' not found")
@@ -147,6 +159,7 @@ async def load_saved_identity(credential_name: str = "default") -> None:
 
 def show_identities() -> None:
     """Show all saved identities."""
+    logger.info("Listing saved identities")
     identities = list_identities()
     if not identities:
         print("No saved identities")
@@ -168,6 +181,7 @@ def show_identities() -> None:
 
 def remove_identity(credential_name: str) -> None:
     """Delete a saved identity."""
+    logger.info("Deleting identity credential=%s", credential_name)
     if delete_identity(credential_name):
         print(f"Deleted credential: {credential_name}")
     else:
@@ -175,6 +189,8 @@ def remove_identity(credential_name: str) -> None:
 
 
 def main() -> None:
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(description="DID identity management")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--name", type=str, help="Create a new identity with display name")
@@ -189,6 +205,11 @@ def main() -> None:
                         help="Mark as AI Agent identity")
 
     args = parser.parse_args()
+    logger.info(
+        "setup_identity CLI started action=%s credential=%s",
+        "list" if args.list else "delete" if args.delete else "load" if args.load is not None else "create",
+        args.credential if args.name else args.delete or args.load or "default",
+    )
 
     if args.list:
         show_identities()

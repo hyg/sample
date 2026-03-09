@@ -12,6 +12,10 @@
  *   node scripts/manage_group.js --members --group GID
  */
 
+import { loadIdentity } from '../src/credential_store.js';
+import { createSDKConfig } from '../src/utils/config.js';
+import { createUserServiceClient } from '../src/utils/client.js';
+import { authenticatedRpcCall } from '../src/utils/rpc.js';
 
 const RPC_ENDPOINT = '/user-service/did/relationships/rpc';
 

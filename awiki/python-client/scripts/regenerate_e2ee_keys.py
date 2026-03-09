@@ -10,7 +10,8 @@ Usage:
     python scripts/regenerate_e2ee_keys.py --credential default
 
 [INPUT]: credential_store (load/save), ANP (_build_e2ee_entries, generate_w3c_proof),
-         utils.auth (update_did_document, get_jwt_via_wba), utils.config (SDKConfig)
+         utils.auth (update_did_document, get_jwt_via_wba), utils.config (SDKConfig),
+         logging_config
 [OUTPUT]: Updated credential file with E2EE private keys and refreshed DID document
 [POS]: CLI script for E2EE key recovery; one-time repair tool
 
@@ -22,6 +23,7 @@ Usage:
 import argparse
 import asyncio
 import copy
+import logging
 import secrets
 import sys
 
@@ -32,11 +34,14 @@ from utils import (
     get_jwt_via_wba,
 )
 from utils.identity import DIDIdentity, load_private_key
+from utils.logging_config import configure_logging
 from credential_store import load_identity, save_identity
 
 # ANP internals for E2EE key generation and proof signing
 from anp.authentication.did_wba import _build_e2ee_entries
 from anp.proof.proof import generate_w3c_proof
+
+logger = logging.getLogger(__name__)
 
 
 async def regenerate_e2ee_keys(
@@ -52,6 +57,7 @@ async def regenerate_e2ee_keys(
         4. Update the DID document on the server and refresh JWT
         5. Save updated credential locally
     """
+    logger.info("Regenerating E2EE keys credential=%s force=%s", credential_name, force)
     # Step 1: Load existing credential
     data = load_identity(credential_name)
     if data is None:
@@ -189,6 +195,7 @@ async def regenerate_e2ee_keys(
         public_key_pem=identity.public_key_pem,
         jwt_token=identity.jwt_token,
         display_name=data.get("name"),
+        handle=data.get("handle"),
         name=credential_name,
         did_document=identity.did_document,
         e2ee_signing_private_pem=identity.e2ee_signing_private_pem,
@@ -199,6 +206,8 @@ async def regenerate_e2ee_keys(
 
 
 def main() -> None:
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(
         description="Regenerate E2EE keys for an existing DID identity"
     )
@@ -214,6 +223,11 @@ def main() -> None:
         help="Force regeneration even if E2EE keys already exist",
     )
     args = parser.parse_args()
+    logger.info(
+        "regenerate_e2ee_keys CLI started credential=%s force=%s",
+        args.credential,
+        args.force,
+    )
     asyncio.run(regenerate_e2ee_keys(args.credential, force=args.force))
 
 

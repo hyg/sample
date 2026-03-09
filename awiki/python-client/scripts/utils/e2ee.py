@@ -37,7 +37,7 @@ from anp.e2e_encryption_hpke import (
     HpkeKeyManager,
     MessageType,
     generate_proof,
-    verify_proof,
+    validate_proof,
     detect_message_type,
     extract_x25519_public_key_from_did_document,
     extract_signing_public_key_from_did_document,
@@ -767,7 +767,7 @@ class E2eeClient:
             sender_signing_pk = extract_signing_public_key_from_did_document(
                 sender_doc, vm_id
             )
-            verify_proof(
+            validate_proof(
                 content,
                 sender_signing_pk,
                 max_past_age_seconds=int(content.get("expires", 86400)),

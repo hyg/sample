@@ -11,8 +11,14 @@
  *   node scripts/register_handle.js --handle alice --phone +86... --invite-code ABC123
  */
 
+import { createSDKConfig } from '../src/utils/config.js';
+import { createUserServiceClient } from '../src/utils/client.js';
+import { sendOtp, registerHandle } from '../src/utils/handle.js';
+import { saveIdentity } from '../src/credential_store.js';
+import { createInterface } from 'readline';
 
 /**
+ * Read input from command line interactively.
  */
 function readLine(question) {
     const rl = createInterface({

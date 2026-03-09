@@ -14,6 +14,12 @@
  *   node scripts/ws_listener.js run --credential default      # Run in foreground
  */
 
+import { loadIdentity } from '../src/credential_store.js';
+import { WSListener } from '../src/ws_client.js';
+import { spawn } from 'child_process';
+import { existsSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVICE_MARKER = join(__dirname, '..', '.ws_listener_running');

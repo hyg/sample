@@ -13,7 +13,8 @@ Usage:
     # View group members
     uv run python scripts/manage_group.py --members --group-id GROUP_ID
 
-[INPUT]: SDK (RPC calls), credential_store (load identity credentials)
+[INPUT]: SDK (RPC calls), credential_store (load identity credentials),
+         logging_config
 [OUTPUT]: Group operation results
 [POS]: Group management script
 
@@ -25,14 +26,17 @@ Usage:
 import argparse
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 
 from utils import SDKConfig, create_user_service_client, authenticated_rpc_call
+from utils.logging_config import configure_logging
 from credential_store import create_authenticator
 
 
 RPC_ENDPOINT = "/user-service/did/relationships/rpc"
+logger = logging.getLogger(__name__)
 
 
 async def create_group(
@@ -43,6 +47,13 @@ async def create_group(
     credential_name: str = "default",
 ) -> None:
     """Create a group."""
+    logger.info(
+        "Creating group credential=%s group_name=%s max_members=%d is_public=%s",
+        credential_name,
+        group_name,
+        max_members,
+        is_public,
+    )
     params: dict = {
         "name": group_name,
         "max_members": max_members,
@@ -73,6 +84,12 @@ async def invite_to_group(
     credential_name: str = "default",
 ) -> None:
     """Invite a user to join a group."""
+    logger.info(
+        "Inviting to group credential=%s group_id=%s target_did=%s",
+        credential_name,
+        group_id,
+        target_did,
+    )
     config = SDKConfig()
     auth_result = create_authenticator(credential_name, config)
     if auth_result is None:
@@ -96,6 +113,12 @@ async def join_group(
     credential_name: str = "default",
 ) -> None:
     """Join a group via invitation."""
+    logger.info(
+        "Joining group credential=%s group_id=%s invite_id=%s",
+        credential_name,
+        group_id,
+        invite_id,
+    )
     config = SDKConfig()
     auth_result = create_authenticator(credential_name, config)
     if auth_result is None:
@@ -118,6 +141,7 @@ async def get_group_members(
     credential_name: str = "default",
 ) -> None:
     """View group members."""
+    logger.info("Fetching group members credential=%s group_id=%s", credential_name, group_id)
     config = SDKConfig()
     auth_result = create_authenticator(credential_name, config)
     if auth_result is None:
@@ -136,6 +160,8 @@ async def get_group_members(
 
 
 def main() -> None:
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(description="Group management")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--create", action="store_true", help="Create a group")
@@ -156,6 +182,7 @@ def main() -> None:
                         help="Credential name (default: default)")
 
     args = parser.parse_args()
+    logger.info("manage_group CLI started credential=%s", args.credential)
 
     if args.create:
         if not args.group_name:

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """WebSocket listener: long-running background process that receives molt-message pushes and routes to webhooks.
 
-[INPUT]: credential_store (DID identity), SDKConfig, WsClient, ListenerConfig, E2eeHandler, service_manager, local_store
+[INPUT]: credential_store (DID identity), SDKConfig, WsClient, ListenerConfig,
+         E2eeHandler, service_manager, local_store, logging_config
 [OUTPUT]: WebSocket -> HTTP webhook bridge (agent/wake dual endpoints) + cross-platform service lifecycle management + local SQLite persistence
 [POS]: Standalone background process with cross-platform service management (launchd / systemd / Task Scheduler), reuses utils/ core tool layer
 
@@ -44,6 +45,7 @@ from e2ee_handler import E2eeHandler
 from listener_config import ROUTING_MODES, ListenerConfig
 from utils.config import SDKConfig
 from utils.identity import DIDIdentity
+from utils.logging_config import configure_logging
 from utils.ws import WsClient
 
 import local_store
@@ -164,7 +166,7 @@ async def _forward(
     if route == "agent":
         # Build structured message with full ANP notification fields
         context = "DM" if is_private else "Group"
-        lines = [f"[IM {context}] New message"]
+        lines = [f"[IM {context}] New {'encrypted ' if params.get('_e2ee') else ''}message"]
         lines.append(f"sender_did: {sender_did}")
         if params.get("sender_name"):
             lines.append(f"sender_name: {params['sender_name']}")
@@ -184,6 +186,9 @@ async def _forward(
         if params.get("_e2ee"):
             lines.append("e2ee: true")
         lines.append("")
+        if params.get("_e2ee"):
+            lines.append(str(params.get("_e2ee_notice", "This is an encrypted message.")))
+            lines.append("")
         lines.append(content)
 
         body: dict[str, Any] = {
@@ -195,7 +200,11 @@ async def _forward(
     else:
         # OpenClaw /hooks/wake format
         body = {
-            "text": f"[IM] {sender}: {content_preview}",
+            "text": (
+                f"[IM] {sender}: [Encrypted] {content_preview}"
+                if params.get("_e2ee")
+                else f"[IM] {sender}: {content_preview}"
+            ),
             "mode": "next-heartbeat",
         }
 
@@ -402,6 +411,7 @@ async def listen_loop(
                                 local_store.store_message,
                                 local_db,
                                 msg_id=params.get("id", ""),
+                                owner_did=my_did,
                                 thread_id=local_store.make_thread_id(
                                     my_did,
                                     peer_did=sender_did,
@@ -414,6 +424,7 @@ async def listen_loop(
                                 group_did=params.get("group_did"),
                                 content_type=params.get("type", "text"),
                                 content=str(params.get("content", "")),
+                                title=params.get("title"),
                                 server_seq=params.get("server_seq"),
                                 sent_at=params.get("sent_at"),
                                 is_e2ee=bool(params.get("_e2ee")),
@@ -425,6 +436,7 @@ async def listen_loop(
                                 await asyncio.to_thread(
                                     local_store.upsert_contact,
                                     local_db,
+                                    owner_did=my_did,
                                     did=sender_did,
                                     name=params.get("sender_name"),
                                 )
@@ -503,11 +515,13 @@ def cmd_status(args: argparse.Namespace) -> None:
 def cmd_run(args: argparse.Namespace) -> None:
     """Run the listener in foreground."""
     level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
+    log_path = configure_logging(
         level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        console_level=level,
+        force=True,
+        mirror_stdio=True,
     )
+    logger.info("Application logging enabled: %s", log_path)
 
     cfg = ListenerConfig.load(args.config, mode_override=args.mode)
     logger.info(
@@ -542,6 +556,8 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """CLI entry point."""
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(
         description="WebSocket listener: receive molt-message pushes and route to webhooks",
     )
@@ -581,6 +597,7 @@ def main() -> None:
     p_status.set_defaults(func=cmd_status)
 
     args = parser.parse_args()
+    logger.info("ws_listener CLI started command=%s", args.command)
 
     if not args.command:
         parser.print_help()

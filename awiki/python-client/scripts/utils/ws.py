@@ -164,6 +164,7 @@ class WsClient:
         group_id: str | None = None,
         msg_type: str = "text",
         client_msg_id: str | None = None,
+        title: str | None = None,
     ) -> dict[str, Any]:
         """Convenience method for sending messages.
 
@@ -189,6 +190,8 @@ class WsClient:
             params["group_did"] = group_did
         if group_id:
             params["group_id"] = group_id
+        if title is not None:
+            params["title"] = title
         return await self.send_rpc("send", params)
 
     async def ping(self) -> bool:

@@ -10,7 +10,8 @@ Usage:
     # Specify credential name
     uv run python scripts/register_handle.py --handle alice --phone +8613800138000 --credential myhandle
 
-[INPUT]: SDK (handle registration, OTP), credential_store (save identity)
+[INPUT]: SDK (handle registration, OTP), credential_store (save identity),
+         logging_config
 [OUTPUT]: Register Handle + DID identity and save credentials
 [POS]: Interactive CLI for Handle registration
 
@@ -21,10 +22,14 @@ Usage:
 
 import argparse
 import asyncio
+import logging
 import sys
 
 from utils import SDKConfig, create_user_service_client, send_otp, register_handle
+from utils.logging_config import configure_logging
 from credential_store import save_identity
+
+logger = logging.getLogger(__name__)
 
 
 async def do_register(
@@ -36,6 +41,12 @@ async def do_register(
     credential_name: str = "default",
 ) -> None:
     """Register a Handle interactively."""
+    logger.info(
+        "Registering handle handle=%s credential=%s invite_code_present=%s",
+        handle,
+        credential_name,
+        bool(invite_code),
+    )
     config = SDKConfig()
     print(f"Service configuration:")
     print(f"  user-service: {config.user_service_url}")
@@ -80,6 +91,7 @@ async def do_register(
             public_key_pem=identity.public_key_pem,
             jwt_token=identity.jwt_token,
             display_name=name or handle,
+            handle=handle,
             name=credential_name,
             did_document=identity.did_document,
             e2ee_signing_private_pem=identity.e2ee_signing_private_pem,
@@ -90,6 +102,8 @@ async def do_register(
 
 
 def main() -> None:
+    configure_logging(console_level=None, mirror_stdio=True)
+
     parser = argparse.ArgumentParser(description="Register a Handle (human-readable DID alias)")
     parser.add_argument("--handle", required=True, type=str,
                         help="Handle local-part (e.g., alice)")
@@ -107,6 +121,11 @@ def main() -> None:
                         help="Credential storage name (default: default)")
 
     args = parser.parse_args()
+    logger.info(
+        "register_handle CLI started handle=%s credential=%s",
+        args.handle,
+        args.credential,
+    )
     asyncio.run(do_register(
         handle=args.handle,
         phone=args.phone,

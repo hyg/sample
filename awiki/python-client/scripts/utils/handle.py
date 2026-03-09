@@ -1,7 +1,8 @@
 """Handle (short name) registration and resolution utilities.
 
 [INPUT]: httpx.AsyncClient, SDKConfig, DIDIdentity, rpc_call(), create_identity(), register_did()
-[OUTPUT]: send_otp(), register_handle(), resolve_handle(), lookup_handle(), normalize_phone()
+[OUTPUT]: send_otp(), register_handle(), recover_handle(), resolve_handle(),
+          lookup_handle(), normalize_phone()
 [POS]: Wraps Handle registration and resolution flows, built on top of auth.py and identity.py.
        Uses JSON-RPC 2.0 endpoints: /user-service/handle/rpc and /user-service/did-auth/rpc.
 
@@ -173,6 +174,43 @@ async def register_handle(
     return identity
 
 
+async def recover_handle(
+    client: httpx.AsyncClient,
+    config: SDKConfig,
+    phone: str,
+    otp_code: str,
+    handle: str,
+    *,
+    services: list[dict[str, Any]] | None = None,
+) -> tuple[DIDIdentity, dict[str, Any]]:
+    """Recover a Handle by rebinding it to a newly generated DID."""
+    normalized = normalize_phone(phone)
+
+    identity = create_identity(
+        hostname=config.did_domain,
+        path_prefix=[handle],
+        proof_purpose="authentication",
+        domain=config.did_domain,
+        services=services,
+    )
+
+    payload: dict[str, Any] = {
+        "did_document": identity.did_document,
+        "handle": handle,
+        "phone": normalized,
+        "otp_code": otp_code,
+    }
+    recover_result = await rpc_call(client, DID_AUTH_RPC, "recover_handle", payload)
+
+    identity.user_id = recover_result["user_id"]
+    if recover_result.get("access_token"):
+        identity.jwt_token = recover_result["access_token"]
+    else:
+        identity.jwt_token = await get_jwt_via_wba(client, identity, config.did_domain)
+
+    return identity, recover_result
+
+
 async def resolve_handle(
     client: httpx.AsyncClient,
     handle: str,
@@ -215,6 +253,7 @@ __all__ = [
     "normalize_phone",
     "send_otp",
     "register_handle",
+    "recover_handle",
     "resolve_handle",
     "lookup_handle",
 ]
