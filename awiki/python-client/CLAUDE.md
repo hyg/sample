@@ -121,7 +121,7 @@ Three-layer architecture: CLI script layer -> Persistence layer -> Core utility 
 ### scripts/ — CLI Script Layer
 
 - **credential_store.py** / **e2ee_store.py**: Credential and E2EE state persistence to `~/.openclaw/credentials/awiki-agent-id-message/` directory (JSON format, 600 permissions)
-- **local_store.py**: SQLite local storage — contacts + messages + `e2ee_outbox` three tables, threads/inbox/outbox views. Single shared database at `<DATA_DIR>/database/awiki.db`. Messages are owned per credential via composite key `(msg_id, credential_name)` so the same server message can exist for multiple local identities. `e2ee_outbox` tracks encrypted send attempts, peer-side failures, and resend/drop decisions. WAL mode for concurrent read/write. Sync API (sqlite3 stdlib), ws_listener wraps via `asyncio.to_thread()`. Schema versioned via `PRAGMA user_version` (current: v4)
+- **local_store.py**: SQLite local storage — contacts + messages + `e2ee_outbox` three tables, threads/inbox/outbox views. Single shared database at `<DATA_DIR>/database/awiki.db`. Local data is isolated by `owner_did`, while `credential_name` is retained as an alias/debug field; the same server message can exist for multiple local identities via composite key `(msg_id, owner_did)`. Messages also support an optional plaintext `title` field. `e2ee_outbox` tracks encrypted send attempts, peer-side failures, and resend/drop decisions. WAL mode for concurrent read/write. Sync API (sqlite3 stdlib), ws_listener wraps via `asyncio.to_thread()`. Schema versioned via `PRAGMA user_version` (current: v6)
 - **query_db.py**: Read-only SQL query CLI — accepts a SELECT statement, executes against local SQLite, returns JSON. Rejects write operations and multi-statement queries
 - **check_status.py**: Unified status check entry point — chains identity verification, inbox classification summary, and server_seq-aware E2EE auto-processing. Outputs structured JSON. Called by Agent session startup protocol and heartbeat
 - **listener_config.py**: `ListenerConfig` + `RoutingRules` — WebSocket listener configuration module. Defines dual webhook endpoints, routing modes (agent-all/smart/wake-all), message routing rules and E2EE transparent processing parameters. Supports unified settings.json (`listener` sub-object, at `<DATA_DIR>/config/settings.json`) + legacy JSON file + environment variables + CLI four-level override
@@ -139,7 +139,8 @@ Three-layer architecture: CLI script layer -> Persistence layer -> Core utility 
 ### tests/ — Unit Tests
 
 - **test_local_store.py**: Local SQLite storage unit tests (schema, CRUD, idempotent dedup, thread_id generation, read-only SQL safety)
-- Listener and resolve tests have been migrated to `awiki-system-test/tests/` (listener/ and did/test_resolve.py).
+- Some repository-level integration coverage has been migrated to the sibling repository `../awiki-system-test/tests/` (for example `listener/`, `did/test_resolve.py`, and related CLI/DID suites).
+- When modifying feature behavior in this repository, also update the corresponding system tests in `../awiki-system-test/tests/`. Choose the suite that matches the changed module's parent area whenever possible, such as `tests/cli/`, `tests/did/`, or `tests/listener/`.
 
 ## Source File Header Convention
 

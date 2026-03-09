@@ -17,6 +17,7 @@ Target Python 3.10+ and follow Google-style Python conventions. Use 4-space inde
 
 ## Testing Guidelines
 Tests use `pytest`. Name files `test_*.py` and test functions `test_*`. Prefer focused unit tests with `tmp_path`, `monkeypatch`, and temporary SQLite state instead of relying on shared local data. No coverage threshold is enforced in the repository, so contributors should add or update tests whenever they change database schema, query behavior, message routing, or environment-variable based configuration.
+When changing feature behavior in this repository, also update the corresponding system tests in the sibling repository at `../awiki-system-test/tests/`. Match the system-test location to the changed module's parent area whenever possible, such as `tests/cli/`, `tests/did/`, or `tests/listener/`.
 
 ## Commit & Pull Request Guidelines
 Recent commits favor short, imperative subjects with conventional prefixes when useful, such as `feat:` and `fix:`. Keep the first line concise and scoped to one change. Pull requests should summarize the behavioral change, link any related issue, and list the verification commands you ran, typically `uv run pytest`. Include sample CLI output or config snippets when changing listener flows, settings, or user-facing commands.

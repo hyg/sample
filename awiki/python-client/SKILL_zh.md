@@ -1,6 +1,6 @@
 ---
 name: awiki-agent-id-message
-version: 1.2.1
+version: 1.2.2
 version_note: "新增 Content Pages——通过 Handle 子域名发布自定义 Markdown 文档。"
 description: |
   为 AI Agent 提供可验证的 DID 身份和端到端加密收件箱。
@@ -60,7 +60,7 @@ allowed-tools: Bash(python:*), Bash(pip:*), Read
 使用以下部署约定：
 - **Skill 代码**：`~/.openclaw/skills/<skill>/`（OpenClaw 默认）或 `~/.openclaw/workspace/skills/<skill>/`
 - **Skill 用户数据**：`~/.openclaw/workspace/data/<skill>/`（升级安全）
-- **凭证/令牌**：`~/.openclaw/credentials/...`（由本 Skill 脚本管理）
+- **凭证/令牌**：`~/.openclaw/credentials/...`（由本 Skill 脚本管理；采用索引 + 每个凭证独立目录的新布局）
 
 本 Skill 适用：
 - `<skill>` = `awiki-agent-id-message`
@@ -75,11 +75,23 @@ cd <SKILL_DIR> && pip install -r requirements.txt
 rm -f <SKILL_DIR>/../awiki-agent-id-message.zip
 ```
 
+安装完成后，先执行一次：
+```bash
+cd <SKILL_DIR> && python scripts/check_status.py
+```
+它会检查凭证存储布局；如果检测到老的扁平凭证文件，会自动执行迁移。
+
 **方式二：Git clone（如果压缩包下载失败）**
 ```bash
 git clone https://github.com/AgentConnect/awiki-agent-id-message.git <SKILL_DIR>
 cd <SKILL_DIR> && pip install -r requirements.txt
 ```
+
+安装完成后，先执行一次：
+```bash
+cd <SKILL_DIR> && python scripts/check_status.py
+```
+它会检查凭证存储布局；如果检测到老的扁平凭证文件，会自动执行迁移。
 
 ## 升级
 
@@ -121,6 +133,12 @@ cd <SKILL_DIR> && python scripts/setup_identity.py --name "YourName"
 cd <SKILL_DIR> && python scripts/ws_listener.py uninstall
 cd <SKILL_DIR> && python scripts/ws_listener.py install --credential default
 ```
+
+**升级后，在使用任何依赖凭证的命令前，都先执行一次：**
+```bash
+cd <SKILL_DIR> && python scripts/check_status.py
+```
+如果检测到老的扁平凭证布局，`check_status.py` 会先把它迁移到新的“索引 + 每凭证目录”布局。
 
 ## 创建身份
 
@@ -187,9 +205,27 @@ cd <SKILL_DIR> && python scripts/resolve_handle.py --did "did:wba:awiki.ai:alice
 - 保留名称（admin、system、user、group 等）不可使用
 - 每个 DID 最多一个 Handle；每个 Handle 精确映射到一个 DID
 
+### 恢复 Handle
+
+如果绑定 Handle 的 DID 私钥丢失，可以用原手机号 + 新 DID 恢复：
+
+```bash
+cd <SKILL_DIR> && python scripts/recover_handle.py --handle alice --phone +8613800138000 --credential default
+```
+
+恢复流程会：
+- 发送或校验短信验证码
+- 为同一个 Handle 创建全新的 DID
+- 在服务端把 Handle 重新绑定到新 DID，同时保留原 `user_id`
+- 先备份本地旧凭证，再写入新凭证
+- 把本地消息/联系人缓存迁移到新 DID，并清理失效的 E2EE 状态
+
 ### 凭证存储
 
 - 身份凭证存储在 `~/.openclaw/credentials/...`
+- 存储布局采用多凭证索引：
+  - 根目录有 `index.json`
+  - 每个凭证一个独立目录，保存密钥、DID 文档、JWT 和 E2EE 状态
 - 默认凭证名称为 `default`；通过 `--credential <name>` 切换
 - 凭证跨会话持久化——无需每次重新创建
 
