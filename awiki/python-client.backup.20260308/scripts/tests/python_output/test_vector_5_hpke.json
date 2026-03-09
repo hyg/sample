@@ -1,7 +1,0 @@
-{
-  "plaintext": "Hello, E2EE World!",
-  "aad": "test-session-id",
-  "enc_b64": "rCJdsEoicjCGYFiZx0NyoG2dRk6eT9w2lmJRZH0lJm0=",
-  "ciphertext_b64": "AAWMuAozzeN3tGWkbFpe8LPnqAoDE85pSNe07cetXY/+fQ==",
-  "decrypted": "Hello, E2EE World!"
-}

@@ -1,0 +1,54 @@
+# 敏感信息 - 包含私钥、凭证、JWT 等
+*.pem
+*.key
+*_private_key.*
+*.credential
+credentials/
+.credential*
+.openclaw/
+
+# 测试输出中的敏感数据
+**/python_output/
+**/nodejs_output/
+*_output.json
+*_log.json
+*_results.json
+REGISTERED_DIDS*.json
+
+# 备份目录
+python-client.backup*/
+nodejs-client.backup*/
+*.backup.*
+
+# 临时文件
+*.tmp
+*.temp
+*.zip
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 测试凭证
+**/tests/credentials/
+**/.credentials/
+**/test_credentials.*

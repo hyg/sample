@@ -1,6 +1,0 @@
-{
-  "signing_private_pem": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgfbaA8YIJ6bsgpr9f\nxDt4THPMpp8WkBPgwJOk+JyJSPShRANCAATAtmi8hQ5u2UNB5sTstJuz9MScTRok\nnN4WAMBOcPNUg0A1wpFLWEIsP1Igb0jW3RkuewWNkjJYTgszEJUMx56x\n-----END PRIVATE KEY-----\n",
-  "signing_public_pem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwLZovIUObtlDQebE7LSbs/TEnE0a\nJJzeFgDATnDzVINANcKRS1hCLD9SIG9I1t0ZLnsFjZIyWE4LMxCVDMeesQ==\n-----END PUBLIC KEY-----\n",
-  "agreement_private_pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VuBCIEIGDLPzEF+Jo1cjbvYr3z6Pr5LMSL+hP7IokK33kQMeVG\n-----END PRIVATE KEY-----\n",
-  "agreement_public_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VuAyEARme/jjzciXEYEsY43e6S8G9/AVph+wvS7nvEMOjTYE0=\n-----END PUBLIC KEY-----\n"
-}
