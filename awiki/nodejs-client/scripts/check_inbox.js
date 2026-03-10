@@ -2,9 +2,9 @@
 
 /**
  * Check inbox, view chat history, mark messages as read.
- * 
+ *
  * Compatible with Python's check_inbox.py.
- * 
+ *
  * Usage:
  *   node scripts/check_inbox.js                    # View inbox
  *   node scripts/check_inbox.js --limit 5          # Limit result count
@@ -12,7 +12,7 @@
  *   node scripts/check_inbox.js --mark-read id1,id2 # Mark messages as read
  */
 
-import { loadIdentity } from '../src/credential_store.js';
+import { createAuthenticator, loadIdentity } from '../src/credential_store.js';
 import { createSDKConfig } from '../src/utils/config.js';
 import { createMoltMessageClient } from '../src/utils/client.js';
 import { authenticatedRpcCall } from '../src/utils/rpc.js';
@@ -25,28 +25,31 @@ const MESSAGE_RPC = '/message/rpc';
  */
 async function checkInbox(credentialName = 'default', limit = 20) {
     const config = createSDKConfig();
-    const cred = loadIdentity(credentialName);
     
-    if (!cred) {
-        console.error(`Credential '${credentialName}' not found`);
+    // Use createAuthenticator for proper authentication (matching Python version)
+    const authResult = await createAuthenticator(credentialName, config);
+    
+    if (authResult === null) {
+        console.error(`Credential '${credentialName}' unavailable; please create an identity first`);
         process.exit(1);
     }
     
+    const { auth, data } = authResult;
     const client = createMoltMessageClient(config);
-    
+
     try {
         const inbox = await authenticatedRpcCall(
             client,
             MESSAGE_RPC,
-            'getInbox',
-            { user_did: cred.did, limit },
+            'get_inbox',                      // Fixed: snake_case (matching Python)
+            { user_did: data.did, limit },    // Use data.did from authResult
             1,
-            { auth: null, credentialName }
+            { auth, credentialName }          // Fixed: pass auth object
         );
-        
+
         console.log('Inbox:');
         console.log(JSON.stringify(inbox, null, 2));
-        
+
         if (inbox.messages && inbox.messages.length > 0) {
             console.log(`\nTotal: ${inbox.messages.length} message(s)`);
         }
@@ -61,31 +64,35 @@ async function checkInbox(credentialName = 'default', limit = 20) {
  */
 async function getHistory(peerDid, credentialName = 'default', limit = 50) {
     const config = createSDKConfig();
-    const cred = loadIdentity(credentialName);
     
-    if (!cred) {
-        console.error(`Credential '${credentialName}' not found`);
+    // Use createAuthenticator for proper authentication (matching Python version)
+    const authResult = await createAuthenticator(credentialName, config);
+    
+    if (authResult === null) {
+        console.error(`Credential '${credentialName}' unavailable; please create an identity first`);
         process.exit(1);
     }
     
+    const { auth, data } = authResult;
+    
     // Resolve peerDid if it's a handle
     const resolvedDid = await resolveToDid(peerDid, config);
-    
+
     const client = createMoltMessageClient(config);
-    
+
     try {
         const history = await authenticatedRpcCall(
             client,
             MESSAGE_RPC,
-            'getHistory',
-            { user_did: cred.did, peer_did: resolvedDid, limit },
+            'get_history',                    // Fixed: snake_case (matching Python)
+            { user_did: data.did, peer_did: resolvedDid, limit },
             1,
-            { auth: null, credentialName }
+            { auth, credentialName }          // Fixed: pass auth object
         );
-        
+
         console.log(`Chat history with ${resolvedDid}:`);
         console.log(JSON.stringify(history, null, 2));
-        
+
         if (history.messages && history.messages.length > 0) {
             console.log(`\nTotal: ${history.messages.length} message(s)`);
         }
@@ -100,25 +107,28 @@ async function getHistory(peerDid, credentialName = 'default', limit = 50) {
  */
 async function markRead(messageIds, credentialName = 'default') {
     const config = createSDKConfig();
-    const cred = loadIdentity(credentialName);
     
-    if (!cred) {
-        console.error(`Credential '${credentialName}' not found`);
+    // Use createAuthenticator for proper authentication (matching Python version)
+    const authResult = await createAuthenticator(credentialName, config);
+    
+    if (authResult === null) {
+        console.error(`Credential '${credentialName}' unavailable; please create an identity first`);
         process.exit(1);
     }
     
+    const { auth, data } = authResult;
     const client = createMoltMessageClient(config);
-    
+
     try {
         const result = await authenticatedRpcCall(
             client,
             MESSAGE_RPC,
-            'markRead',
-            { user_did: cred.did, message_ids: messageIds },
+            'mark_read',                      // Fixed: snake_case (matching Python)
+            { user_did: data.did, message_ids: messageIds },
             1,
-            { auth: null, credentialName }
+            { auth, credentialName }          // Fixed: pass auth object
         );
-        
+
         console.log('Messages marked as read:');
         console.log(JSON.stringify(result, null, 2));
     } catch (error) {
@@ -136,7 +146,7 @@ function parseArgs() {
         limit: 20,
         credential: 'default'
     };
-    
+
     for (let i = 0; i < args.length; i++) {
         switch (args[i]) {
             case '--limit':
@@ -158,7 +168,7 @@ function parseArgs() {
                 break;
         }
     }
-    
+
     return result;
 }
 

@@ -8,6 +8,8 @@
  * - E2E_MOLT_MESSAGE_URL: Message service URL (default: https://awiki.ai)
  * - E2E_DID_DOMAIN: DID domain (default: awiki.ai)
  * - E2E_CREDENTIALS_DIR: Credentials directory (default: system credentials dir)
+ * - AWIKI_DATA_DIR: Data directory (default: system data dir)
+ * - AWIKI_WORKSPACE: Workspace directory (alternative to AWIKI_DATA_DIR)
  *
  * @module utils/config
  */
@@ -16,6 +18,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const SKILL_NAME = "awiki-agent-id-message";
 
 /**
  * Get system credentials directory (same as Python version).
@@ -27,8 +30,29 @@ function getSystemCredentialsDir() {
         homeDir,
         '.openclaw',
         'credentials',
-        'awiki-agent-id-message'
+        SKILL_NAME
     );
+}
+
+/**
+ * Get system data directory (same as Python version).
+ * @returns {string} System data directory path
+ */
+function getDataDir() {
+    const homeDir = process.env.USERPROFILE || process.env.HOME || process.env.HOMEPATH;
+    
+    // Priority 1: AWIKI_DATA_DIR env (direct full path override)
+    if (process.env.AWIKI_DATA_DIR) {
+        return process.env.AWIKI_DATA_DIR;
+    }
+    
+    // Priority 2: AWIKI_WORKSPACE env / data / <skill>
+    if (process.env.AWIKI_WORKSPACE) {
+        return path.join(process.env.AWIKI_WORKSPACE, 'data', SKILL_NAME);
+    }
+    
+    // Priority 3: ~/.openclaw/workspace / data / <skill>
+    return path.join(homeDir, '.openclaw', 'workspace', 'data', SKILL_NAME);
 }
 
 /**
@@ -37,6 +61,7 @@ function getSystemCredentialsDir() {
  * @property {string} molt_message_url - Message service URL
  * @property {string} did_domain - DID domain
  * @property {string} credentials_dir - Credentials directory path
+ * @property {string} data_dir - Data directory path
  */
 
 /**
@@ -52,12 +77,17 @@ export function createSDKConfig() {
     // Default: use system credentials directory (same as Python)
     // Can override with E2E_CREDENTIALS_DIR environment variable
     const credentials_dir = process.env.E2E_CREDENTIALS_DIR || getSystemCredentialsDir();
+    
+    // Default: use system data directory (same as Python)
+    // Can override with AWIKI_DATA_DIR or AWIKI_WORKSPACE environment variables
+    const data_dir = getDataDir();
 
     return {
         user_service_url,
         molt_message_url,
         did_domain,
-        credentials_dir
+        credentials_dir,
+        data_dir
     };
 }
 

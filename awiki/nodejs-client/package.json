@@ -1,6 +1,6 @@
 {
   "name": "node-awiki",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Node.js client for awiki.ai DID identity management and E2EE messaging",
   "type": "module",
   "main": "src/index.js",
@@ -11,6 +11,7 @@
     "src/",
     "bin/",
     "scripts/",
+    "lib",
     "SKILL.md",
     "README.md",
     "LICENSE"
@@ -29,10 +30,11 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@noble/ciphers": "^2.1.1",
     "@noble/curves": "^1.4.0",
     "@noble/hashes": "^1.4.0",
-    "@noble/ciphers": "^2.1.1",
     "axios": "^1.6.0",
+    "better-sqlite3": "^12.6.2",
     "canonicalize": "^2.0.0",
     "multiformats": "^13.0.0",
     "secp256k1": "^5.0.0"
