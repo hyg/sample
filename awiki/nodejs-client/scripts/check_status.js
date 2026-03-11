@@ -156,7 +156,7 @@ async function check_identity(credentialName = 'default') {
     }
 
     const config = createSDKConfig();
-    const authResult = createAuthenticator(credentialName, config);
+    const authResult = await createAuthenticator(credentialName, config);
     if (authResult === null) {
         result.status = 'no_did_document';
         result.error = 'Credential missing DID document; please recreate identity';
@@ -202,7 +202,7 @@ async function check_identity(credentialName = 'default') {
  */
 async function summarize_inbox(credentialName = 'default') {
     const config = createSDKConfig();
-    const authResult = createAuthenticator(credentialName, config);
+    const authResult = await createAuthenticator(credentialName, config);
     if (authResult === null) {
         return { status: 'no_identity', total: 0 };
     }
@@ -275,7 +275,7 @@ async function summarize_inbox(credentialName = 'default') {
  */
 async function auto_process_e2ee(credentialName = 'default') {
     const config = createSDKConfig();
-    const authResult = createAuthenticator(credentialName, config);
+    const authResult = await createAuthenticator(credentialName, config);
     if (authResult === null) {
         return { status: 'no_identity', processed: 0, details: [] };
     }
@@ -470,7 +470,12 @@ async function main() {
 }
 
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Normalize paths for comparison (handle both forward and backward slashes)
+const scriptPath = import.meta.url;
+const argvPath = `file://${process.argv[1]}`.replace(/\\/g, '/');
+// Convert to normalized paths for comparison (normalize file:// protocol)
+const normalizePath = (p) => p.replace(/\\/g, '/').replace(/^file:\/\/+/, 'file://').toLowerCase();
+if (normalizePath(scriptPath) === normalizePath(argvPath)) {
     main().catch(error => {
         console.error(error);
         process.exit(1);

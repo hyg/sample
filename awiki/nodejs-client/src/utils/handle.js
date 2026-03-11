@@ -160,6 +160,61 @@ export async function registerHandle({
 }
 
 /**
+ * Recover a Handle by rebinding it to a newly generated DID.
+ * 
+ * @param {Object} client - HTTP client pointing to user-service.
+ * @param {Object} config - SDK configuration.
+ * @param {string} phone - Phone number in international format.
+ * @param {string} otp_code - OTP verification code.
+ * @param {string} handle - Handle local-part (e.g., "alice").
+ * @param {Object} options - Optional parameters.
+ * @param {Array} [options.services] - Custom service entry list for DID document.
+ * @returns {Promise<[Object, Object]>} Tuple of [DIDIdentity, recover_result].
+ * @throws {Error} Invalid phone number format or recovery failure.
+ */
+export async function recoverHandle(client, config, phone, otp_code, handle, { services = null } = {}) {
+    const normalized = normalizePhone(phone);
+    
+    // 1. Create key-bound DID identity with handle as path prefix
+    const identity = createIdentity({
+        hostname: config.did_domain,
+        path_prefix: [handle],
+        proof_purpose: 'authentication',
+        domain: config.did_domain,
+        services
+    });
+    
+    // 2. Prepare recovery payload
+    const payload = {
+        did_document: identity.did_document,
+        handle: handle,
+        phone: normalized,
+        otp_code: otp_code
+    };
+    
+    // 3. Call recover_handle RPC
+    const recoverResult = await rpcCall(client, DID_AUTH_RPC, 'recover_handle', payload);
+    
+    // 4. Set user_id from recovery result
+    identity.user_id = recoverResult.user_id;
+    
+    // 5. Get JWT token
+    if (recoverResult.access_token) {
+        identity.jwt_token = recoverResult.access_token;
+    } else {
+        // Fallback to JWT via WBA
+        identity.jwt_token = await getJwtViaWba(
+            config.user_service_url,
+            identity.did_document,
+            identity.privateKey,
+            config.did_domain
+        );
+    }
+    
+    return [identity, recoverResult];
+}
+
+/**
  * Resolve a Handle to its DID mapping.
  * 
  * @param {Object} client - HTTP client pointing to user-service.
@@ -187,6 +242,7 @@ export default {
     normalizePhone,
     sendOtp,
     registerHandle,
+    recoverHandle,
     resolveHandle,
     lookupHandle
 };

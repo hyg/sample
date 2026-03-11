@@ -13,7 +13,7 @@ import { check_status } from '../../nodejs-client/scripts/check_status.js';
 import { ensureCredentialStorageReady } from '../../nodejs-client/scripts/utils/credential_migration.js';
 import { saveIdentity, loadIdentity, listIdentities, deleteIdentity } from '../../nodejs-client/scripts/utils/credential_store.js';
 import { saveE2eeState, loadE2eeState } from '../../nodejs-client/scripts/utils/e2ee_store.js';
-import { queue_e2ee_outbox, mark_e2ee_outbox_sent, mark_e2ee_outbox_failed, listFailedRecords } from '../../nodejs-client/scripts/utils/e2ee_outbox.js';
+import { beginSendAttempt, markSendSuccess, recordLocalFailure, listFailedRecords } from '../../nodejs-client/scripts/utils/e2ee_outbox.js';
 import { store_message, get_message_by_id, make_thread_id } from '../../nodejs-client/scripts/utils/local_store.js';
 import { detectLocalDatabaseLayout, migrateLocalDatabase, ensureLocalDatabaseReady } from '../../nodejs-client/scripts/utils/database_migration.js';
 
@@ -101,12 +101,14 @@ async function testIdentityManagement() {
             did: TEST_CONFIG.localDid,
             uniqueId: TEST_CONFIG.localDid.split(':').pop(),
             userId: 'test-user-123',
-            private_key_pem: '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----',
-            public_key_pem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----',
-            jwt_token: 'test-jwt-token-123',
-            display_name: 'Test User',
+            privateKeyPem: '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----',
+            publicKeyPem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----',
+            jwtToken: 'test-jwt-token-123',
             handle: 'testuser',
-            name: TEST_CONFIG.credentialName,
+            didDocument: {
+                '@context': 'https://www.w3.org/ns/did/v1',
+                'id': TEST_CONFIG.localDid,
+            },
         };
         
         // Test 2.1: Save identity
@@ -120,8 +122,10 @@ async function testIdentityManagement() {
         
         // Test 2.3: List identities
         const identities = listIdentities();
-        const listPassed = identities.includes(TEST_CONFIG.credentialName);
-        printTestResult('listIdentities', listPassed, `Found ${identities.length} identities`);
+        // After saving and before deleting, we should find the credential
+        const identityNames = identities.map(i => i.credential_name || i.name || i);
+        const listPassed = identityNames.includes(TEST_CONFIG.credentialName);
+        printTestResult('listIdentities', listPassed, `Found ${identities.length} identities: ${identityNames.join(', ')}`);
         
         // Test 2.4: Delete identity (cleanup)
         const deleted = deleteIdentity(TEST_CONFIG.credentialName);
@@ -141,6 +145,18 @@ async function testE2EEStateManagement() {
     printTestHeader('E2EE State Management');
     
     try {
+        // First, create identity for E2EE state tests
+        const testIdentity = {
+            did: TEST_CONFIG.localDid,
+            uniqueId: TEST_CONFIG.localDid.split(':').pop(),
+            privateKeyPem: '-----BEGIN PRIVATE KEY-----\ntest-key-----END PRIVATE KEY-----',
+            didDocument: {
+                '@context': 'https://www.w3.org/ns/did/v1',
+                'id': TEST_CONFIG.localDid,
+            },
+        };
+        saveIdentity(testIdentity, TEST_CONFIG.credentialName);
+        
         // Create test E2EE state
         const testState = {
             local_did: TEST_CONFIG.localDid,
@@ -184,44 +200,56 @@ async function testE2EEOutboxManagement() {
         const testIdentity = {
             did: TEST_CONFIG.localDid,
             uniqueId: TEST_CONFIG.localDid.split(':').pop(),
-            private_key_pem: '-----BEGIN PRIVATE KEY-----\ntest-key-----END PRIVATE KEY-----',
+            privateKeyPem: '-----BEGIN PRIVATE KEY-----\ntest-key-----END PRIVATE KEY-----',
+            didDocument: {
+                '@context': 'https://www.w3.org/ns/did/v1',
+                'id': TEST_CONFIG.localDid,
+            },
         };
         saveIdentity(testIdentity, TEST_CONFIG.credentialName);
         
         // Test 4.1: Queue E2EE outbox message
-        const outboxId = queue_e2ee_outbox({
-            outbox_id: 'test-outbox-1',
-            owner_did: TEST_CONFIG.localDid,
+        const outboxId = beginSendAttempt({
             peer_did: TEST_CONFIG.peerDid,
-            session_id: 'session-1',
-            original_type: 'text',
             plaintext: TEST_CONFIG.messageContent,
-        }, TEST_CONFIG.credentialName);
-        printTestResult('queue_e2ee_outbox', outboxId !== null, `Outbox ID: ${outboxId}`);
+            original_type: 'text',
+            credential_name: TEST_CONFIG.credentialName,
+            session_id: 'session-1'
+        });
+        printTestResult('beginSendAttempt', outboxId !== null, `Outbox ID: ${outboxId}`);
         
         // Test 4.2: Mark message as sent
-        mark_e2ee_outbox_sent(outboxId, 1001, 'msg-123');
-        printTestResult('mark_e2ee_outbox_sent', true, `Marked as sent`);
+        markSendSuccess({
+            outbox_id: outboxId,
+            credential_name: TEST_CONFIG.credentialName,
+            local_did: TEST_CONFIG.localDid,
+            peer_did: TEST_CONFIG.peerDid,
+            plaintext: TEST_CONFIG.messageContent,
+            original_type: 'text',
+            session_id: 'session-1',
+            sent_msg_id: 'msg-123',
+            sent_server_seq: 1001,
+            sent_at: new Date().toISOString(),
+            client_msg_id: 'client-123',
+            title: 'Test Message'
+        });
+        printTestResult('markSendSuccess', true, `Marked as sent`);
         
         // Test 4.3: Queue another message and mark as failed
-        const outboxId2 = queue_e2ee_outbox({
-            outbox_id: 'test-outbox-2',
-            owner_did: TEST_CONFIG.localDid,
+        const outboxId2 = beginSendAttempt({
             peer_did: TEST_CONFIG.peerDid,
-            session_id: 'session-2',
-            original_type: 'text',
             plaintext: 'Failed message test',
-        }, TEST_CONFIG.credentialName);
-        
-        mark_e2ee_outbox_failed(outboxId2, 'test_error', 'retry_later');
-        printTestResult('mark_e2ee_outbox_failed', true, `Marked as failed`);
-        
-        // Test 4.4: List E2EE outbox
-        const outboxList = list_e2ee_outbox({
-            owner_did: TEST_CONFIG.localDid,
-            limit: 10
+            original_type: 'text',
+            credential_name: TEST_CONFIG.credentialName,
+            session_id: 'session-2'
         });
-        printTestResult('list_e2ee_outbox', outboxList.length >= 2, `Found ${outboxList.length} messages`);
+        
+        recordLocalFailure(outboxId2, 'test_error');
+        printTestResult('recordLocalFailure', true, `Marked as failed`);
+        
+        // Test 4.4: List E2EE outbox (failed records)
+        const outboxList = listFailedRecords(TEST_CONFIG.localDid, 10);
+        printTestResult('listFailedRecords', outboxList.length >= 1, `Found ${outboxList.length} failed messages`);
         
         // Cleanup
         deleteIdentity(TEST_CONFIG.credentialName);
@@ -244,7 +272,11 @@ async function testLocalStoreOperations() {
         const testIdentity = {
             did: TEST_CONFIG.localDid,
             uniqueId: TEST_CONFIG.localDid.split(':').pop(),
-            private_key_pem: '-----BEGIN PRIVATE KEY-----\ntest-key-----END PRIVATE KEY-----',
+            privateKeyPem: '-----BEGIN PRIVATE KEY-----\ntest-key-----END PRIVATE KEY-----',
+            didDocument: {
+                '@context': 'https://www.w3.org/ns/did/v1',
+                'id': TEST_CONFIG.localDid,
+            },
         };
         saveIdentity(testIdentity, TEST_CONFIG.credentialName);
         
@@ -265,6 +297,7 @@ async function testLocalStoreOperations() {
             sent_at: new Date().toISOString(),
             is_e2ee: 1,
             is_read: 0,
+            sender_name: 'Test Sender',
         }, TEST_CONFIG.credentialName);
         printTestResult('store_message', true, `Stored message`);
         
@@ -345,7 +378,11 @@ async function testMultiRoundInteraction() {
             const testIdentity = {
                 did: roundDid,
                 uniqueId: roundDid.split(':').pop(),
-                private_key_pem: `-----BEGIN PRIVATE KEY-----\nround${round}-key-----END PRIVATE KEY-----`,
+                privateKeyPem: `-----BEGIN PRIVATE KEY-----\nround${round}-key-----END PRIVATE KEY-----`,
+                didDocument: {
+                    '@context': 'https://www.w3.org/ns/did/v1',
+                    'id': roundDid,
+                },
             };
             
             // Save identity
@@ -362,10 +399,12 @@ async function testMultiRoundInteraction() {
                 receiver_did: roundDid,
                 content_type: 'text',
                 content: `Round ${round} message`,
+                title: `Round ${round} Message`,
                 server_seq: round,
                 sent_at: new Date().toISOString(),
                 is_e2ee: 1,
                 is_read: 0,
+                sender_name: `Test Sender Round ${round}`,
             }, `${TEST_CONFIG.credentialName}_round${round}`);
             
             // Get message
@@ -412,10 +451,15 @@ async function testPythonNodeCombinations() {
         
         for (const combo of combinations) {
             // Simulate test
+            const comboDid = `${TEST_CONFIG.localDid}_${combo.python}`;
             const testIdentity = {
-                did: `${TEST_CONFIG.localDid}_${combo.python}`,
-                uniqueId: `${TEST_CONFIG.localDid}_${combo.python}`.split(':').pop(),
-                private_key_pem: `-----BEGIN PRIVATE KEY-----\ncombo-key-----END PRIVATE KEY-----`,
+                did: comboDid,
+                uniqueId: comboDid.split(':').pop(),
+                privateKeyPem: `-----BEGIN PRIVATE KEY-----\ncombo-key-----END PRIVATE KEY-----`,
+                didDocument: {
+                    '@context': 'https://www.w3.org/ns/did/v1',
+                    'id': comboDid,
+                },
             };
             
             // Node.js action
@@ -480,14 +524,31 @@ async function runAllTests() {
     console.log('='.repeat(80));
     
     // Run all tests
+    console.log('\n[1/9] Running testCredentialStorageLayout...');
     await testCredentialStorageLayout();
+    
+    console.log('\n[2/9] Running testIdentityManagement...');
     await testIdentityManagement();
+    
+    console.log('\n[3/9] Running testE2EEStateManagement...');
     await testE2EEStateManagement();
+    
+    console.log('\n[4/9] Running testE2EEOutboxManagement...');
     await testE2EEOutboxManagement();
+    
+    console.log('\n[5/9] Running testLocalStoreOperations...');
     await testLocalStoreOperations();
+    
+    console.log('\n[6/9] Running testStatusChecking...');
     await testStatusChecking();
+    
+    console.log('\n[7/9] Running testMultiRoundInteraction...');
     await testMultiRoundInteraction();
+    
+    console.log('\n[8/9] Running testPythonNodeCombinations...');
     await testPythonNodeCombinations();
+    
+    console.log('\n[9/9] Running testDatabaseMigration...');
     await testDatabaseMigration();
     
     // Print summary
@@ -513,25 +574,24 @@ async function runAllTests() {
 }
 
 // Run tests if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-    runAllTests()
-        .then(success => {
-            console.log('\n' + '='.repeat(80));
-            if (success) {
-                console.log('🎉 ALL TESTS PASSED! 🎉');
-                console.log('='.repeat(80));
-                process.exit(0);
-            } else {
-                console.log('⚠️  SOME TESTS FAILED ⚠️');
-                console.log('='.repeat(80));
-                process.exit(1);
-            }
-        })
-        .catch(error => {
-            console.error('\n❌ TEST SUITE ERROR:', error);
+// Remove the conditional check to always run tests when script is executed
+runAllTests()
+    .then(success => {
+        console.log('\n' + '='.repeat(80));
+        if (success) {
+            console.log('🎉 ALL TESTS PASSED! 🎉');
+            console.log('='.repeat(80));
+            process.exit(0);
+        } else {
+            console.log('⚠️  SOME TESTS FAILED ⚠️');
+            console.log('='.repeat(80));
             process.exit(1);
-        });
-}
+        }
+    })
+    .catch(error => {
+        console.error('\n❌ TEST SUITE ERROR:', error);
+        process.exit(1);
+    });
 
 export {
     runAllTests,

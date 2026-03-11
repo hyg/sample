@@ -15,7 +15,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, chmodSync } from 'fs';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { createSDKConfig } from './config.js';
 
 const INDEX_SCHEMA_VERSION = 3;
@@ -414,7 +414,7 @@ export function scanLegacyLayout(config = null) {
     const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
 
     for (const file of jsonFiles) {
-        const filePath = path.join(rootDir, file);
+        const filePath = join(rootDir, file);
         if (file === INDEX_FILE_NAME) {
             continue;
         }
@@ -458,7 +458,7 @@ export function scanLegacyLayout(config = null) {
         if (!(credentialName in validCredentials)) {
             orphanE2eeFiles.push({
                 credential_name: credentialName,
-                file: path.basename(filePath)
+                file: basename(filePath)
             });
         }
     }

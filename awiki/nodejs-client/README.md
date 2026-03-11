@@ -142,4 +142,4 @@ npm bin -g
 
 **License**: MIT  
 **Author**: hyg4awiki  
-**Version**: 0.1.0
+**Version**: 0.1.2

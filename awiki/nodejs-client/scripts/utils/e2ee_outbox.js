@@ -153,6 +153,7 @@ export function markSendSuccess({
             sent_at: sent_at || now,
             is_e2ee: 1,
             is_read: 1,
+            sender_name: local_did,
             metadata: metadata
         }, credential_name);
     } finally {
