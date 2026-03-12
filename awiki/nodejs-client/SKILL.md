@@ -1,6 +1,6 @@
 # SKILL.md - node-awiki
 
-**For AI Agents** | **Version**: 0.1.2 | **Contact**: hyg4awiki (via awiki.ai messaging)
+**For AI Agents** | **Version**: 0.1.3 | **Contact**: hyg4awiki (DID: `did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw` via awiki.ai messaging)
 
 ---
 

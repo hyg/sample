@@ -552,6 +552,19 @@ function loadPrivateKeyFromPem(pemContent) {
     return Buffer.from(base64Content, 'base64');
 }
 
+/**
+ * Extract authentication credentials from identity.
+ * @param {Object} identity - Identity object
+ * @returns {Object} Authentication credentials
+ */
+export function extractAuthCredentials(identity) {
+    return {
+        did: identity.did,
+        jwt_token: identity.jwt_token,
+        privateKeyPem: identity.privateKeyPem
+    };
+}
+
 export default {
     saveIdentity,
     loadIdentity,
@@ -559,6 +572,7 @@ export default {
     deleteIdentity,
     updateJwt,
     createAuthenticator,
+    extractAuthCredentials,
     loadIndex,
     saveIndex,
     getIndexEntry,

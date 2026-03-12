@@ -90,6 +90,7 @@ export class DIDWbaAuthHeader {
 
         // Sign with secp256k1 (DER format)
         const signature = secp256k1.sign(content, privateKeyBytes);
+        // signature.r and signature.s are already BigInt
         const derSignature = encodeDerSignature(signature.r, signature.s);
 
         return Buffer.from(derSignature);

@@ -121,7 +121,7 @@ export async function authenticatedRpcCall(
             if (identity && identity.private_key_pem && identity.did_document) {
                 try {
                     // Obtain new JWT via DID WBA signature
-                    const { getJwtViaWba } = await import('../auth.js');
+                    const { getJwtViaWba } = await import('./auth.js');
                     const domain = 'awiki.ai';
                     
                     // Convert PEM to private key bytes
@@ -129,7 +129,7 @@ export async function authenticatedRpcCall(
                     const privateKeyBytes = loadPrivateKeyFromPem(identity.private_key_pem);
                     
                     const newJwt = await getJwtViaWba(
-                        serverUrl.replace(/\/.*$/, '/user-service/did-auth/rpc'),
+                        serverUrl,
                         identity.did_document,
                         privateKeyBytes,
                         domain

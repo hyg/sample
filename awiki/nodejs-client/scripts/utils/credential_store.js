@@ -40,7 +40,7 @@ import {
     readJsonIfExists,
     readTextIfExists
 } from './credential_layout.js';
-import { createSDKConfig } from './config.js';
+import { createSDKConfig, getMode } from './config.js';
 
 /**
  * Normalize bytes/Buffer content into a UTF-8 string.
@@ -405,12 +405,22 @@ export function backupIdentity(name, config = null) {
  * @returns {Promise<[Object, Object]|null>} [auth, data] or null
  */
 export async function createAuthenticator(name = 'default', config = null) {
-    const { DIDWbaAuthHeader } = await import('../src/utils/auth.js');
+    const { DIDWbaAuthHeader } = await import('../../src/utils/auth.js');
     
     const data = loadIdentity(name);
     
     if (data === null) {
         console.warn(`Cannot create authenticator: credential '${name}' not found`);
+        
+        // 调试模式: 尝试从备份路径加载
+        if (getMode() === 'debug') {
+            console.log('调试模式: 尝试从备份路径加载凭据...');
+            const backupData = await loadIdentityFromBackup(name);
+            if (backupData) {
+                return await createAuthenticatorFromBackup(backupData, config);
+            }
+        }
+        
         return null;
     }
     
@@ -440,6 +450,79 @@ export async function createAuthenticator(name = 'default', config = null) {
     }
     
     return [auth, data];
+}
+
+/**
+ * Load identity from backup path (debug mode only).
+ * @private
+ * @param {string} name - Credential name
+ * @returns {Promise<Object|null>} Identity data or null
+ */
+async function loadIdentityFromBackup(name) {
+    try {
+        const { readFileSync } = await import('fs');
+        
+        // hyg4awiki 的备份路径 (正常模式)
+        const credentialDir = 'C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw';
+        
+        const identityPath = `${credentialDir}\\identity.json`;
+        const didDocPath = `${credentialDir}\\did_document.json`;
+        const keyPath = `${credentialDir}\\key-1-private.pem`;
+        const authPath = `${credentialDir}\\auth.json`;
+        
+        const identityData = JSON.parse(readFileSync(identityPath, 'utf-8'));
+        const didDocument = JSON.parse(readFileSync(didDocPath, 'utf-8'));
+        const privateKey = readFileSync(keyPath, 'utf-8');
+        
+        let jwtToken = null;
+        try {
+            const authData = JSON.parse(readFileSync(authPath, 'utf-8'));
+            jwtToken = authData.jwt_token;
+        } catch (authError) {
+            console.log('auth.json 读取失败:', authError.message);
+        }
+        
+        return {
+            did: identityData.did,
+            uniqueId: identityData.unique_id,
+            userId: identityData.user_id,
+            privateKeyPem: privateKey,
+            did_document: didDocument,
+            jwt_token: jwtToken,
+            name: identityData.name
+        };
+    } catch (error) {
+        console.log('从备份路径加载失败:', error.message);
+        return null;
+    }
+}
+
+/**
+ * Create authenticator from backup data.
+ * @private
+ * @param {Object} backupData - Backup identity data
+ * @param {Object} config - SDKConfig instance
+ * @returns {Promise<[Object, Object]|null>} [auth, data] or null
+ */
+async function createAuthenticatorFromBackup(backupData, config) {
+    const { DIDWbaAuthHeader } = await import('../../src/utils/auth.js');
+    
+    // Create auth header instance
+    const auth = new DIDWbaAuthHeader(null, null);
+    
+    // Set credentials from loaded identity
+    if (backupData.did_document && backupData.privateKeyPem) {
+        const privateKeyBytes = loadPrivateKeyFromPem(backupData.privateKeyPem);
+        await auth.setCredentials(backupData.did_document, privateKeyBytes);
+    }
+    
+    // Pre-populate token cache if JWT exists
+    if (backupData.jwt_token && config) {
+        const serverUrl = config.user_service_url || 'https://awiki.ai';
+        auth.updateToken(serverUrl, { 'Authorization': `Bearer ${backupData.jwt_token}` });
+    }
+    
+    return [auth, backupData];
 }
 
 /**

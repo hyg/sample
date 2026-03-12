@@ -10,6 +10,7 @@
 import crypto from 'crypto';
 import { sha256 } from '@noble/hashes/sha256';
 import { secp256k1 } from '@noble/curves/secp256k1';
+import { p256 as ecdsaP256 } from '@noble/curves/p256';
 import { generateW3cProof } from '../w3c_proof.js';
 import { base58btc } from 'multiformats/bases/base58';
 
@@ -98,7 +99,7 @@ function createSecp256k1PublicKeyPem(publicKeyBytes) {
  * @param {Buffer|Uint8Array} data 
  * @returns {string}
  */
-function encodeBase64Url(data) {
+export function encodeBase64Url(data) {
     if (Buffer.isBuffer(data)) {
         return data.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
     }
@@ -431,6 +432,71 @@ export function loadPrivateKeyFromPem(pem) {
     return der.slice(privOffset, privOffset + 32);
 }
 
+// Alias for backward compatibility
+export const loadPrivateKey = loadPrivateKeyFromPem;
+
+/**
+ * Decode base64url string to bytes.
+ * @param {string} str - base64url encoded string
+ * @returns {Buffer}
+ */
+export function decodeBase64Url(str) {
+    // Add padding if needed
+    const pad = str.length % 4;
+    const padded = pad ? str + '='.repeat(4 - pad) : str;
+    // Replace - and _ with + and /
+    const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
+    return Buffer.from(base64, 'base64');
+}
+
+/**
+ * Generate E2EE handshake proof (P-256 signature).
+ */
+export function generateProof(sessionId, ephemeralPk, peerEphemeralPk, signingKey) {
+    // Create message to sign
+    const message = Buffer.concat([
+        Buffer.from(sessionId),
+        Buffer.from(ephemeralPk),
+        Buffer.from(peerEphemeralPk)
+    ]);
+    
+    // Sign with P-256
+    const signature = ecdsaP256.sign(message, signingKey);
+    
+    // Return proof object
+    return {
+        type: 'EcdsaSecp256r1Signature2019',
+        created: new Date().toISOString(),
+        verificationMethod: 'generated', // This should be the actual verification method
+        proofValue: signature.toDERHex()
+    };
+}
+
+/**
+ * Verify E2EE handshake proof (P-256 signature).
+ */
+export function verifyProof(sessionId, ephemeralPk, peerEphemeralPk, peerSigningKey, proof) {
+    if (!proof || !proof.proofValue) {
+        return false;
+    }
+    
+    // Create message to verify
+    const message = Buffer.concat([
+        Buffer.from(sessionId),
+        Buffer.from(ephemeralPk),
+        Buffer.from(peerEphemeralPk)
+    ]);
+    
+    try {
+        // Parse DER signature
+        const signature = ecdsaP256.Signature.fromDER(proof.proofValue);
+        // Verify
+        return ecdsaP256.verify(signature, message, peerSigningKey);
+    } catch (e) {
+        return false;
+    }
+}
+
 export default {
     createIdentity,
     generateE2eeKeys,
@@ -438,5 +504,6 @@ export default {
     privateKeyToPem,
     publicKeyToPem,
     loadPrivateKeyFromPem,
-    encodeBase64Url
+    encodeBase64Url,
+    decodeBase64Url
 };

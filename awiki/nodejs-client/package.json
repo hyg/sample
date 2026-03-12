@@ -1,6 +1,6 @@
 {
   "name": "node-awiki",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Node.js client for awiki.ai DID identity management, E2EE messaging, and social features",
   "type": "module",
   "main": "src/index.js",

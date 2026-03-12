@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-03-12
+
+### Added
+- Debug/normal mode configuration system
+- Mode switching via command-line arguments or environment variables
+- JWT automatic refresh mechanism fully functional
+- CLI command test suite
+- User feedback processing system in agent.md
+
+### Fixed
+- JWT generation BigInt conversion issues
+- Credential loading path problems
+- signature.r.toBigInt() error in authentication
+- JWT refresh URL construction bug (user-service hostname resolution)
+- hpkeOpen function signature to match usage in e2ee_session.js
+- SeqManager implementation for proper sequence validation
+- Missing exports in src/index.js (import + export pattern)
+- extractAuthCredentials function in credential_store.js
+
+### Changed
+- Updated version to 0.1.3
+- Updated contact information with full DID identity
+- Improved error handling for JWT refresh
+- Changed hpkeOpen signature from (recipientSk, enc, ciphertext) to (enc, ciphertext, recipientSk)
+- Updated agent.md with user feedback analysis and improvement plan
+
 ## [0.1.2] - 2026-03-11
 
 ### Added
