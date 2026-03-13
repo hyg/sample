@@ -420,35 +420,35 @@
     </div>
   </div>
 
-  <!-- Import Map for CDN dependencies -->
+  <!-- Import Map for local dependencies -->
   <script type="importmap">
   {
     "imports": {
-      "hpke-browser": "./hpke-browser.js",
-      "@noble/curves/x25519": "./node_modules/@noble/curves/esm/ed25519.js",
-      "@noble/curves/p256": "./node_modules/@noble/curves/esm/nist.js",
-      "@noble/hashes/hkdf": "./node_modules/@noble/hashes/esm/hkdf.js",
-      "@noble/hashes/hkdf.js": "./node_modules/@noble/hashes/esm/hkdf.js",
-      "@noble/hashes/sha256": "./node_modules/@noble/hashes/esm/sha256.js",
-      "@noble/hashes/sha256.js": "./node_modules/@noble/hashes/esm/sha256.js",
-      "@noble/hashes/hmac": "./node_modules/@noble/hashes/esm/hmac.js",
-      "@noble/hashes/hmac.js": "./node_modules/@noble/hashes/esm/hmac.js",
-      "@noble/hashes/utils": "./node_modules/@noble/hashes/esm/utils.js",
-      "@noble/hashes/utils.js": "./node_modules/@noble/hashes/esm/utils.js",
-      "@noble/hashes/sha2": "./node_modules/@noble/hashes/esm/sha2.js",
-      "@noble/hashes/sha2.js": "./node_modules/@noble/hashes/esm/sha2.js",
-      "@noble/hashes/sha3": "./node_modules/@noble/hashes/esm/sha3.js",
-      "@noble/hashes/sha3.js": "./node_modules/@noble/hashes/esm/sha3.js",
-      "@noble/hashes/_md": "./node_modules/@noble/hashes/esm/_md.js",
-      "@noble/hashes/_md.js": "./node_modules/@noble/hashes/esm/_md.js",
-      "@noble/hashes/_u64": "./node_modules/@noble/hashes/esm/_u64.js",
-      "@noble/hashes/_u64.js": "./node_modules/@noble/hashes/esm/_u64.js",
-      "@noble/hashes/_assert": "./node_modules/@noble/hashes/esm/_assert.js",
-      "@noble/hashes/_assert.js": "./node_modules/@noble/hashes/esm/_assert.js",
-      "@noble/hashes/crypto": "./node_modules/@noble/hashes/esm/crypto.js",
-      "@noble/hashes/crypto.js": "./node_modules/@noble/hashes/esm/crypto.js",
-      "@noble/hashes": "./noble-hashes.min.js",
-      "mqtt": "./node_modules/mqtt/dist/mqtt.esm.js"
+      "hpke-browser": "./e2ee/hpke-browser.js",
+      "@noble/curves/x25519": "./lib/curves/ed25519.js",
+      "@noble/curves/p256": "./lib/curves/nist.js",
+      "@noble/hashes/hkdf": "./lib/hashes/hkdf.js",
+      "@noble/hashes/hkdf.js": "./lib/hashes/hkdf.js",
+      "@noble/hashes/sha256": "./lib/hashes/sha256.js",
+      "@noble/hashes/sha256.js": "./lib/hashes/sha256.js",
+      "@noble/hashes/hmac": "./lib/hashes/hmac.js",
+      "@noble/hashes/hmac.js": "./lib/hashes/hmac.js",
+      "@noble/hashes/utils": "./lib/hashes/utils.js",
+      "@noble/hashes/utils.js": "./lib/hashes/utils.js",
+      "@noble/hashes/sha2": "./lib/hashes/sha2.js",
+      "@noble/hashes/sha2.js": "./lib/hashes/sha2.js",
+      "@noble/hashes/sha3": "./lib/hashes/sha3.js",
+      "@noble/hashes/sha3.js": "./lib/hashes/sha3.js",
+      "@noble/hashes/_md": "./lib/hashes/_md.js",
+      "@noble/hashes/_md.js": "./lib/hashes/_md.js",
+      "@noble/hashes/_u64": "./lib/hashes/_u64.js",
+      "@noble/hashes/_u64.js": "./lib/hashes/_u64.js",
+      "@noble/hashes/_assert": "./lib/hashes/_assert.js",
+      "@noble/hashes/_assert.js": "./lib/hashes/_assert.js",
+      "@noble/hashes/crypto": "./lib/hashes/crypto.js",
+      "@noble/hashes/crypto.js": "./lib/hashes/crypto.js",
+      "@noble/hashes": "./lib/hashes/index.js",
+      "mqtt": "./lib/mqtt.esm.js"
     }
   }
   </script>
