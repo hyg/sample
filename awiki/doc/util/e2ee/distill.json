@@ -1,0 +1,815 @@
+{
+  "module": "e2ee",
+  "sourceFile": "python/scripts/utils/e2ee.py",
+  "description": "E2EE 端到端加密客户端测试用例黄金标准",
+  "testCases": [
+    {
+      "name": "test_e2ee_client_init_with_keys",
+      "description": "E2EE 会话初始化 - 使用完整的密钥对初始化 E2eeClient",
+      "function": "E2eeClient.__init__",
+      "input": {
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "signing_pem": "-----BEGIN EC PRIVATE KEY-----\\nMHQCAQEEIBkg7... (secp256r1 私钥 PEM)",
+        "x25519_pem": "-----BEGIN PRIVATE KEY-----\\nMC4CAQAwBQYDK2VuBCIE... (X25519 私钥 PEM)"
+      },
+      "expectedOutput": {
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "_signing_key": "ec.EllipticCurvePrivateKey 对象",
+        "_x25519_key": "X25519PrivateKey 对象",
+        "_key_manager": "HpkeKeyManager 实例",
+        "_confirmed_session_ids": "set()"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_e2ee_client_init_without_keys",
+      "description": "E2EE 会话初始化 - 不提供密钥（用于仅接收场景）",
+      "function": "E2eeClient.__init__",
+      "input": {
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "signing_pem": null,
+        "x25519_pem": null
+      },
+      "expectedOutput": {
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "_signing_key": null,
+        "_x25519_key": null,
+        "_key_manager": "HpkeKeyManager 实例",
+        "_confirmed_session_ids": "set()"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_initiate_handshake_success",
+      "description": "E2EE 会话初始化 - 成功发起握手生成 e2ee_init 消息",
+      "function": "E2eeClient.initiate_handshake",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_peer456"
+      },
+      "expectedOutput": {
+        "msg_type": "e2ee_init",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "生成的 session_id",
+          "sender_did": "did:wba:awiki.ai:user:k1_test123",
+          "recipient_did": "did:wba:awiki.ai:user:k1_peer456",
+          "proof": "包含签名的 proof 对象"
+        }
+      },
+      "category": "integration"
+    },
+    {
+      "name": "test_initiate_handshake_missing_keys",
+      "description": "E2EE 会话初始化 - 缺少密钥时抛出 RuntimeError",
+      "function": "E2eeClient.initiate_handshake",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_peer456"
+      },
+      "precondition": "E2eeClient 初始化时 signing_pem 或 x25519_pem 为 null",
+      "expectedOutput": {
+        "error": "RuntimeError: Missing E2EE keys (signing_pem or x25519_pem), please recreate identity"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_initiate_handshake_peer_doc_not_found",
+      "description": "E2EE 会话初始化 - 无法获取对等方 DID 文档时抛出错误",
+      "function": "E2eeClient.initiate_handshake",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_invalid"
+      },
+      "expectedOutput": {
+        "error": "RuntimeError: Unable to retrieve peer DID document: did:wba:awiki.ai:user:k1_invalid"
+      },
+      "category": "integration"
+    },
+    {
+      "name": "test_encrypt_message_success",
+      "description": "消息加密 - 成功加密明文消息",
+      "function": "E2eeClient.encrypt_message",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_peer456",
+        "plaintext": "Hello, this is a secret message!",
+        "original_type": "text"
+      },
+      "precondition": "已存在与 peer_did 的活跃会话",
+      "expectedOutput": {
+        "msg_type": "e2ee_msg",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "活跃会话 ID",
+          "ciphertext": "base64 编码的密文",
+          "original_type": "text"
+        }
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_encrypt_message_no_session",
+      "description": "消息加密 - 没有活跃会话时抛出错误",
+      "function": "E2eeClient.encrypt_message",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_peer456",
+        "plaintext": "Hello!",
+        "original_type": "text"
+      },
+      "precondition": "不存在与 peer_did 的活跃会话",
+      "expectedOutput": {
+        "error": "RuntimeError: No active E2EE session with did:wba:awiki.ai:user:k1_peer456"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_decrypt_message_success",
+      "description": "消息解密 - 成功解密密文消息",
+      "function": "E2eeClient.decrypt_message",
+      "input": {
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "活跃会话 ID",
+          "ciphertext": "base64 编码的密文",
+          "original_type": "text"
+        }
+      },
+      "precondition": "session_id 对应的会话存在且活跃",
+      "expectedOutput": {
+        "original_type": "text",
+        "plaintext": "Hello, this is a secret message!"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_decrypt_message_missing_session_id",
+      "description": "消息解密 - 消息缺少 session_id 时抛出错误",
+      "function": "E2eeClient.decrypt_message",
+      "input": {
+        "content": {
+          "e2ee_version": "1.1",
+          "ciphertext": "base64 编码的密文"
+        }
+      },
+      "expectedOutput": {
+        "error": "RuntimeError: Message missing session_id"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_decrypt_message_session_not_found",
+      "description": "消息解密 - 找不到对应会话时抛出错误",
+      "function": "E2eeClient.decrypt_message",
+      "input": {
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "不存在的会话 ID",
+          "ciphertext": "base64 编码的密文"
+        }
+      },
+      "expectedOutput": {
+        "error": "RuntimeError: Cannot find session for session_id=不存在的会话 ID"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_process_e2ee_init_message",
+      "description": "消息处理 - 处理收到的 e2ee_init 消息并返回 e2ee_ack",
+      "function": "E2eeClient.process_e2ee_message",
+      "input": {
+        "msg_type": "e2ee_init",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "新会话 ID",
+          "sender_did": "did:wba:awiki.ai:user:k1_peer456",
+          "recipient_did": "did:wba:awiki.ai:user:k1_test123",
+          "proof": "签名 proof 对象"
+        }
+      },
+      "expectedOutput": {
+        "messages": [
+          {
+            "msg_type": "e2ee_ack",
+            "content": {
+              "e2ee_version": "1.1",
+              "session_id": "新会话 ID",
+              "sender_did": "did:wba:awiki.ai:user:k1_test123",
+              "recipient_did": "did:wba:awiki.ai:user:k1_peer456"
+            }
+          }
+        ]
+      },
+      "category": "integration"
+    },
+    {
+      "name": "test_process_e2ee_rekey_message",
+      "description": "消息处理 - 处理 e2ee_rekey 消息更新会话密钥",
+      "function": "E2eeClient.process_e2ee_message",
+      "input": {
+        "msg_type": "e2ee_rekey",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "现有会话 ID",
+          "sender_did": "did:wba:awiki.ai:user:k1_peer456",
+          "proof": "签名 proof 对象"
+        }
+      },
+      "precondition": "已存在与 sender_did 的活跃会话",
+      "expectedOutput": {
+        "messages": [
+          {
+            "msg_type": "e2ee_ack",
+            "content": "确认响应"
+          }
+        ]
+      },
+      "category": "integration"
+    },
+    {
+      "name": "test_process_e2ee_error_message_session_expired",
+      "description": "消息处理 - 处理 e2ee_error 并自动重新握手（可恢复错误）",
+      "function": "E2eeClient.process_e2ee_message",
+      "input": {
+        "msg_type": "e2ee_error",
+        "content": {
+          "e2ee_version": "1.1",
+          "error_code": "session_expired",
+          "session_id": "过期会话 ID"
+        }
+      },
+      "precondition": "session_id 对应的会话存在",
+      "expectedOutput": {
+        "messages": [
+          {
+            "msg_type": "e2ee_init",
+            "content": "新握手消息"
+          }
+        ],
+        "side_effect": "旧会话被移除"
+      },
+      "category": "scenario"
+    },
+    {
+      "name": "test_process_e2ee_unsupported_version",
+      "description": "消息处理 - 收到不支持的 E2EE 版本时返回错误",
+      "function": "E2eeClient.process_e2ee_message",
+      "input": {
+        "msg_type": "e2ee_init",
+        "content": {
+          "e2ee_version": "1.0",
+          "sender_did": "did:wba:awiki.ai:user:k1_peer456"
+        }
+      },
+      "expectedOutput": {
+        "messages": [
+          {
+            "msg_type": "e2ee_error",
+            "content": {
+              "e2ee_version": "1.1",
+              "error_code": "unsupported_version",
+              "required_e2ee_version": "1.1"
+            }
+          }
+        ]
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_has_active_session_true",
+      "description": "会话状态管理 - 检查活跃会话存在返回 true",
+      "function": "E2eeClient.has_active_session",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_peer456"
+      },
+      "precondition": "已与该 peer_did 建立活跃会话",
+      "expectedOutput": true,
+      "category": "unit"
+    },
+    {
+      "name": "test_has_active_session_false",
+      "description": "会话状态管理 - 检查活跃会话不存在返回 false",
+      "function": "E2eeClient.has_active_session",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_unknown"
+      },
+      "precondition": "未与该 peer_did 建立会话",
+      "expectedOutput": false,
+      "category": "unit"
+    },
+    {
+      "name": "test_ensure_active_session_auto_handshake",
+      "description": "会话状态管理 - 会话不存在时自动发起握手",
+      "function": "E2eeClient.ensure_active_session",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_peer456"
+      },
+      "precondition": "当前没有与该 peer 的活跃会话",
+      "expectedOutput": {
+        "messages": [
+          {
+            "msg_type": "e2ee_init",
+            "content": "握手消息"
+          }
+        ]
+      },
+      "category": "scenario"
+    },
+    {
+      "name": "test_ensure_active_session_exists",
+      "description": "会话状态管理 - 会话已存在时不执行操作",
+      "function": "E2eeClient.ensure_active_session",
+      "input": {
+        "peer_did": "did:wba:awiki.ai:user:k1_peer456"
+      },
+      "precondition": "已存在与该 peer 的活跃会话",
+      "expectedOutput": {
+        "messages": []
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_is_session_confirmed_true",
+      "description": "会话状态管理 - 检查会话已被远程确认",
+      "function": "E2eeClient.is_session_confirmed",
+      "input": {
+        "session_id": "已确认的会话 ID"
+      },
+      "precondition": "该 session_id 已在 _confirmed_session_ids 中",
+      "expectedOutput": true,
+      "category": "unit"
+    },
+    {
+      "name": "test_is_session_confirmed_false",
+      "description": "会话状态管理 - 检查会话未被确认",
+      "function": "E2eeClient.is_session_confirmed",
+      "input": {
+        "session_id": "未确认的会话 ID"
+      },
+      "precondition": "该 session_id 不在 _confirmed_session_ids 中",
+      "expectedOutput": false,
+      "category": "unit"
+    },
+    {
+      "name": "test_cleanup_expired_sessions",
+      "description": "会话状态管理 - 清理过期会话",
+      "function": "E2eeClient.cleanup_expired",
+      "input": {},
+      "expectedOutput": {
+        "side_effect": "过期的会话从 _key_manager 中移除"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_export_state_success",
+      "description": "状态导出/恢复 - 导出客户端状态用于持久化",
+      "function": "E2eeClient.export_state",
+      "input": {},
+      "precondition": "存在至少一个活跃会话",
+      "expectedOutput": {
+        "version": "hpke_v1",
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "signing_pem": "PEM 字符串",
+        "x25519_pem": "PEM 字符串",
+        "confirmed_session_ids": ["会话 ID 列表"],
+        "sessions": [
+          {
+            "session_id": "会话 ID",
+            "local_did": "本地 DID",
+            "peer_did": "对等方 DID",
+            "send_chain_key": "base64 编码",
+            "recv_chain_key": "base64 编码",
+            "send_seq": 0,
+            "recv_seq": 0,
+            "expires_at": "时间戳",
+            "created_at": "时间戳",
+            "active_at": "时间戳"
+          }
+        ]
+      },
+      "category": "integration"
+    },
+    {
+      "name": "test_from_state_restore_success",
+      "description": "状态导出/恢复 - 从导出状态恢复客户端",
+      "function": "E2eeClient.from_state",
+      "input": {
+        "state": {
+          "version": "hpke_v1",
+          "local_did": "did:wba:awiki.ai:user:k1_test123",
+          "signing_pem": "PEM 字符串",
+          "x25519_pem": "PEM 字符串",
+          "confirmed_session_ids": ["会话 ID"],
+          "sessions": [
+            {
+              "session_id": "会话 ID",
+              "local_did": "did:wba:awiki.ai:user:k1_test123",
+              "peer_did": "did:wba:awiki.ai:user:k1_peer456",
+              "send_chain_key": "base64 编码",
+              "recv_chain_key": "base64 编码",
+              "send_seq": 0,
+              "recv_seq": 0,
+              "expires_at": "未来时间戳",
+              "created_at": "时间戳",
+              "active_at": "时间戳"
+            }
+          ]
+        }
+      },
+      "expectedOutput": {
+        "type": "E2eeClient 实例",
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "sessions_restored": 1,
+        "confirmed_session_ids": ["会话 ID"]
+      },
+      "category": "integration"
+    },
+    {
+      "name": "test_from_state_old_format",
+      "description": "状态导出/恢复 - 检测旧格式状态并创建新客户端",
+      "function": "E2eeClient.from_state",
+      "input": {
+        "state": {
+          "local_did": "did:wba:awiki.ai:user:k1_test123",
+          "signing_pem": "PEM 字符串",
+          "x25519_pem": "PEM 字符串"
+        }
+      },
+      "precondition": "state 缺少 version 字段或版本不匹配",
+      "expectedOutput": {
+        "type": "E2eeClient 实例",
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "sessions_restored": 0,
+        "log_message": "Detected old E2EE state format, creating new client"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_ensure_supported_e2ee_version_valid",
+      "description": "错误处理 - 验证有效的 E2EE 版本",
+      "function": "ensure_supported_e2ee_version",
+      "input": {
+        "content": {
+          "e2ee_version": "1.1"
+        }
+      },
+      "expectedOutput": "1.1",
+      "category": "unit"
+    },
+    {
+      "name": "test_ensure_supported_e2ee_version_missing",
+      "description": "错误处理 - E2EE 版本缺失时抛出 ValueError",
+      "function": "ensure_supported_e2ee_version",
+      "input": {
+        "content": {}
+      },
+      "expectedOutput": {
+        "error": "ValueError: unsupported_version: missing e2ee_version (required 1.1)"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_ensure_supported_e2ee_version_mismatch",
+      "description": "错误处理 - E2EE 版本不匹配时抛出 ValueError",
+      "function": "ensure_supported_e2ee_version",
+      "input": {
+        "content": {
+          "e2ee_version": "1.0"
+        }
+      },
+      "expectedOutput": {
+        "error": "ValueError: unsupported_version: expected 1.1, got 1.0"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_build_e2ee_error_content_basic",
+      "description": "错误处理 - 构建基本错误内容",
+      "function": "build_e2ee_error_content",
+      "input": {
+        "error_code": "session_not_found"
+      },
+      "expectedOutput": {
+        "e2ee_version": "1.1",
+        "error_code": "session_not_found"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_build_e2ee_error_content_full",
+      "description": "错误处理 - 构建完整错误内容（包含所有可选字段）",
+      "function": "build_e2ee_error_content",
+      "input": {
+        "error_code": "decryption_failed",
+        "session_id": "会话 ID",
+        "failed_msg_id": "消息 ID",
+        "failed_server_seq": 100,
+        "retry_hint": "resend",
+        "message": "详细错误信息"
+      },
+      "expectedOutput": {
+        "e2ee_version": "1.1",
+        "error_code": "decryption_failed",
+        "session_id": "会话 ID",
+        "failed_msg_id": "消息 ID",
+        "failed_server_seq": 100,
+        "retry_hint": "resend",
+        "message": "详细错误信息"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_build_e2ee_error_message_session_expired",
+      "description": "错误处理 - 构建会话过期错误消息",
+      "function": "build_e2ee_error_message",
+      "input": {
+        "error_code": "session_expired"
+      },
+      "expectedOutput": "E2EE session has expired. Please rekey and resend the message.",
+      "category": "unit"
+    },
+    {
+      "name": "test_build_e2ee_error_message_with_detail",
+      "description": "错误处理 - 构建带详细信息的错误消息",
+      "function": "build_e2ee_error_message",
+      "input": {
+        "error_code": "decryption_failed",
+        "detail": "HPKE decapsulation failed"
+      },
+      "expectedOutput": "E2EE decryption failed on the receiver. You may resend the message or rekey and resend. Detail: HPKE decapsulation failed",
+      "category": "unit"
+    },
+    {
+      "name": "test_extract_proof_verification_method_snake_case",
+      "description": "兼容性处理 - 提取 snake_case 格式的 verification_method",
+      "function": "_extract_proof_verification_method",
+      "input": {
+        "proof": {
+          "verification_method": "did:wba:awiki.ai:user:k1_test123#key-2"
+        }
+      },
+      "expectedOutput": "did:wba:awiki.ai:user:k1_test123#key-2",
+      "category": "unit"
+    },
+    {
+      "name": "test_extract_proof_verification_method_camel_case",
+      "description": "兼容性处理 - 提取 camelCase 格式的 verificationMethod",
+      "function": "_extract_proof_verification_method",
+      "input": {
+        "proof": {
+          "verificationMethod": "did:wba:awiki.ai:user:k1_test123#key-2"
+        }
+      },
+      "expectedOutput": "did:wba:awiki.ai:user:k1_test123#key-2",
+      "category": "unit"
+    },
+    {
+      "name": "test_extract_proof_verification_method_invalid",
+      "description": "兼容性处理 - 处理无效的 proof 对象",
+      "function": "_extract_proof_verification_method",
+      "input": {
+        "proof": "not_a_dict"
+      },
+      "expectedOutput": "",
+      "category": "unit"
+    },
+    {
+      "name": "test_classify_protocol_error_proof_expired",
+      "description": "错误分类 - 识别 proof_expired 错误",
+      "function": "_classify_protocol_error",
+      "input": {
+        "exc": "ValueError('proof_expired')"
+      },
+      "expectedOutput": ["proof_expired", "resend"],
+      "category": "unit"
+    },
+    {
+      "name": "test_classify_protocol_error_unsupported_version",
+      "description": "错误分类 - 识别 unsupported_version 错误",
+      "function": "_classify_protocol_error",
+      "input": {
+        "exc": "ValueError('unsupported_version')"
+      },
+      "expectedOutput": ["unsupported_version", "drop"],
+      "category": "unit"
+    },
+    {
+      "name": "test_classify_protocol_error_unknown",
+      "description": "错误分类 - 未知错误返回 None",
+      "function": "_classify_protocol_error",
+      "input": {
+        "exc": "RuntimeError('unknown error')"
+      },
+      "expectedOutput": null,
+      "category": "unit"
+    },
+    {
+      "name": "test_process_e2ee_ack_success",
+      "description": "消息处理 - 成功处理 e2ee_ack 并确认会话",
+      "function": "E2eeClient.process_e2ee_message",
+      "input": {
+        "msg_type": "e2ee_ack",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "会话 ID",
+          "sender_did": "did:wba:awiki.ai:user:k1_peer456",
+          "recipient_did": "did:wba:awiki.ai:user:k1_test123",
+          "proof": "有效签名 proof"
+        }
+      },
+      "expectedOutput": {
+        "messages": [],
+        "side_effect": "session_id 添加到 _confirmed_session_ids"
+      },
+      "category": "integration"
+    },
+    {
+      "name": "test_process_e2ee_ack_recipient_mismatch",
+      "description": "消息处理 - e2ee_ack 接收者不匹配时忽略",
+      "function": "E2eeClient.process_e2ee_message",
+      "input": {
+        "msg_type": "e2ee_ack",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "会话 ID",
+          "sender_did": "did:wba:awiki.ai:user:k1_peer456",
+          "recipient_did": "did:wba:awiki.ai:user:k1_other"
+        }
+      },
+      "expectedOutput": {
+        "messages": [],
+        "log": "e2ee_ack recipient mismatch warning"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_process_e2ee_ack_proof_validation_failed",
+      "description": "消息处理 - e2ee_ack proof 验证失败时忽略",
+      "function": "E2eeClient.process_e2ee_message",
+      "input": {
+        "msg_type": "e2ee_ack",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "会话 ID",
+          "sender_did": "did:wba:awiki.ai:user:k1_peer456",
+          "recipient_did": "did:wba:awiki.ai:user:k1_test123",
+          "proof": "无效 proof"
+        }
+      },
+      "expectedOutput": {
+        "messages": [],
+        "log": "Failed to verify e2ee_ack warning"
+      },
+      "category": "unit"
+    },
+    {
+      "name": "test_export_session_inactive_returns_none",
+      "description": "状态导出 - 非活跃会话导出返回 None",
+      "function": "E2eeClient._export_session",
+      "input": {
+        "session": "state 为 PENDING 或 EXPIRED 的会话"
+      },
+      "expectedOutput": null,
+      "category": "unit"
+    },
+    {
+      "name": "test_restore_session_expired_returns_none",
+      "description": "状态恢复 - 过期会话恢复返回 None",
+      "function": "E2eeClient._restore_session",
+      "input": {
+        "data": {
+          "session_id": "会话 ID",
+          "local_did": "did:wba:awiki.ai:user:k1_test123",
+          "peer_did": "did:wba:awiki.ai:user:k1_peer456",
+          "send_chain_key": "base64",
+          "recv_chain_key": "base64",
+          "expires_at": "过去的时间戳"
+        }
+      },
+      "expectedOutput": null,
+      "category": "unit"
+    },
+    {
+      "name": "test_has_session_id_true",
+      "description": "会话状态管理 - 检查会话 ID 存在返回 true",
+      "function": "E2eeClient.has_session_id",
+      "input": {
+        "session_id": "存在的会话 ID"
+      },
+      "precondition": "该 session_id 已注册到 key_manager",
+      "expectedOutput": true,
+      "category": "unit"
+    },
+    {
+      "name": "test_has_session_id_false_null",
+      "description": "会话状态管理 - 检查 null 会话 ID 返回 false",
+      "function": "E2eeClient.has_session_id",
+      "input": {
+        "session_id": null
+      },
+      "expectedOutput": false,
+      "category": "unit"
+    },
+    {
+      "name": "test_has_session_id_false_empty",
+      "description": "会话状态管理 - 检查空字符串会话 ID 返回 false",
+      "function": "E2eeClient.has_session_id",
+      "input": {
+        "session_id": ""
+      },
+      "expectedOutput": false,
+      "category": "unit"
+    }
+  ],
+  "categories": {
+    "unit": "单元测试 - 测试单个函数/方法",
+    "integration": "集成测试 - 测试多个组件交互",
+    "scenario": "场景测试 - 测试完整业务流程"
+  },
+  "businessScenarios": [
+    {
+      "name": "E2EE 会话初始化",
+      "description": "客户端发起或接收 E2EE 会话握手，建立加密通道",
+      "testCases": [
+        "test_e2ee_client_init_with_keys",
+        "test_e2ee_client_init_without_keys",
+        "test_initiate_handshake_success",
+        "test_initiate_handshake_missing_keys",
+        "test_initiate_handshake_peer_doc_not_found",
+        "test_process_e2ee_init_message"
+      ]
+    },
+    {
+      "name": "消息加密/解密",
+      "description": "使用建立的会话加密发送消息和解密接收消息",
+      "testCases": [
+        "test_encrypt_message_success",
+        "test_encrypt_message_no_session",
+        "test_decrypt_message_success",
+        "test_decrypt_message_missing_session_id",
+        "test_decrypt_message_session_not_found"
+      ]
+    },
+    {
+      "name": "会话状态管理",
+      "description": "管理会话生命周期，包括检查、确认、清理和自动恢复",
+      "testCases": [
+        "test_has_active_session_true",
+        "test_has_active_session_false",
+        "test_ensure_active_session_auto_handshake",
+        "test_ensure_active_session_exists",
+        "test_is_session_confirmed_true",
+        "test_is_session_confirmed_false",
+        "test_cleanup_expired_sessions",
+        "test_has_session_id_true",
+        "test_has_session_id_false_null",
+        "test_has_session_id_false_empty"
+      ]
+    },
+    {
+      "name": "状态持久化",
+      "description": "导出和恢复 E2EE 客户端状态以支持跨进程使用",
+      "testCases": [
+        "test_export_state_success",
+        "test_from_state_restore_success",
+        "test_from_state_old_format",
+        "test_export_session_inactive_returns_none",
+        "test_restore_session_expired_returns_none"
+      ]
+    },
+    {
+      "name": "错误处理",
+      "description": "处理各种 E2EE 协议错误，包括版本不兼容、解密失败等",
+      "testCases": [
+        "test_ensure_supported_e2ee_version_valid",
+        "test_ensure_supported_e2ee_version_missing",
+        "test_ensure_supported_e2ee_version_mismatch",
+        "test_build_e2ee_error_content_basic",
+        "test_build_e2ee_error_content_full",
+        "test_build_e2ee_error_message_session_expired",
+        "test_build_e2ee_error_message_with_detail",
+        "test_classify_protocol_error_proof_expired",
+        "test_classify_protocol_error_unsupported_version",
+        "test_classify_protocol_error_unknown"
+      ]
+    },
+    {
+      "name": "消息处理流程",
+      "description": "处理各种类型的 E2EE 协议消息（init/rekey/ack/error）",
+      "testCases": [
+        "test_process_e2ee_init_message",
+        "test_process_e2ee_rekey_message",
+        "test_process_e2ee_error_message_session_expired",
+        "test_process_e2ee_unsupported_version",
+        "test_process_e2ee_ack_success",
+        "test_process_e2ee_ack_recipient_mismatch",
+        "test_process_e2ee_ack_proof_validation_failed"
+      ]
+    },
+    {
+      "name": "兼容性处理",
+      "description": "处理不同版本的协议字段格式（snake_case vs camelCase）",
+      "testCases": [
+        "test_extract_proof_verification_method_snake_case",
+        "test_extract_proof_verification_method_camel_case",
+        "test_extract_proof_verification_method_invalid"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+name: node-awiki-porting
+version: "1.0"
+
+agents:
+  - name: analyzer
+    input: python/
+    output: docs/
+    
+  - name: distiller
+    input: docs/analysis_result.yaml
+    output: distill/results/
+    depends_on: [analyzer]
+    
+  - name: porter
+    input: [python/, distill/results/]
+    output: dist/scripts/
+    depends_on: [distiller]
+    
+  - name: tester
+    input: dist/scripts/
+    output: test_report.json
+    depends_on: [porter]
+    
+  - name: debugger
+    trigger: test_report.json has failures
+    input: test_report.json
+    output: dist/scripts/
+    depends_on: [tester]
+    
+  - name: publisher
+    input: dist/
+    output: dist/ (cleaned)
+    depends_on: [tester, debugger]

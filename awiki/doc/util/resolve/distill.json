@@ -1,0 +1,440 @@
+{
+  "module": "python/scripts/utils/resolve.py",
+  "function": "resolve_to_did",
+  "description": "Handle-to-DID 解析工具，通过 .well-known/handle 端点将 handle 转换为 DID",
+  "test_cases": [
+    {
+      "id": "TC001",
+      "name": "DID 直接返回 - 标准 did:wba 格式",
+      "category": "DID 直接返回",
+      "input": {
+        "identifier": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g",
+        "config": null
+      },
+      "expected_output": {
+        "return": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g",
+        "http_call": false
+      },
+      "assertion": "identifier 以 'did:' 开头，直接返回，不发起 HTTP 请求"
+    },
+    {
+      "id": "TC002",
+      "name": "DID 直接返回 - 其他 DID 方法",
+      "category": "DID 直接返回",
+      "input": {
+        "identifier": "did:ethr:0x1234567890abcdef1234567890abcdef12345678",
+        "config": null
+      },
+      "expected_output": {
+        "return": "did:ethr:0x1234567890abcdef1234567890abcdef12345678",
+        "http_call": false
+      },
+      "assertion": "任何以 'did:' 开头的标识符都直接返回"
+    },
+    {
+      "id": "TC003",
+      "name": "DID 直接返回 - DID 包含路径",
+      "category": "DID 直接返回",
+      "input": {
+        "identifier": "did:wba:awiki.ai:user:k1_test#key-1",
+        "config": null
+      },
+      "expected_output": {
+        "return": "did:wba:awiki.ai:user:k1_test#key-1",
+        "http_call": false
+      },
+      "assertion": "DID 包含片段标识符也直接返回"
+    },
+    {
+      "id": "TC004",
+      "name": "Handle 解析 - 成功返回 active DID",
+      "category": "Handle 解析为 DID",
+      "input": {
+        "identifier": "alice",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active",
+          "did": "did:wba:awiki.ai:user:k1_alice123"
+        }
+      },
+      "expected_output": {
+        "return": "did:wba:awiki.ai:user:k1_alice123",
+        "http_call": true,
+        "url": "https://awiki.ai/user-service/.well-known/handle/alice"
+      },
+      "assertion": "handle 解析成功，返回响应的 DID"
+    },
+    {
+      "id": "TC005",
+      "name": "Handle 解析 - 带域名后缀自动剥离",
+      "category": "域名后缀处理",
+      "input": {
+        "identifier": "alice.awiki.ai",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active",
+          "did": "did:wba:awiki.ai:user:k1_alice123"
+        }
+      },
+      "expected_output": {
+        "return": "did:wba:awiki.ai:user:k1_alice123",
+        "http_call": true,
+        "url": "https://awiki.ai/user-service/.well-known/handle/alice"
+      },
+      "assertion": "自动剥离 awiki.ai 后缀，使用剥离后的 handle 请求"
+    },
+    {
+      "id": "TC006",
+      "name": "域名后缀处理 - awiki.test 环境",
+      "category": "域名后缀处理",
+      "input": {
+        "identifier": "bob.awiki.test",
+        "config": {
+          "user_service_url": "https://awiki.test",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active",
+          "did": "did:wba:awiki.test:user:k1_bob456"
+        }
+      },
+      "expected_output": {
+        "return": "did:wba:awiki.test:user:k1_bob456",
+        "http_call": true,
+        "url": "https://awiki.test/user-service/.well-known/handle/bob"
+      },
+      "assertion": "自动剥离 awiki.test 后缀"
+    },
+    {
+      "id": "TC007",
+      "name": "域名后缀处理 - 自定义 did_domain",
+      "category": "域名后缀处理",
+      "input": {
+        "identifier": "charlie.custom.domain",
+        "config": {
+          "user_service_url": "https://custom.domain",
+          "did_domain": "custom.domain"
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active",
+          "did": "did:wba:custom.domain:user:k1_charlie789"
+        }
+      },
+      "expected_output": {
+        "return": "did:wba:custom.domain:user:k1_charlie789",
+        "http_call": true,
+        "url": "https://custom.domain/user-service/.well-known/handle/charlie"
+      },
+      "assertion": "自定义 did_domain 也能正确剥离"
+    },
+    {
+      "id": "TC008",
+      "name": "域名后缀处理 - 多级子域名不剥离",
+      "category": "域名后缀处理",
+      "input": {
+        "identifier": "alice.sub.awiki.ai",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active",
+          "did": "did:wba:awiki.ai:user:k1_alice_sub"
+        }
+      },
+      "expected_output": {
+        "return": "did:wba:awiki.ai:user:k1_alice_sub",
+        "http_call": true,
+        "url": "https://awiki.ai/user-service/.well-known/handle/alice.sub"
+      },
+      "assertion": "只剥离精确匹配的域名后缀，多级子域名保留"
+    },
+    {
+      "id": "TC009",
+      "name": "错误处理 - Handle 不存在 (404)",
+      "category": "错误处理",
+      "input": {
+        "identifier": "nonexistent",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 404,
+        "json": {
+          "error": "Handle not found"
+        }
+      },
+      "expected_output": {
+        "exception": "ValueError",
+        "message": "Handle 'nonexistent' not found"
+      },
+      "assertion": "404 状态码抛出 ValueError"
+    },
+    {
+      "id": "TC010",
+      "name": "错误处理 - Handle 状态非 active",
+      "category": "错误处理",
+      "input": {
+        "identifier": "inactive_user",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "inactive",
+          "did": "did:wba:awiki.ai:user:k1_inactive"
+        }
+      },
+      "expected_output": {
+        "exception": "ValueError",
+        "message": "Handle 'inactive_user' is not active (status: inactive)"
+      },
+      "assertion": "status 不是 'active' 时抛出 ValueError"
+    },
+    {
+      "id": "TC011",
+      "name": "错误处理 - Handle 状态为 suspended",
+      "category": "错误处理",
+      "input": {
+        "identifier": "suspended_user",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "suspended",
+          "did": "did:wba:awiki.ai:user:k1_suspended"
+        }
+      },
+      "expected_output": {
+        "exception": "ValueError",
+        "message": "Handle 'suspended_user' is not active (status: suspended)"
+      },
+      "assertion": "suspended 状态也视为非 active"
+    },
+    {
+      "id": "TC012",
+      "name": "错误处理 - 响应无 DID 字段",
+      "category": "错误处理",
+      "input": {
+        "identifier": "no_did_user",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active"
+        }
+      },
+      "expected_output": {
+        "exception": "ValueError",
+        "message": "Handle 'no_did_user' has no DID binding"
+      },
+      "assertion": "响应中没有 did 字段时抛出 ValueError"
+    },
+    {
+      "id": "TC013",
+      "name": "错误处理 - DID 字段为空字符串",
+      "category": "错误处理",
+      "input": {
+        "identifier": "empty_did_user",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active",
+          "did": ""
+        }
+      },
+      "expected_output": {
+        "exception": "ValueError",
+        "message": "Handle 'empty_did_user' has no DID binding"
+      },
+      "assertion": "did 字段为空字符串时也视为无 DID 绑定"
+    },
+    {
+      "id": "TC014",
+      "name": "错误处理 - HTTP 服务器错误 (500)",
+      "category": "错误处理",
+      "input": {
+        "identifier": "error_user",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 500,
+        "text": "Internal Server Error"
+      },
+      "expected_output": {
+        "exception": "httpx.HTTPStatusError",
+        "message": "500 Internal Server Error"
+      },
+      "assertion": "5xx 错误由 resp.raise_for_status() 抛出 HTTPStatusError"
+    },
+    {
+      "id": "TC015",
+      "name": "错误处理 - HTTP 客户端错误 (400)",
+      "category": "错误处理",
+      "input": {
+        "identifier": "bad_request",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 400,
+        "json": {
+          "error": "Bad request"
+        }
+      },
+      "expected_output": {
+        "exception": "httpx.HTTPStatusError",
+        "message": "400 Bad Request"
+      },
+      "assertion": "4xx 错误 (非 404) 由 resp.raise_for_status() 抛出 HTTPStatusError"
+    },
+    {
+      "id": "TC016",
+      "name": "配置处理 - config 为 None 使用默认",
+      "category": "配置处理",
+      "input": {
+        "identifier": "alice",
+        "config": null
+      },
+      "expected_output": {
+        "uses_default_config": true
+      },
+      "assertion": "config 为 None 时创建默认 SDKConfig 实例"
+    },
+    {
+      "id": "TC017",
+      "name": "边界情况 - 空字符串 handle",
+      "category": "边界情况",
+      "input": {
+        "identifier": "",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 404,
+        "json": {
+          "error": "Handle not found"
+        }
+      },
+      "expected_output": {
+        "exception": "ValueError",
+        "message": "Handle '' not found"
+      },
+      "assertion": "空字符串作为 handle 处理，预期 404"
+    },
+    {
+      "id": "TC018",
+      "name": "边界情况 - 仅域名无 handle",
+      "category": "边界情况",
+      "input": {
+        "identifier": "awiki.ai",
+        "config": {
+          "user_service_url": "https://awiki.ai",
+          "did_domain": null
+        }
+      },
+      "mock_response": {
+        "status_code": 200,
+        "json": {
+          "status": "active",
+          "did": "did:wba:awiki.ai:user:k1_domain"
+        }
+      },
+      "expected_output": {
+        "return": "did:wba:awiki.ai:user:k1_domain",
+        "http_call": true,
+        "url": "https://awiki.ai/user-service/.well-known/handle/awiki.ai"
+      },
+      "assertion": "纯域名不匹配后缀模式，作为 handle 处理"
+    }
+  ],
+  "coverage_summary": {
+    "total_cases": 18,
+    "categories": {
+      "DID 直接返回": 3,
+      "Handle 解析为 DID": 1,
+      "域名后缀处理": 4,
+      "错误处理": 7,
+      "配置处理": 1,
+      "边界情况": 2
+    },
+    "scenarios_covered": [
+      "DID 标识符直接返回（不发起 HTTP 请求）",
+      "Handle 通过 HTTP 请求解析为 DID",
+      "awiki.ai 域名后缀自动剥离",
+      "awiki.test 域名后缀自动剥离",
+      "自定义 did_domain 后缀剥离",
+      "多级子域名不剥离",
+      "Handle 不存在 (404) 错误",
+      "Handle 状态非 active 错误",
+      "响应无 DID 绑定错误",
+      "HTTP 服务器错误 (5xx)",
+      "HTTP 客户端错误 (4xx)",
+      "config 为 None 使用默认配置",
+      "空字符串边界情况",
+      "纯域名边界情况"
+    ]
+  },
+  "test_dependencies": {
+    "modules": [
+      "utils.resolve",
+      "utils.config",
+      "utils.client"
+    ],
+    "external": [
+      "httpx"
+    ],
+    "mock_required": [
+      "httpx.AsyncClient",
+      "httpx.Response"
+    ]
+  },
+  "generated_at": "2026-03-16",
+  "generator": "distiller-agent"
+}

@@ -1,0 +1,482 @@
+{
+  "meta": {
+    "source_file": "D:\\huangyg\\git\\sample\\awiki\\python\\scripts\\utils\\ws.py",
+    "library": "websockets",
+    "version": "16.0",
+    "analysis_date": "2026-03-16",
+    "total_test_cases": 24
+  },
+  "websockets_api_usage": {
+    "imports": [
+      "import websockets",
+      "from websockets.asyncio.client import ClientConnection"
+    ],
+    "api_calls": [
+      "websockets.connect(url, ssl=ssl_context)",
+      "self._conn.send(json.dumps(request))",
+      "self._conn.recv()",
+      "self._conn.close()"
+    ],
+    "types_used": [
+      "ClientConnection"
+    ]
+  },
+  "business_scenarios": {
+    "connection": {
+      "description": "WebSocket 连接建立",
+      "methods": ["connect"],
+      "features": [
+        "JWT token 认证",
+        "HTTP 到 WebSocket URL 转换",
+        "SSL/TLS 配置"
+      ]
+    },
+    "messaging": {
+      "description": "发送/接收消息",
+      "methods": ["send_rpc", "send_message", "receive", "receive_notification"],
+      "features": [
+        "JSON-RPC 协议",
+        "自动请求 ID 管理",
+        "推送通知过滤",
+        "超时处理"
+      ]
+    },
+    "heartbeat": {
+      "description": "心跳检测",
+      "methods": ["ping"],
+      "features": [
+        "应用层心跳",
+        "pong 响应验证"
+      ]
+    },
+    "cleanup": {
+      "description": "连接关闭",
+      "methods": ["close", "__aexit__"],
+      "features": [
+        "手动关闭",
+        "上下文管理器自动关闭"
+      ]
+    },
+    "error_handling": {
+      "description": "错误处理",
+      "methods": ["all"],
+      "features": [
+        "未连接错误",
+        "JWT token 缺失",
+        "JSON-RPC 错误响应",
+        "超时异常"
+      ]
+    }
+  },
+  "test_cases": [
+    {
+      "id": "TC001",
+      "category": "连接建立",
+      "name": "test_connect_success",
+      "description": "测试正常建立 WebSocket 连接",
+      "websockets_api": "websockets.connect",
+      "preconditions": [
+        "有效的 SDKConfig 配置",
+        "有效的 DIDIdentity 且包含 jwt_token",
+        "WebSocket 服务端可用"
+      ],
+      "steps": [
+        "创建 WsClient 实例",
+        "调用 ws.connect()",
+        "验证连接状态"
+      ],
+      "expected": "连接成功建立，_conn 不为 None",
+      "mock_points": ["websockets.connect 返回 mock ClientConnection"]
+    },
+    {
+      "id": "TC002",
+      "category": "连接建立",
+      "name": "test_connect_missing_jwt",
+      "description": "测试 JWT token 缺失时的错误处理",
+      "websockets_api": "connect",
+      "preconditions": [
+        "有效的 SDKConfig 配置",
+        "DIDIdentity 的 jwt_token 为空"
+      ],
+      "steps": [
+        "创建 WsClient 实例",
+        "调用 ws.connect()"
+      ],
+      "expected": "抛出 ValueError，提示 'identity missing jwt_token'",
+      "mock_points": []
+    },
+    {
+      "id": "TC003",
+      "category": "连接建立",
+      "name": "test_connect_url_conversion_http",
+      "description": "测试 HTTP URL 转换为 WebSocket URL",
+      "websockets_api": "websockets.connect",
+      "preconditions": [
+        "molt_message_url 为 'https://example.com/api'"
+      ],
+      "steps": [
+        "创建 WsClient 实例",
+        "调用 ws.connect()",
+        "检查传递给 websockets.connect 的 URL"
+      ],
+      "expected": "URL 转换为 'wss://example.com/api/message/ws?token=xxx'",
+      "mock_points": ["websockets.connect 捕获调用参数"]
+    },
+    {
+      "id": "TC004",
+      "category": "连接建立",
+      "name": "test_connect_url_already_ws",
+      "description": "测试 ws://开头的 URL 不被重复转换",
+      "websockets_api": "websockets.connect",
+      "preconditions": [
+        "molt_message_ws_url 为 'ws://example.com/ws'"
+      ],
+      "steps": [
+        "创建 WsClient 实例",
+        "调用 ws.connect()",
+        "检查传递给 websockets.connect 的 URL"
+      ],
+      "expected": "URL 保持 'ws://example.com/ws/message/ws?token=xxx'",
+      "mock_points": ["websockets.connect 捕获调用参数"]
+    },
+    {
+      "id": "TC005",
+      "category": "连接建立",
+      "name": "test_connect_ssl_context",
+      "description": "测试 SSL 上下文的正确配置",
+      "websockets_api": "websockets.connect",
+      "preconditions": [
+        "wss:// URL",
+        "配置了自定义 SSL 上下文"
+      ],
+      "steps": [
+        "创建 WsClient 实例",
+        "调用 ws.connect()",
+        "检查 ssl 参数"
+      ],
+      "expected": "websockets.connect 接收到正确的 ssl_context 参数",
+      "mock_points": ["websockets.connect 捕获调用参数", "_resolve_verify 返回 mock SSLContext"]
+    },
+    {
+      "id": "TC006",
+      "category": "连接建立",
+      "name": "test_connect_context_manager",
+      "description": "测试异步上下文管理器自动连接",
+      "websockets_api": "websockets.connect",
+      "preconditions": [
+        "有效的配置和身份"
+      ],
+      "steps": [
+        "使用 'async with WsClient(...) as ws:' 语法",
+        "验证进入上下文时已连接"
+      ],
+      "expected": "__aenter__ 自动调用 connect()，连接已建立",
+      "mock_points": ["websockets.connect 返回 mock ClientConnection"]
+    },
+    {
+      "id": "TC007",
+      "category": "发送消息",
+      "name": "test_send_rpc_success",
+      "description": "测试成功发送 JSON-RPC 请求并接收响应",
+      "websockets_api": "send/recv",
+      "preconditions": [
+        "已建立 WebSocket 连接"
+      ],
+      "steps": [
+        "调用 ws.send_rpc('testMethod', {'param': 'value'})",
+        "模拟服务端返回匹配 id 的响应"
+      ],
+      "expected": "返回响应中的 result 字段内容",
+      "mock_points": ["_conn.send 验证发送内容", "_conn.recv 返回 mock 响应"]
+    },
+    {
+      "id": "TC008",
+      "category": "发送消息",
+      "name": "test_send_rpc_not_connected",
+      "description": "测试未连接时发送 RPC 的错误处理",
+      "websockets_api": "send_rpc",
+      "preconditions": [
+        "WsClient 未调用 connect()"
+      ],
+      "steps": [
+        "调用 ws.send_rpc('testMethod')"
+      ],
+      "expected": "抛出 RuntimeError，提示 'WebSocket not connected'",
+      "mock_points": []
+    },
+    {
+      "id": "TC009",
+      "category": "发送消息",
+      "name": "test_send_rpc_skip_notifications",
+      "description": "测试发送 RPC 时跳过推送通知",
+      "websockets_api": "recv",
+      "preconditions": [
+        "已建立连接",
+        "服务端先返回通知后返回响应"
+      ],
+      "steps": [
+        "调用 ws.send_rpc('testMethod')",
+        "模拟 _conn.recv 先返回无 id 的通知",
+        "再返回匹配 id 的响应"
+      ],
+      "expected": "忽略通知，返回正确的响应结果",
+      "mock_points": ["_conn.recv 多次调用返回不同数据"]
+    },
+    {
+      "id": "TC010",
+      "category": "发送消息",
+      "name": "test_send_rpc_error_response",
+      "description": "测试 JSON-RPC 错误响应的处理",
+      "websockets_api": "send_rpc",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.send_rpc('testMethod')",
+        "模拟服务端返回 error 响应"
+      ],
+      "expected": "抛出 RuntimeError，包含错误 code 和 message",
+      "mock_points": ["_conn.recv 返回 error 响应"]
+    },
+    {
+      "id": "TC011",
+      "category": "发送消息",
+      "name": "test_send_message_auto_client_msg_id",
+      "description": "测试 send_message 自动生成 client_msg_id",
+      "websockets_api": "send_rpc",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.send_message(content='Hello', receiver_did='did:xxx')",
+        "不指定 client_msg_id"
+      ],
+      "expected": "自动生成 uuid4 格式的 client_msg_id 并发送",
+      "mock_points": ["send_rpc 验证 params 包含 client_msg_id"]
+    },
+    {
+      "id": "TC012",
+      "category": "发送消息",
+      "name": "test_send_message_custom_client_msg_id",
+      "description": "测试 send_message 使用自定义 client_msg_id",
+      "websockets_api": "send_rpc",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.send_message(content='Hello', client_msg_id='custom-id-123')"
+      ],
+      "expected": "使用指定的 client_msg_id 发送",
+      "mock_points": ["send_rpc 验证 params 包含自定义 client_msg_id"]
+    },
+    {
+      "id": "TC013",
+      "category": "发送消息",
+      "name": "test_send_message_with_receiver_did",
+      "description": "测试 send_message 指定 receiver_did",
+      "websockets_api": "send_rpc",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.send_message(content='Hello', receiver_did='did:wba:xxx')"
+      ],
+      "expected": "params 包含 receiver_did 字段",
+      "mock_points": ["send_rpc 验证 params"]
+    },
+    {
+      "id": "TC014",
+      "category": "发送消息",
+      "name": "test_send_message_with_group_params",
+      "description": "测试 send_message 指定群组参数",
+      "websockets_api": "send_rpc",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.send_message(content='Hello', group_did='group:xxx', group_id='123')"
+      ],
+      "expected": "params 包含 group_did 和 group_id 字段",
+      "mock_points": ["send_rpc 验证 params"]
+    },
+    {
+      "id": "TC015",
+      "category": "发送消息",
+      "name": "test_send_message_with_title",
+      "description": "测试 send_message 指定 title 参数",
+      "websockets_api": "send_rpc",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.send_message(content='Hello', title='Test Title')"
+      ],
+      "expected": "params 包含 title 字段",
+      "mock_points": ["send_rpc 验证 params"]
+    },
+    {
+      "id": "TC016",
+      "category": "接收消息",
+      "name": "test_receive_success",
+      "description": "测试成功接收消息",
+      "websockets_api": "recv",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.receive(timeout=5.0)",
+        "模拟 _conn.recv 返回 JSON 消息"
+      ],
+      "expected": "返回解析后的 JSON 消息字典",
+      "mock_points": ["_conn.recv 返回 mock 消息"]
+    },
+    {
+      "id": "TC017",
+      "category": "接收消息",
+      "name": "test_receive_timeout",
+      "description": "测试接收消息超时处理",
+      "websockets_api": "recv",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.receive(timeout=0.1)",
+        "模拟 _conn.recv 超时"
+      ],
+      "expected": "返回 None，不抛出异常",
+      "mock_points": ["asyncio.wait_for 抛出 TimeoutError"]
+    },
+    {
+      "id": "TC018",
+      "category": "接收消息",
+      "name": "test_receive_not_connected",
+      "description": "测试未连接时接收消息的错误处理",
+      "websockets_api": "receive",
+      "preconditions": [
+        "WsClient 未调用 connect()"
+      ],
+      "steps": [
+        "调用 ws.receive()"
+      ],
+      "expected": "抛出 RuntimeError，提示 'WebSocket not connected'",
+      "mock_points": []
+    },
+    {
+      "id": "TC019",
+      "category": "接收消息",
+      "name": "test_receive_notification_success",
+      "description": "测试成功接收推送通知（过滤响应消息）",
+      "websockets_api": "recv",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.receive_notification(timeout=5.0)",
+        "模拟先返回有 id 的响应消息",
+        "再返回无 id 的通知消息"
+      ],
+      "expected": "跳过响应消息，返回通知消息",
+      "mock_points": ["_conn.recv 多次调用返回不同数据"]
+    },
+    {
+      "id": "TC020",
+      "category": "接收消息",
+      "name": "test_receive_notification_timeout",
+      "description": "测试接收通知超时",
+      "websockets_api": "recv",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.receive_notification(timeout=0.1)",
+        "模拟持续返回有 id 的响应或超时"
+      ],
+      "expected": "超时后返回 None",
+      "mock_points": ["asyncio.wait_for 抛出 TimeoutError"]
+    },
+    {
+      "id": "TC021",
+      "category": "心跳检测",
+      "name": "test_ping_success",
+      "description": "测试心跳检测成功",
+      "websockets_api": "send/recv",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.ping()",
+        "模拟服务端返回 pong 响应"
+      ],
+      "expected": "返回 True",
+      "mock_points": ["_conn.recv 返回 {'method': 'pong'}"]
+    },
+    {
+      "id": "TC022",
+      "category": "心跳检测",
+      "name": "test_ping_not_connected",
+      "description": "测试未连接时心跳的错误处理",
+      "websockets_api": "ping",
+      "preconditions": [
+        "WsClient 未调用 connect()"
+      ],
+      "steps": [
+        "调用 ws.ping()"
+      ],
+      "expected": "抛出 RuntimeError，提示 'WebSocket not connected'",
+      "mock_points": []
+    },
+    {
+      "id": "TC023",
+      "category": "连接关闭",
+      "name": "test_close_success",
+      "description": "测试正常关闭连接",
+      "websockets_api": "close",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "调用 ws.close()",
+        "验证 _conn 状态"
+      ],
+      "expected": "调用 _conn.close()，_conn 置为 None",
+      "mock_points": ["_conn.close 验证被调用"]
+    },
+    {
+      "id": "TC024",
+      "category": "连接关闭",
+      "name": "test_close_context_manager",
+      "description": "测试上下文管理器退出时自动关闭",
+      "websockets_api": "close",
+      "preconditions": [
+        "已建立连接"
+      ],
+      "steps": [
+        "使用 'async with WsClient(...) as ws:' 语法",
+        "退出上下文"
+      ],
+      "expected": "__aexit__ 自动调用 close() 关闭连接",
+      "mock_points": ["_conn.close 验证被调用"]
+    }
+  ],
+  "coverage_summary": {
+    "websockets_functions": {
+      "websockets.connect": 5,
+      "ClientConnection.send": 6,
+      "ClientConnection.recv": 8,
+      "ClientConnection.close": 2
+    },
+    "business_scenarios": {
+      "连接建立": 6,
+      "发送消息": 9,
+      "接收消息": 5,
+      "心跳检测": 2,
+      "连接关闭": 2
+    },
+    "error_scenarios": {
+      "JWT token 缺失": 1,
+      "未连接错误": 4,
+      "超时处理": 2,
+      "JSON-RPC 错误": 1
+    }
+  }
+}

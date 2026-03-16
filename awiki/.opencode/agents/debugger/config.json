@@ -1,0 +1,11 @@
+{
+  "name": "debugger",
+  "description": "修复 Bug",
+  "input": "test_report.json",
+  "output": "dist/scripts/",
+  "trigger": "tester.has_failures",
+  "lifecycle": {
+    "create": "测试失败时",
+    "delete": "修复验证后"
+  }
+}

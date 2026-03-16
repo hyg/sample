@@ -1,0 +1,318 @@
+{
+  "module": "python/scripts/utils/client.py",
+  "description": "httpx AsyncClient 工厂模块，提供预配置的 HTTP 客户端创建功能",
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "name": "TLS 验证 - AWIKI_CA_BUNDLE 环境变量优先",
+      "scenario": "TLS 验证配置",
+      "description": "当 AWIKI_CA_BUNDLE 环境变量指向有效的 CA 证书文件时，应使用该证书进行 TLS 验证",
+      "precondition": "设置环境变量 AWIKI_CA_BUNDLE=/path/to/ca.pem，且文件存在",
+      "input": {
+        "env": {
+          "AWIKI_CA_BUNDLE": "/path/to/ca.pem"
+        },
+        "base_url": "https://awiki.ai"
+      },
+      "expected_output": {
+        "verify_type": "ssl.SSLContext",
+        "cafile": "/path/to/ca.pem"
+      },
+      "assertion": "_resolve_verify() 返回 ssl.SSLContext 对象，且使用该 CA 文件"
+    },
+    {
+      "id": "TC-002",
+      "name": "TLS 验证 - E2E_CA_BUNDLE 环境变量次优先",
+      "scenario": "TLS 验证配置",
+      "description": "当 AWIKI_CA_BUNDLE 未设置但 E2E_CA_BUNDLE 指向有效 CA 证书时，应使用该证书",
+      "precondition": "设置环境变量 E2E_CA_BUNDLE=/path/to/ca.pem，且文件存在；AWIKI_CA_BUNDLE 未设置",
+      "input": {
+        "env": {
+          "E2E_CA_BUNDLE": "/path/to/ca.pem"
+        },
+        "base_url": "https://awiki.ai"
+      },
+      "expected_output": {
+        "verify_type": "ssl.SSLContext",
+        "cafile": "/path/to/ca.pem"
+      },
+      "assertion": "_resolve_verify() 返回 ssl.SSLContext 对象，且使用该 CA 文件"
+    },
+    {
+      "id": "TC-003",
+      "name": "TLS 验证 - SSL_CERT_FILE 环境变量最低优先",
+      "scenario": "TLS 验证配置",
+      "description": "当 AWIKI_CA_BUNDLE 和 E2E_CA_BUNDLE 未设置但 SSL_CERT_FILE 指向有效 CA 证书时，应使用该证书",
+      "precondition": "设置环境变量 SSL_CERT_FILE=/path/to/ca.pem，且文件存在；其他 CA 环境变量未设置",
+      "input": {
+        "env": {
+          "SSL_CERT_FILE": "/path/to/ca.pem"
+        },
+        "base_url": "https://awiki.ai"
+      },
+      "expected_output": {
+        "verify_type": "ssl.SSLContext",
+        "cafile": "/path/to/ca.pem"
+      },
+      "assertion": "_resolve_verify() 返回 ssl.SSLContext 对象，且使用该 CA 文件"
+    },
+    {
+      "id": "TC-004",
+      "name": "TLS 验证 - 本地.test 域名自动检测 mkcert",
+      "scenario": "TLS 验证配置",
+      "description": "当访问 *.test 域名时，自动检测并使用 mkcert 根证书进行 TLS 验证",
+      "precondition": "macOS 系统，mkcert 根证书存在于 ~/Library/Application Support/mkcert/rootCA.pem",
+      "input": {
+        "env": {},
+        "base_url": "https://api.test"
+      },
+      "expected_output": {
+        "verify_type": "ssl.SSLContext",
+        "cafile": "~/Library/Application Support/mkcert/rootCA.pem"
+      },
+      "assertion": "_resolve_verify() 返回 ssl.SSLContext 对象，且使用 mkcert 根证书"
+    },
+    {
+      "id": "TC-005",
+      "name": "TLS 验证 - localhost 域名自动检测 mkcert",
+      "scenario": "TLS 验证配置",
+      "description": "当访问 localhost 时，自动检测并使用 mkcert 根证书进行 TLS 验证",
+      "precondition": "macOS 系统，mkcert 根证书存在于 ~/Library/Application Support/mkcert/rootCA.pem",
+      "input": {
+        "env": {},
+        "base_url": "https://localhost:8080"
+      },
+      "expected_output": {
+        "verify_type": "ssl.SSLContext",
+        "cafile": "~/Library/Application Support/mkcert/rootCA.pem"
+      },
+      "assertion": "_resolve_verify() 返回 ssl.SSLContext 对象，且使用 mkcert 根证书"
+    },
+    {
+      "id": "TC-006",
+      "name": "TLS 验证 - 普通域名使用系统默认验证",
+      "scenario": "TLS 验证配置",
+      "description": "当访问普通域名且无自定义 CA 配置时，使用系统默认证书验证",
+      "precondition": "无 CA 环境变量，非本地域名",
+      "input": {
+        "env": {},
+        "base_url": "https://awiki.ai"
+      },
+      "expected_output": {
+        "verify_type": "bool",
+        "value": true
+      },
+      "assertion": "_resolve_verify() 返回 True，使用系统默认证书验证"
+    },
+    {
+      "id": "TC-007",
+      "name": "TLS 验证 - CA 文件不存在时降级",
+      "scenario": "TLS 验证配置",
+      "description": "当环境变量指向的 CA 文件不存在时，应降级到下一个优先级或默认验证",
+      "precondition": "AWIKI_CA_BUNDLE 指向不存在的文件",
+      "input": {
+        "env": {
+          "AWIKI_CA_BUNDLE": "/nonexistent/ca.pem"
+        },
+        "base_url": "https://awiki.ai"
+      },
+      "expected_output": {
+        "verify_type": "bool",
+        "value": true
+      },
+      "assertion": "_resolve_verify() 返回 True，忽略无效的 CA 文件路径"
+    },
+    {
+      "id": "TC-008",
+      "name": "user-service 客户端 - 默认配置创建",
+      "scenario": "user-service 客户端创建",
+      "description": "使用默认配置创建 user-service 客户端",
+      "precondition": "SDKConfig 使用默认值",
+      "input": {
+        "config": {
+          "user_service_url": "https://awiki.ai"
+        }
+      },
+      "expected_output": {
+        "client_type": "httpx.AsyncClient",
+        "base_url": "https://awiki.ai",
+        "timeout": 30.0,
+        "trust_env": false
+      },
+      "assertion": "客户端正确配置 base_url、timeout 和 trust_env"
+    },
+    {
+      "id": "TC-009",
+      "name": "user-service 客户端 - 自定义 URL 创建",
+      "scenario": "user-service 客户端创建",
+      "description": "使用自定义 URL 创建 user-service 客户端",
+      "precondition": "SDKConfig 配置自定义 user_service_url",
+      "input": {
+        "config": {
+          "user_service_url": "https://custom-user-service.example.com"
+        }
+      },
+      "expected_output": {
+        "client_type": "httpx.AsyncClient",
+        "base_url": "https://custom-user-service.example.com",
+        "timeout": 30.0,
+        "trust_env": false
+      },
+      "assertion": "客户端 base_url 正确设置为自定义 URL"
+    },
+    {
+      "id": "TC-010",
+      "name": "user-service 客户端 - TLS 验证配置继承",
+      "scenario": "user-service 客户端创建",
+      "description": "user-service 客户端应正确继承 _resolve_verify 的 TLS 配置",
+      "precondition": "设置 AWIKI_CA_BUNDLE 环境变量",
+      "input": {
+        "env": {
+          "AWIKI_CA_BUNDLE": "/path/to/ca.pem"
+        },
+        "config": {
+          "user_service_url": "https://awiki.ai"
+        }
+      },
+      "expected_output": {
+        "client_verify": "ssl.SSLContext"
+      },
+      "assertion": "客户端 verify 参数为 ssl.SSLContext 对象"
+    },
+    {
+      "id": "TC-011",
+      "name": "molt-message 客户端 - 默认配置创建",
+      "scenario": "molt-message 客户端创建",
+      "description": "使用默认配置创建 molt-message 客户端",
+      "precondition": "SDKConfig 使用默认值",
+      "input": {
+        "config": {
+          "molt_message_url": "https://awiki.ai"
+        }
+      },
+      "expected_output": {
+        "client_type": "httpx.AsyncClient",
+        "base_url": "https://awiki.ai",
+        "timeout": 30.0,
+        "trust_env": false
+      },
+      "assertion": "客户端正确配置 base_url、timeout 和 trust_env"
+    },
+    {
+      "id": "TC-012",
+      "name": "molt-message 客户端 - 自定义 URL 创建",
+      "scenario": "molt-message 客户端创建",
+      "description": "使用自定义 URL 创建 molt-message 客户端",
+      "precondition": "SDKConfig 配置自定义 molt_message_url",
+      "input": {
+        "config": {
+          "molt_message_url": "https://custom-message.example.com"
+        }
+      },
+      "expected_output": {
+        "client_type": "httpx.AsyncClient",
+        "base_url": "https://custom-message.example.com",
+        "timeout": 30.0,
+        "trust_env": false
+      },
+      "assertion": "客户端 base_url 正确设置为自定义 URL"
+    },
+    {
+      "id": "TC-013",
+      "name": "molt-message 客户端 - TLS 验证配置继承",
+      "scenario": "molt-message 客户端创建",
+      "description": "molt-message 客户端应正确继承 _resolve_verify 的 TLS 配置",
+      "precondition": "设置 AWIKI_CA_BUNDLE 环境变量",
+      "input": {
+        "env": {
+          "AWIKI_CA_BUNDLE": "/path/to/ca.pem"
+        },
+        "config": {
+          "molt_message_url": "https://awiki.ai"
+        }
+      },
+      "expected_output": {
+        "client_verify": "ssl.SSLContext"
+      },
+      "assertion": "客户端 verify 参数为 ssl.SSLContext 对象"
+    },
+    {
+      "id": "TC-014",
+      "name": "客户端独立性 - user-service 和 molt-message 配置隔离",
+      "scenario": "客户端创建",
+      "description": "两个客户端应独立配置，互不影响",
+      "precondition": "配置不同的 user_service_url 和 molt_message_url",
+      "input": {
+        "config": {
+          "user_service_url": "https://user.example.com",
+          "molt_message_url": "https://message.example.com"
+        }
+      },
+      "expected_output": {
+        "user_client_base_url": "https://user.example.com",
+        "message_client_base_url": "https://message.example.com"
+      },
+      "assertion": "两个客户端的 base_url 各自独立正确配置"
+    },
+    {
+      "id": "TC-015",
+      "name": "TLS 验证 - 环境变量优先级顺序验证",
+      "scenario": "TLS 验证配置",
+      "description": "验证三个环境变量的优先级顺序：AWIKI_CA_BUNDLE > E2E_CA_BUNDLE > SSL_CERT_FILE",
+      "precondition": "同时设置三个环境变量，指向不同的 CA 文件",
+      "input": {
+        "env": {
+          "AWIKI_CA_BUNDLE": "/path/to/awiki_ca.pem",
+          "E2E_CA_BUNDLE": "/path/to/e2e_ca.pem",
+          "SSL_CERT_FILE": "/path/to/ssl_ca.pem"
+        },
+        "base_url": "https://awiki.ai"
+      },
+      "expected_output": {
+        "verify_type": "ssl.SSLContext",
+        "cafile": "/path/to/awiki_ca.pem"
+      },
+      "assertion": "使用 AWIKI_CA_BUNDLE 指定的 CA 文件，忽略其他环境变量"
+    }
+  ],
+  "coverage_summary": {
+    "total_test_cases": 15,
+    "scenarios_covered": [
+      "TLS 验证配置",
+      "user-service 客户端创建",
+      "molt-message 客户端创建",
+      "客户端创建"
+    ],
+    "scenario_details": {
+      "TLS 验证配置": {
+        "test_cases": ["TC-001", "TC-002", "TC-003", "TC-004", "TC-005", "TC-006", "TC-007", "TC-015"],
+        "coverage": "覆盖环境变量优先级、本地域名自动检测、默认验证、异常降级"
+      },
+      "user-service 客户端创建": {
+        "test_cases": ["TC-008", "TC-009", "TC-010"],
+        "coverage": "覆盖默认配置、自定义 URL、TLS 配置继承"
+      },
+      "molt-message 客户端创建": {
+        "test_cases": ["TC-011", "TC-012", "TC-013"],
+        "coverage": "覆盖默认配置、自定义 URL、TLS 配置继承"
+      },
+      "客户端独立性": {
+        "test_cases": ["TC-014"],
+        "coverage": "验证两个客户端配置相互独立"
+      }
+    }
+  },
+  "metadata": {
+    "created_date": "2026-03-16",
+    "module_path": "D:\\huangyg\\git\\sample\\awiki\\python\\scripts\\utils\\client.py",
+    "dependencies": [
+      "httpx",
+      "utils.config.SDKConfig"
+    ],
+    "functions_tested": [
+      "_resolve_verify",
+      "create_user_service_client",
+      "create_molt_message_client"
+    ]
+  }
+}

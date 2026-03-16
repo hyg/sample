@@ -1,0 +1,10 @@
+{
+  "name": "tester",
+  "description": "Python vs Node.js 对比测试",
+  "input": "dist/scripts/",
+  "output": "test_report.json",
+  "lifecycle": {
+    "create": "移植完成后",
+    "delete": "发布前"
+  }
+}

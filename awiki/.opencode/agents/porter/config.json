@@ -1,0 +1,10 @@
+{
+  "name": "porter",
+  "description": "移植代码到 Node.js",
+  "input": ["python/", "distill/results/"],
+  "output": "dist/scripts/",
+  "lifecycle": {
+    "create": "蒸馏完成后",
+    "delete": "测试通过后"
+  }
+}

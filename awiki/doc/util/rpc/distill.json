@@ -1,0 +1,415 @@
+{
+  "module": "python/scripts/utils/rpc.py",
+  "description": "JSON-RPC 2.0 客户端工具 - 基础调用与认证调用",
+  "test_cases": [
+    {
+      "id": "TC001",
+      "category": "JsonRpcError",
+      "name": "异常类 - 基本构造",
+      "description": "测试 JsonRpcError 异常类的基本构造和消息格式化",
+      "input": {
+        "code": -32600,
+        "message": "Invalid Request",
+        "data": null
+      },
+      "expected_output": {
+        "exception_type": "JsonRpcError",
+        "code": -32600,
+        "message": "Invalid Request",
+        "data": null,
+        "str_repr": "JSON-RPC error -32600: Invalid Request"
+      }
+    },
+    {
+      "id": "TC002",
+      "category": "JsonRpcError",
+      "name": "异常类 - 带 data 字段",
+      "description": "测试 JsonRpcError 异常类包含 data 字段的情况",
+      "input": {
+        "code": -32602,
+        "message": "Invalid params",
+        "data": {"field": "missing"}
+      },
+      "expected_output": {
+        "exception_type": "JsonRpcError",
+        "code": -32602,
+        "message": "Invalid params",
+        "data": {"field": "missing"}
+      }
+    },
+    {
+      "id": "TC003",
+      "category": "rpc_call",
+      "name": "基础调用 - 成功场景",
+      "description": "测试 rpc_call 在服务器返回成功响应时的行为",
+      "input": {
+        "endpoint": "/did-auth/rpc",
+        "method": "register",
+        "params": {"did": "did:wba:test"},
+        "request_id": 1,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {"success": true, "txHash": "0x123"},
+          "id": 1
+        }
+      },
+      "expected_output": {
+        "result": {"success": true, "txHash": "0x123"},
+        "http_call_count": 1,
+        "request_payload": {
+          "jsonrpc": "2.0",
+          "method": "register",
+          "params": {"did": "did:wba:test"},
+          "id": 1
+        }
+      }
+    },
+    {
+      "id": "TC004",
+      "category": "rpc_call",
+      "name": "基础调用 - params 为 None",
+      "description": "测试 rpc_call 在 params 为 None 时自动使用空字典",
+      "input": {
+        "endpoint": "/did-auth/rpc",
+        "method": "getStatus",
+        "params": null,
+        "request_id": 2,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {"status": "active"},
+          "id": 2
+        }
+      },
+      "expected_output": {
+        "result": {"status": "active"},
+        "request_payload": {
+          "jsonrpc": "2.0",
+          "method": "getStatus",
+          "params": {},
+          "id": 2
+        }
+      }
+    },
+    {
+      "id": "TC005",
+      "category": "rpc_call",
+      "name": "基础调用 - JSON-RPC 错误响应",
+      "description": "测试 rpc_call 在服务器返回 JSON-RPC 错误时抛出 JsonRpcError",
+      "input": {
+        "endpoint": "/did-auth/rpc",
+        "method": "invalidMethod",
+        "params": {},
+        "request_id": 3,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "error": {
+            "code": -32601,
+            "message": "Method not found",
+            "data": "The method does not exist"
+          },
+          "id": 3
+        }
+      },
+      "expected_output": {
+        "exception_type": "JsonRpcError",
+        "exception_code": -32601,
+        "exception_message": "Method not found",
+        "exception_data": "The method does not exist"
+      }
+    },
+    {
+      "id": "TC006",
+      "category": "rpc_call",
+      "name": "基础调用 - HTTP 状态码错误",
+      "description": "测试 rpc_call 在 HTTP 层错误时抛出 httpx.HTTPStatusError",
+      "input": {
+        "endpoint": "/did-auth/rpc",
+        "method": "test",
+        "params": {},
+        "request_id": 4,
+        "http_status": 500,
+        "http_response": "Internal Server Error"
+      },
+      "expected_output": {
+        "exception_type": "httpx.HTTPStatusError",
+        "status_code": 500
+      }
+    },
+    {
+      "id": "TC007",
+      "category": "rpc_call",
+      "name": "基础调用 - 自定义 request_id",
+      "description": "测试 rpc_call 支持字符串类型的 request_id",
+      "input": {
+        "endpoint": "/did-auth/rpc",
+        "method": "query",
+        "params": {"key": "value"},
+        "request_id": "req-abc-123",
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {"data": "response"},
+          "id": "req-abc-123"
+        }
+      },
+      "expected_output": {
+        "result": {"data": "response"},
+        "request_payload": {
+          "id": "req-abc-123"
+        }
+      }
+    },
+    {
+      "id": "TC008",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - 成功场景（首次认证成功）",
+      "description": "测试 authenticated_rpc_call 在首次请求即成功时的行为",
+      "input": {
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "sendMessage",
+        "params": {"to": "did:wba:target", "message": "hello"},
+        "request_id": 1,
+        "auth_initial_status": "valid",
+        "first_response_status": 200,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {"messageId": "msg-001"},
+          "id": 1
+        },
+        "response_headers": {
+          "authorization": "DIDWBA new_jwt_token_xyz"
+        }
+      },
+      "expected_output": {
+        "result": {"messageId": "msg-001"},
+        "http_call_count": 1,
+        "auth_get_header_called": true,
+        "auth_clear_token_called": false,
+        "auth_update_token_called": true,
+        "credential_store_updated": true,
+        "new_token_cached": "new_jwt_token_xyz"
+      }
+    },
+    {
+      "id": "TC009",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - 401 自动重试成功",
+      "description": "测试 authenticated_rpc_call 在收到 401 后自动清除 token 并重试成功",
+      "input": {
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "protectedMethod",
+        "params": {"data": "sensitive"},
+        "request_id": 2,
+        "auth_initial_status": "expired",
+        "first_response_status": 401,
+        "second_response_status": 200,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {"secret": "data"},
+          "id": 2
+        },
+        "response_headers": {
+          "authorization": "DIDWBA refreshed_jwt_token"
+        }
+      },
+      "expected_output": {
+        "result": {"secret": "data"},
+        "http_call_count": 2,
+        "auth_get_header_called": true,
+        "auth_clear_token_called": true,
+        "auth_get_header_force_new_called": true,
+        "auth_update_token_called": true,
+        "credential_store_updated": true,
+        "new_token_cached": "refreshed_jwt_token"
+      }
+    },
+    {
+      "id": "TC010",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - 401 重试后仍失败",
+      "description": "测试 authenticated_rpc_call 在 401 重试后仍然失败时的错误处理",
+      "input": {
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "protectedMethod",
+        "params": {},
+        "request_id": 3,
+        "auth_initial_status": "invalid",
+        "first_response_status": 401,
+        "second_response_status": 401,
+        "server_response": "Unauthorized"
+      },
+      "expected_output": {
+        "exception_type": "httpx.HTTPStatusError",
+        "status_code": 401,
+        "http_call_count": 2,
+        "auth_clear_token_called": true,
+        "auth_get_header_force_new_called": true
+      }
+    },
+    {
+      "id": "TC011",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - JSON-RPC 错误（带认证）",
+      "description": "测试 authenticated_rpc_call 处理服务器返回的 JSON-RPC 错误",
+      "input": {
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "validatePermission",
+        "params": {"permission": "admin"},
+        "request_id": 4,
+        "auth_initial_status": "valid",
+        "first_response_status": 200,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "error": {
+            "code": -32000,
+            "message": "Permission denied",
+            "data": {"required": "admin", "current": "user"}
+          },
+          "id": 4
+        }
+      },
+      "expected_output": {
+        "exception_type": "JsonRpcError",
+        "exception_code": -32000,
+        "exception_message": "Permission denied",
+        "exception_data": {"required": "admin", "current": "user"},
+        "http_call_count": 1,
+        "auth_clear_token_called": false
+      }
+    },
+    {
+      "id": "TC012",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - 无响应 Authorization 头",
+      "description": "测试 authenticated_rpc_call 在响应中没有 Authorization 头时的处理",
+      "input": {
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "noTokenRefresh",
+        "params": {},
+        "request_id": 5,
+        "auth_initial_status": "valid",
+        "first_response_status": 200,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {"status": "ok"},
+          "id": 5
+        },
+        "response_headers": {}
+      },
+      "expected_output": {
+        "result": {"status": "ok"},
+        "http_call_count": 1,
+        "auth_update_token_called": true,
+        "credential_store_updated": false,
+        "new_token_cached": null
+      }
+    },
+    {
+      "id": "TC013",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - credential_name 参数传递",
+      "description": "测试 authenticated_rpc_call 正确传递 credential_name 到凭证存储",
+      "input": {
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "test",
+        "params": {},
+        "request_id": 6,
+        "credential_name": "test-credential",
+        "auth_initial_status": "valid",
+        "first_response_status": 200,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {},
+          "id": 6
+        },
+        "response_headers": {
+          "authorization": "DIDWBA test_token"
+        }
+      },
+      "expected_output": {
+        "result": {},
+        "credential_store_updated": true,
+        "credential_name_used": "test-credential",
+        "new_token_cached": "test_token"
+      }
+    },
+    {
+      "id": "TC014",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - 非 401 HTTP 错误",
+      "description": "测试 authenticated_rpc_call 对非 401 的 HTTP 错误直接抛出异常",
+      "input": {
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "test",
+        "params": {},
+        "request_id": 7,
+        "auth_initial_status": "valid",
+        "first_response_status": 503,
+        "server_response": "Service Unavailable"
+      },
+      "expected_output": {
+        "exception_type": "httpx.HTTPStatusError",
+        "status_code": 503,
+        "http_call_count": 1,
+        "auth_clear_token_called": false,
+        "no_retry": true
+      }
+    },
+    {
+      "id": "TC015",
+      "category": "authenticated_rpc_call",
+      "name": "认证调用 - server_url 从 client.base_url 获取",
+      "description": "测试 authenticated_rpc_call 正确从 client.base_url 获取服务器 URL",
+      "input": {
+        "client_base_url": "https://awiki.ai",
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "test",
+        "params": {},
+        "request_id": 8,
+        "auth_initial_status": "valid",
+        "first_response_status": 200,
+        "server_response": {
+          "jsonrpc": "2.0",
+          "result": {},
+          "id": 8
+        },
+        "response_headers": {
+          "authorization": "DIDWBA token"
+        }
+      },
+      "expected_output": {
+        "result": {},
+        "auth_get_header_called_with": "https://awiki.ai",
+        "auth_update_token_called_with": "https://awiki.ai"
+      }
+    }
+  ],
+  "coverage": {
+    "business_scenarios": [
+      "JSON-RPC 2.0 协议基础调用",
+      "JSON-RPC 错误响应处理",
+      "HTTP 层错误处理",
+      "认证头管理",
+      "401 自动重试机制",
+      "Token 清除与刷新",
+      "凭证存储更新",
+      "响应头 Authorization 解析"
+    ],
+    "functions_covered": {
+      "JsonRpcError": ["TC001", "TC002"],
+      "rpc_call": ["TC003", "TC004", "TC005", "TC006", "TC007"],
+      "authenticated_rpc_call": ["TC008", "TC009", "TC010", "TC011", "TC012", "TC013", "TC014", "TC015"]
+    },
+    "edge_cases": [
+      "params 为 None 时自动转为空字典",
+      "request_id 支持整数和字符串",
+      "401 重试后仍失败的处理",
+      "响应中无 Authorization 头的处理",
+      "非 401 HTTP 错误不触发重试"
+    ]
+  },
+  "metadata": {
+    "created_date": "2026-03-16",
+    "total_test_cases": 15,
+    "file_location": "D:\\huangyg\\git\\sample\\awiki\\doc\\util\\rpc\\distill.json"
+  }
+}

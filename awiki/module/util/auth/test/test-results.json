@@ -1,0 +1,51 @@
+{
+  "testDate": "2026-03-16",
+  "modulePath": "D:\\huangyg\\git\\sample\\awiki\\module\\util\\auth",
+  "testFile": "module/util/auth/test/auth.test.js",
+  "results": {
+    "totalTests": 31,
+    "passedTests": 31,
+    "failedTests": 0,
+    "passRate": "100.0%"
+  },
+  "coverage": {
+    "lines": "86.15%",
+    "branches": "64.76%",
+    "functions": "82.05%",
+    "target": "≥85%",
+    "status": "PASS"
+  },
+  "namingConvention": {
+    "snakeCaseFunctions": "PASS",
+    "authHeaderFormat": "PASS",
+    "details": {
+      "functions": [
+        "generate_wba_auth_header",
+        "register_did",
+        "update_did_document",
+        "get_jwt_via_wba",
+        "create_authenticated_identity"
+      ],
+      "headerFormat": "DIDWba {did}:{signature}:{timestamp}"
+    }
+  },
+  "pythonCompatibility": {
+    "authHeaderFormat": "PASS",
+    "jwtExtractionPriority": "PASS",
+    "pathPrefixDefault": "PASS"
+  },
+  "testCategories": {
+    "unitTests": {
+      "secp256k1SignCallback": { "total": 3, "passed": 3 },
+      "generateWbaAuthHeader": { "total": 4, "passed": 4 },
+      "registerDid": { "total": 3, "passed": 3 },
+      "updateDidDocument": { "total": 4, "passed": 4 },
+      "getJwtViaWba": { "total": 2, "passed": 2 },
+      "createAuthenticatedIdentity": { "total": 3, "passed": 3 }
+    },
+    "integrationTests": { "total": 3, "passed": 3 },
+    "boundaryTests": { "total": 4, "passed": 4 },
+    "namingConventionTests": { "total": 2, "passed": 2 },
+    "pythonCompatibilityTests": { "total": 3, "passed": 3 }
+  }
+}

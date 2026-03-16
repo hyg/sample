@@ -1,0 +1,38 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mD:/huangyg/git/sample/awiki/module/lib/anp-0.6.8/src/authentication[39m
+[2m      Coverage enabled with [22m[33mv8[39m
+
+[90mstdout[2m | ../../tests/authentication.test.ts[2m > [22m[2mTC-AUTH-004: resolveDidWbaDocument[2m > [22m[2mError scenarios[2m > [22m[2mshould throw error for invalid DID format[22m[39m
+Resolving DID document for: invalid-did
+Resolving DID document for: did:wba:
+
+[90mstdout[2m | ../../tests/authentication.test.ts[2m > [22m[2mTC-AUTH-004: resolveDidWbaDocument[2m > [22m[2mError scenarios[2m > [22m[2mshould return null for non-existent DID[22m[39m
+Resolving DID document for: did:wba:awiki.ai:user:k1_nonexistent_test_did_12345
+Requesting DID document from URL: https://awiki.ai/user/did.json
+
+[90mstdout[2m | ../../tests/authentication.test.ts[2m > [22m[2mTC-AUTH-004: resolveDidWbaDocument[2m > [22m[2mError scenarios[2m > [22m[2mshould return null for non-existent DID[22m[39m
+<empty line>
+[90mstderr[2m | ../../tests/authentication.test.ts[2m > [22m[2mTC-AUTH-004: resolveDidWbaDocument[2m > [22m[2mError scenarios[2m > [22m[2mshould return null for non-existent DID[22m[39m
+Failed to resolve DID document: Unexpected token '<', "<!doctype "... is not valid JSON
+
+[90mstdout[2m | ../../tests/authentication.test.ts[2m > [22m[2mBoundary Tests[2m > [22m[2mInvalid DID format[2m > [22m[2mshould reject various invalid DID formats[22m[39m
+Resolving DID document for: 
+Resolving DID document for: not-a-did
+Resolving DID document for: did:invalid:method
+Resolving DID document for: did:wba:
+Resolving DID document for: did:wba:domain
+
+ [32m✓[39m ../../tests/authentication.test.ts [2m ([22m[2m30 tests[22m[2m)[22m[33m 845[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m30 passed[39m[22m[90m (30)[39m
+[2m   Start at [22m 11:55:02
+[2m   Duration [22m 1.35s[2m (transform 85ms, setup 0ms, collect 143ms, tests 845ms, environment 0ms, prepare 130ms)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------|---------|----------|---------|---------|-------------------
+All files |       0 |        0 |       0 |       0 |                   
+----------|---------|----------|---------|---------|-------------------

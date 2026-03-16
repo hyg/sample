@@ -1,0 +1,89 @@
+{
+  "name": "@awiki/anp-auth",
+  "version": "0.6.8",
+  "description": "ANP (awiki Network Protocol) Authentication Module - DID WBA authentication",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.mjs",
+      "require": "./dist/types.js"
+    },
+    "./header": {
+      "types": "./dist/header.d.ts",
+      "import": "./dist/header.mjs",
+      "require": "./dist/header.js"
+    },
+    "./did-wba": {
+      "types": "./dist/did-wba.d.ts",
+      "import": "./dist/did-wba.mjs",
+      "require": "./dist/did-wba.js"
+    },
+    "./resolve": {
+      "types": "./dist/resolve.d.ts",
+      "import": "./dist/resolve.mjs",
+      "require": "./dist/resolve.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --out-dir dist",
+    "build:clean": "rm -rf dist && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "prepublishOnly": "npm run build:clean && npm test"
+  },
+  "keywords": [
+    "awiki",
+    "anp",
+    "did",
+    "wba",
+    "authentication",
+    "decentralized-identity",
+    "secp256k1",
+    "cryptography"
+  ],
+  "author": "awiki Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/awiki/awiki.git",
+    "directory": "module/lib/anp-0.6.8"
+  },
+  "bugs": {
+    "url": "https://github.com/awiki/awiki/issues"
+  },
+  "homepage": "https://github.com/awiki/awiki/tree/main/module/lib/anp-0.6.8",
+  "dependencies": {
+    "@noble/curves": "^1.0.0",
+    "@noble/hashes": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "eslint": "^8.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "sideEffects": false
+}

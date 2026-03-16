@@ -1,0 +1,10 @@
+{
+  "name": "analyzer",
+  "description": "扫描 Python 代码，提取函数签名和依赖关系",
+  "input": "python/",
+  "output": "docs/",
+  "lifecycle": {
+    "create": "项目开始时",
+    "delete": "分析完成后"
+  }
+}

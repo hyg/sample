@@ -1,0 +1,10 @@
+{
+  "name": "publisher",
+  "description": "发布准备",
+  "input": "dist/",
+  "output": "dist/ (cleaned)",
+  "lifecycle": {
+    "create": "测试通过后",
+    "delete": "发布后"
+  }
+}

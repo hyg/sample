@@ -1,0 +1,614 @@
+{
+  "file_analyzed": "D:\\huangyg\\git\\sample\\awiki\\python\\scripts\\utils\\ws.py",
+  "analysis_date": "2026-03-16",
+  "class_name": "WsClient",
+  "description": "WebSocket 客户端封装，用于 molt-message WebSocket 端点，支持 JSON-RPC 请求和推送通知",
+  "test_cases": [
+    {
+      "id": "WS-001",
+      "category": "WebSocket 连接",
+      "scenario": "正常建立 WebSocket 连接",
+      "method": "connect",
+      "precondition": "SDKConfig 配置正确，DIDIdentity 包含有效 jwt_token",
+      "input": {
+        "config.molt_message_url": "https://awiki.ai",
+        "identity.jwt_token": "valid_jwt_token"
+      },
+      "expected_output": {
+        "connection_status": "connected",
+        "ws_url": "wss://awiki.ai/message/ws?token=valid_jwt_token"
+      },
+      "assertions": [
+        "self._conn 不为 None",
+        "日志记录连接成功信息"
+      ]
+    },
+    {
+      "id": "WS-002",
+      "category": "WebSocket 连接",
+      "scenario": "JWT token 缺失时连接应失败",
+      "method": "connect",
+      "precondition": "DIDIdentity 未设置 jwt_token",
+      "input": {
+        "identity.jwt_token": null
+      },
+      "expected_output": {
+        "error": "ValueError: identity missing jwt_token, call get_jwt_via_wba first"
+      },
+      "assertions": [
+        "抛出 ValueError 异常",
+        "异常消息包含 'jwt_token'"
+      ]
+    },
+    {
+      "id": "WS-003",
+      "category": "WebSocket 连接",
+      "scenario": "HTTP URL 自动转换为 WebSocket URL",
+      "method": "connect",
+      "precondition": "配置使用 HTTP 协议",
+      "input": {
+        "config.molt_message_url": "http://localhost:8080"
+      },
+      "expected_output": {
+        "ws_url": "ws://localhost:8080/message/ws?token=xxx"
+      },
+      "assertions": [
+        "http:// 被转换为 ws://",
+        "https:// 被转换为 wss://"
+      ]
+    },
+    {
+      "id": "WS-004",
+      "category": "WebSocket 连接",
+      "scenario": "已有 ws:// 前缀的 URL 保持不变",
+      "method": "connect",
+      "precondition": "配置直接使用 WebSocket URL",
+      "input": {
+        "config.molt_message_ws_url": "ws://localhost:8080"
+      },
+      "expected_output": {
+        "ws_url": "ws://localhost:8080/message/ws?token=xxx"
+      },
+      "assertions": [
+        "URL 前缀保持 ws://",
+        "不重复添加协议前缀"
+      ]
+    },
+    {
+      "id": "WS-005",
+      "category": "WebSocket 连接",
+      "scenario": "SSL 配置正确加载",
+      "method": "connect",
+      "precondition": "使用 HTTPS/WSS 协议",
+      "input": {
+        "config.molt_message_url": "https://awiki.ai",
+        "verify_ssl": true
+      },
+      "expected_output": {
+        "ssl_context": "ssl.SSLContext or True"
+      },
+      "assertions": [
+        "wss:// 连接使用 SSL 上下文",
+        "SSL 验证配置正确"
+      ]
+    },
+    {
+      "id": "WS-006",
+      "category": "连接管理",
+      "scenario": "正常关闭连接",
+      "method": "close",
+      "precondition": "已建立连接",
+      "input": {
+        "self._conn": "active_connection"
+      },
+      "expected_output": {
+        "self._conn": null
+      },
+      "assertions": [
+        "连接被关闭",
+        "self._conn 设置为 None"
+      ]
+    },
+    {
+      "id": "WS-007",
+      "category": "连接管理",
+      "scenario": "异步上下文管理器正常进入",
+      "method": "__aenter__",
+      "precondition": "配置和身份有效",
+      "input": {
+        "config": "valid_config",
+        "identity": "valid_identity"
+      },
+      "expected_output": {
+        "return": "WsClient instance with active connection"
+      },
+      "assertions": [
+        "connect() 被调用",
+        "返回 WsClient 实例",
+        "连接已建立"
+      ]
+    },
+    {
+      "id": "WS-008",
+      "category": "连接管理",
+      "scenario": "异步上下文管理器正常退出",
+      "method": "__aexit__",
+      "precondition": "已建立连接",
+      "input": {
+        "self._conn": "active_connection"
+      },
+      "expected_output": {
+        "self._conn": null
+      },
+      "assertions": [
+        "close() 被调用",
+        "连接被关闭"
+      ]
+    },
+    {
+      "id": "WS-009",
+      "category": "JSON-RPC 请求",
+      "scenario": "发送 JSON-RPC 请求并获取响应",
+      "method": "send_rpc",
+      "precondition": "已建立 WebSocket 连接",
+      "input": {
+        "method": "test.method",
+        "params": {"key": "value"}
+      },
+      "expected_output": {
+        "request_sent": {
+          "jsonrpc": "2.0",
+          "method": "test.method",
+          "id": 1,
+          "params": {"key": "value"}
+        },
+        "result": {"data": "response_data"}
+      },
+      "assertions": [
+        "请求包含正确的 jsonrpc 版本",
+        "请求 ID 自增",
+        "返回 result 字段内容"
+      ]
+    },
+    {
+      "id": "WS-010",
+      "category": "JSON-RPC 请求",
+      "scenario": "未连接时发送 RPC 应失败",
+      "method": "send_rpc",
+      "precondition": "未建立连接",
+      "input": {
+        "self._conn": null,
+        "method": "test.method"
+      },
+      "expected_output": {
+        "error": "RuntimeError: WebSocket not connected"
+      },
+      "assertions": [
+        "抛出 RuntimeError 异常",
+        "异常消息包含 'not connected'"
+      ]
+    },
+    {
+      "id": "WS-011",
+      "category": "JSON-RPC 请求",
+      "scenario": "处理 JSON-RPC 错误响应",
+      "method": "send_rpc",
+      "precondition": "已建立连接，服务器返回错误",
+      "input": {
+        "method": "test.method",
+        "server_response": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "error": {"code": -32000, "message": "Method not found"}
+        }
+      },
+      "expected_output": {
+        "error": "RuntimeError: JSON-RPC error -32000: Method not found"
+      },
+      "assertions": [
+        "抛出 RuntimeError 异常",
+        "异常消息包含错误代码和消息"
+      ]
+    },
+    {
+      "id": "WS-012",
+      "category": "JSON-RPC 请求",
+      "scenario": "跳过推送通知获取正确响应",
+      "method": "send_rpc",
+      "precondition": "已建立连接，期间收到推送通知",
+      "input": {
+        "method": "test.method",
+        "intermediate_messages": [
+          {"jsonrpc": "2.0", "method": "notification", "params": {"type": "push"}}
+        ],
+        "server_response": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {"data": "response"}
+        }
+      },
+      "expected_output": {
+        "result": {"data": "response"}
+      },
+      "assertions": [
+        "跳过无 id 字段的通知",
+        "匹配正确的请求 ID",
+        "返回目标响应"
+      ]
+    },
+    {
+      "id": "WS-013",
+      "category": "JSON-RPC 请求",
+      "scenario": "请求 ID 自增机制",
+      "method": "send_rpc",
+      "precondition": "已建立连接，多次调用",
+      "input": {
+        "calls": 3
+      },
+      "expected_output": {
+        "request_ids": [1, 2, 3]
+      },
+      "assertions": [
+        "每次请求 ID 递增",
+        "从 1 开始计数"
+      ]
+    },
+    {
+      "id": "WS-014",
+      "category": "消息发送",
+      "scenario": "发送基本文本消息",
+      "method": "send_message",
+      "precondition": "已建立连接",
+      "input": {
+        "content": "Hello, World!",
+        "receiver_did": "did:wba:awiki.ai:user:k1_test"
+      },
+      "expected_output": {
+        "rpc_call": {
+          "method": "send",
+          "params": {
+            "content": "Hello, World!",
+            "type": "text",
+            "receiver_did": "did:wba:awiki.ai:user:k1_test",
+            "client_msg_id": "auto-generated-uuid"
+          }
+        }
+      },
+      "assertions": [
+        "调用 send_rpc('send', params)",
+        "自动生成 client_msg_id",
+        "默认消息类型为 'text'"
+      ]
+    },
+    {
+      "id": "WS-015",
+      "category": "消息发送",
+      "scenario": "自定义 client_msg_id",
+      "method": "send_message",
+      "precondition": "已建立连接",
+      "input": {
+        "content": "Test message",
+        "client_msg_id": "custom-id-12345"
+      },
+      "expected_output": {
+        "params.client_msg_id": "custom-id-12345"
+      },
+      "assertions": [
+        "使用提供的 client_msg_id",
+        "不生成新的 UUID"
+      ]
+    },
+    {
+      "id": "WS-016",
+      "category": "消息发送",
+      "scenario": "发送给个人用户 (receiver_id)",
+      "method": "send_message",
+      "precondition": "已建立连接",
+      "input": {
+        "content": "Direct message",
+        "receiver_id": "user-uuid-123"
+      },
+      "expected_output": {
+        "params.receiver_id": "user-uuid-123"
+      },
+      "assertions": [
+        "params 包含 receiver_id",
+        "不包含 receiver_did"
+      ]
+    },
+    {
+      "id": "WS-017",
+      "category": "消息发送",
+      "scenario": "发送给群组 (group_did)",
+      "method": "send_message",
+      "precondition": "已建立连接",
+      "input": {
+        "content": "Group message",
+        "group_did": "did:wba:awiki.ai:group:k1_group"
+      },
+      "expected_output": {
+        "params.group_did": "did:wba:awiki.ai:group:k1_group"
+      },
+      "assertions": [
+        "params 包含 group_did",
+        "不包含 group_id"
+      ]
+    },
+    {
+      "id": "WS-018",
+      "category": "消息发送",
+      "scenario": "发送给群组 (group_id)",
+      "method": "send_message",
+      "precondition": "已建立连接",
+      "input": {
+        "content": "Group message",
+        "group_id": "group-uuid-456"
+      },
+      "expected_output": {
+        "params.group_id": "group-uuid-456"
+      },
+      "assertions": [
+        "params 包含 group_id"
+      ]
+    },
+    {
+      "id": "WS-019",
+      "category": "消息发送",
+      "scenario": "发送带标题的消息",
+      "method": "send_message",
+      "precondition": "已建立连接",
+      "input": {
+        "content": "Message content",
+        "title": "Important Notice",
+        "msg_type": "notification"
+      },
+      "expected_output": {
+        "params.title": "Important Notice",
+        "params.type": "notification"
+      },
+      "assertions": [
+        "params 包含 title",
+        "消息类型可自定义"
+      ]
+    },
+    {
+      "id": "WS-020",
+      "category": "消息发送",
+      "scenario": "发送消息自动生成 UUID",
+      "method": "send_message",
+      "precondition": "已建立连接，未提供 client_msg_id",
+      "input": {
+        "content": "Test",
+        "client_msg_id": null
+      },
+      "expected_output": {
+        "client_msg_id_format": "uuid4 format (8-4-4-4-12)"
+      },
+      "assertions": [
+        "client_msg_id 符合 UUID4 格式",
+        "每次调用生成不同的 UUID"
+      ]
+    },
+    {
+      "id": "WS-021",
+      "category": "心跳检测",
+      "scenario": "发送 ping 并接收 pong",
+      "method": "ping",
+      "precondition": "已建立连接",
+      "input": {
+        "server_response": {"jsonrpc": "2.0", "method": "pong"}
+      },
+      "expected_output": {
+        "return": true
+      },
+      "assertions": [
+        "发送 ping 请求",
+        "接收 method 为 'pong' 的响应",
+        "返回 True"
+      ]
+    },
+    {
+      "id": "WS-022",
+      "category": "心跳检测",
+      "scenario": "未连接时 ping 应失败",
+      "method": "ping",
+      "precondition": "未建立连接",
+      "input": {
+        "self._conn": null
+      },
+      "expected_output": {
+        "error": "RuntimeError: WebSocket not connected"
+      },
+      "assertions": [
+        "抛出 RuntimeError 异常"
+      ]
+    },
+    {
+      "id": "WS-023",
+      "category": "消息接收",
+      "scenario": "正常接收单条消息",
+      "method": "receive",
+      "precondition": "已建立连接，有消息到达",
+      "input": {
+        "incoming_message": {"jsonrpc": "2.0", "method": "notification", "params": {}}
+      },
+      "expected_output": {
+        "return": {"jsonrpc": "2.0", "method": "notification", "params": {}}
+      },
+      "assertions": [
+        "返回解析后的 JSON 消息",
+        "不区分消息类型"
+      ]
+    },
+    {
+      "id": "WS-024",
+      "category": "消息接收",
+      "scenario": "接收消息超时",
+      "method": "receive",
+      "precondition": "已建立连接，无消息到达",
+      "input": {
+        "timeout": 1.0,
+        "incoming_message": null
+      },
+      "expected_output": {
+        "return": null
+      },
+      "assertions": [
+        "超时后返回 None",
+        "不抛出异常"
+      ]
+    },
+    {
+      "id": "WS-025",
+      "category": "消息接收",
+      "scenario": "未连接时接收应失败",
+      "method": "receive",
+      "precondition": "未建立连接",
+      "input": {
+        "self._conn": null
+      },
+      "expected_output": {
+        "error": "RuntimeError: WebSocket not connected"
+      },
+      "assertions": [
+        "抛出 RuntimeError 异常"
+      ]
+    },
+    {
+      "id": "WS-026",
+      "category": "推送通知",
+      "scenario": "接收推送通知 (跳过响应)",
+      "method": "receive_notification",
+      "precondition": "已建立连接，有通知和响应混合",
+      "input": {
+        "incoming_messages": [
+          {"jsonrpc": "2.0", "id": 1, "result": {}},
+          {"jsonrpc": "2.0", "method": "push", "params": {"type": "new_message"}}
+        ]
+      },
+      "expected_output": {
+        "return": {"jsonrpc": "2.0", "method": "push", "params": {"type": "new_message"}}
+      },
+      "assertions": [
+        "跳过有 id 字段的响应",
+        "返回无 id 字段的通知"
+      ]
+    },
+    {
+      "id": "WS-027",
+      "category": "推送通知",
+      "scenario": "接收通知超时",
+      "method": "receive_notification",
+      "precondition": "已建立连接，无通知到达",
+      "input": {
+        "timeout": 1.0,
+        "incoming_message": null
+      },
+      "expected_output": {
+        "return": null
+      },
+      "assertions": [
+        "超时后返回 None"
+      ]
+    },
+    {
+      "id": "WS-028",
+      "category": "推送通知",
+      "scenario": "未连接时接收通知应失败",
+      "method": "receive_notification",
+      "precondition": "未建立连接",
+      "input": {
+        "self._conn": null
+      },
+      "expected_output": {
+        "error": "RuntimeError: WebSocket not connected"
+      },
+      "assertions": [
+        "抛出 RuntimeError 异常"
+      ]
+    },
+    {
+      "id": "WS-029",
+      "category": "推送通知",
+      "scenario": "多次通知连续接收",
+      "method": "receive_notification",
+      "precondition": "已建立连接，有多个通知",
+      "input": {
+        "incoming_messages": [
+          {"method": "push", "params": {"seq": 1}},
+          {"method": "push", "params": {"seq": 2}},
+          {"method": "push", "params": {"seq": 3}}
+        ]
+      },
+      "expected_output": {
+        "first_call": {"method": "push", "params": {"seq": 1}},
+        "second_call": {"method": "push", "params": {"seq": 2}}
+      },
+      "assertions": [
+        "每次调用返回下一个通知",
+        "按顺序接收"
+      ]
+    },
+    {
+      "id": "WS-030",
+      "category": "综合场景",
+      "scenario": "完整消息收发流程",
+      "method": "connect -> send_message -> receive_notification -> close",
+      "precondition": "有效配置和身份",
+      "input": {
+        "config": "valid_config",
+        "identity": "valid_identity",
+        "message": {"content": "Hello", "receiver_did": "did:wba:..."}
+      },
+      "expected_output": {
+        "steps": [
+          "连接成功",
+          "消息发送成功",
+          "收到推送通知",
+          "连接关闭"
+        ]
+      },
+      "assertions": [
+        "完整流程无异常",
+        "各步骤按预期执行"
+      ]
+    }
+  ],
+  "coverage_summary": {
+    "total_test_cases": 30,
+    "categories": {
+      "WebSocket 连接": 5,
+      "连接管理": 3,
+      "JSON-RPC 请求": 5,
+      "消息发送": 7,
+      "心跳检测": 2,
+      "消息接收": 3,
+      "推送通知": 4,
+      "综合场景": 1
+    },
+    "methods_covered": [
+      "connect",
+      "close",
+      "__aenter__",
+      "__aexit__",
+      "send_rpc",
+      "send_message",
+      "ping",
+      "receive",
+      "receive_notification"
+    ],
+    "error_scenarios_covered": [
+      "JWT token 缺失",
+      "未连接状态操作",
+      "JSON-RPC 错误响应",
+      "接收超时"
+    ],
+    "edge_cases_covered": [
+      "URL 协议转换",
+      "请求 ID 自增",
+      "自动 UUID 生成",
+      "跳过推送通知获取响应",
+      "SSL 配置"
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="39" failures="0" errors="0" time="1.525">
+  <testsuite name="tests\httpx.test.ts" errors="0" failures="0" skipped="0" timestamp="2026-03-16T04:28:17" time="1.296" tests="39">
+    <testcase classname="httpx-0.28.0 全面测试 › AsyncClient 创建" name="TC-001: 创建用户服务客户端 - 默认配置" time="0.002">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › AsyncClient 创建" name="TC-002: 创建消息服务客户端 - 默认配置" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › AsyncClient 创建" name="TC-027: WebSocket 监听器 - HTTP 客户端初始化" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › TLS 配置 (_resolveVerify)" name="TC-003: TLS 验证 - AWIKI_CA_BUNDLE 环境变量" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › TLS 配置 (_resolveVerify)" name="TC-004: TLS 验证 - 本地 .test 域名 mkcert 支持" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › TLS 配置 (_resolveVerify)" name="TC-005: TLS 验证 - localhost 支持" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › POST 请求 (httpPost)" name="TC-006: JSON-RPC 调用 - 成功场景" time="0.002">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › POST 请求 (httpPost)" name="TC-011: DID 注册 - 完整流程" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › POST 请求 (httpPost)" name="TC-014: Handle 注册 - OTP 验证" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › POST 请求 (httpPost)" name="TC-015: 发送 OTP - 手机号格式化" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › POST 请求 (httpPost)" name="TC-016: Handle 解析 - 成功场景" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › GET 请求 (httpGet)" name="TC-017: Handle 解析 - .well-known 端点" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › GET 请求 (httpGet)" name="TC-018: Handle 解析 - 404 处理" time="0.018">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › GET 请求 (httpGet)" name="TC-019: Handle 解析 - 非活跃状态处理" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › GET 请求 (httpGet)" name="TC-024: 公共文档获取 - 成功场景" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › GET 请求 (httpGet)" name="TC-025: 公共文档获取 - X-Handle 降级" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › GET 请求 (httpGet)" name="TC-026: 公共文档获取 - 网络错误处理" time="0.041">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 错误处理" name="TC-007: JSON-RPC 调用 - 服务器返回错误" time="0.005">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 错误处理" name="TC-008: JSON-RPC 调用 - HTTP 状态错误" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 错误处理" name="TC-021: 群组创建 - Slug 冲突处理" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 错误处理" name="TC-029: WebSocket 监听器 - 转发失败处理" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 错误处理" name="TC-030: WebSocket 监听器 - HTTP 错误异常处理" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 错误处理" name="handleHttpClientError: 处理 AxiosError" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 错误处理" name="isAxiosError: 检查是否为 axios 错误" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 认证 (authenticatedRpcCall)" name="TC-009: 认证 RPC 调用 - 首次成功" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 认证 (authenticatedRpcCall)" name="TC-010: 认证 RPC 调用 - 401 自动重试" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 认证 (authenticatedRpcCall)" name="TC-035: 响应头 Authorization 转小写处理" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 业务场景" name="TC-020: 群组创建 - 成功场景" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 业务场景" name="TC-022: 群组消息 - 发布消息" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 业务场景" name="TC-023: 群组消息 - 获取历史消息" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 业务场景" name="TC-028: WebSocket 监听器 - 转发消息到 webhook" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 业务逻辑优化" name="TC-032: DID 已注册 - 直接返回" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 业务逻辑优化" name="TC-033: Handle 域名后缀剥离" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 业务逻辑优化" name="TC-034: OTP 代码空白字符清理" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 工具函数" name="raiseForStatus: 状态码 &gt;= 400 抛出错误" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 工具函数" name="getHeader: 不区分大小写获取响应头" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 工具函数" name="batchRpcCall: 批量 RPC 调用" time="0.001">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 集成测试" name="完整 HTTP 请求流程" time="0">
+    </testcase>
+    <testcase classname="httpx-0.28.0 全面测试 › 集成测试" name="错误处理流程" time="0.001">
+    </testcase>
+  </testsuite>
+</testsuites>

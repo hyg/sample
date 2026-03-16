@@ -1,0 +1,40 @@
+{
+  "name": "@awiki/resolve",
+  "version": "1.0.0",
+  "description": "Handle-to-DID resolution module for awiki - TypeScript port of python/scripts/utils/resolve.py",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "del /Q dist",
+    "prebuild": "npm run clean",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "handle",
+    "did",
+    "resolution",
+    "awiki"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@awiki/config": "file:../config",
+    "@awiki/client": "file:../client"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

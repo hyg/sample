@@ -1,0 +1,919 @@
+{
+  "meta": {
+    "title": "httpx 库调用测试用例",
+    "version": "httpx==0.28.0",
+    "generated_at": "2026-03-16",
+    "source_directory": "D:\\huangyg\\git\\sample\\awiki\\python\\scripts",
+    "analyzed_files": [
+      "utils/client.py",
+      "utils/rpc.py",
+      "utils/auth.py",
+      "utils/handle.py",
+      "utils/resolve.py",
+      "manage_group.py",
+      "ws_listener.py"
+    ]
+  },
+  "httpx_features_covered": [
+    "AsyncClient 创建与配置",
+    "base_url 配置",
+    "timeout 配置",
+    "trust_env 配置",
+    "verify (TLS/SSL) 配置",
+    "POST 请求 (json payload)",
+    "GET 请求",
+    "响应状态码检查",
+    "响应 JSON 解析",
+    "响应头读取",
+    "RequestError 异常处理",
+    "HTTPStatusError 异常处理",
+    "HTTPError 异常处理",
+    "401 自动重试",
+    "自定义 CA 证书验证",
+    "mkcert 本地证书支持"
+  ],
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "name": "创建用户服务客户端 - 默认配置",
+      "category": "AsyncClient 创建",
+      "source_file": "utils/client.py",
+      "function": "create_user_service_client",
+      "description": "测试创建指向 user-service 的 httpx.AsyncClient，使用默认配置",
+      "input": {
+        "config.user_service_url": "https://awiki.ai"
+      },
+      "expected_behavior": {
+        "client.base_url": "https://awiki.ai",
+        "client.timeout": 30.0,
+        "client.trust_env": false,
+        "client.verify": true
+      },
+      "httpx_api": [
+        "httpx.AsyncClient(base_url, timeout, trust_env, verify)"
+      ]
+    },
+    {
+      "id": "TC-002",
+      "name": "创建消息服务客户端 - 默认配置",
+      "category": "AsyncClient 创建",
+      "source_file": "utils/client.py",
+      "function": "create_molt_message_client",
+      "description": "测试创建指向 molt-message 的 httpx.AsyncClient，使用默认配置",
+      "input": {
+        "config.molt_message_url": "https://awiki.ai"
+      },
+      "expected_behavior": {
+        "client.base_url": "https://awiki.ai",
+        "client.timeout": 30.0,
+        "client.trust_env": false,
+        "client.verify": true
+      },
+      "httpx_api": [
+        "httpx.AsyncClient(base_url, timeout, trust_env, verify)"
+      ]
+    },
+    {
+      "id": "TC-003",
+      "name": "TLS 验证 - AWIKI_CA_BUNDLE 环境变量",
+      "category": "TLS 配置",
+      "source_file": "utils/client.py",
+      "function": "_resolve_verify",
+      "description": "测试当 AWIKI_CA_BUNDLE 环境变量设置时，使用自定义 CA 证书",
+      "input": {
+        "base_url": "https://awiki.test",
+        "env.AWIKI_CA_BUNDLE": "/path/to/ca.pem"
+      },
+      "expected_behavior": {
+        "verify": "ssl.SSLContext with custom cafile"
+      },
+      "httpx_api": [
+        "ssl.create_default_context(cafile)"
+      ]
+    },
+    {
+      "id": "TC-004",
+      "name": "TLS 验证 - 本地 .test 域名 mkcert 支持",
+      "category": "TLS 配置",
+      "source_file": "utils/client.py",
+      "function": "_resolve_verify",
+      "description": "测试当访问 .test 域名时，自动使用 mkcert 根证书",
+      "input": {
+        "base_url": "https://api.awiki.test",
+        "mkcert_root_exists": true
+      },
+      "expected_behavior": {
+        "verify": "ssl.SSLContext with mkcert rootCA.pem"
+      },
+      "httpx_api": [
+        "ssl.create_default_context(cafile)"
+      ]
+    },
+    {
+      "id": "TC-005",
+      "name": "TLS 验证 - localhost 支持",
+      "category": "TLS 配置",
+      "source_file": "utils/client.py",
+      "function": "_resolve_verify",
+      "description": "测试当访问 localhost 时，自动使用 mkcert 根证书",
+      "input": {
+        "base_url": "https://localhost:8080",
+        "mkcert_root_exists": true
+      },
+      "expected_behavior": {
+        "verify": "ssl.SSLContext with mkcert rootCA.pem"
+      },
+      "httpx_api": [
+        "ssl.create_default_context(cafile)"
+      ]
+    },
+    {
+      "id": "TC-006",
+      "name": "JSON-RPC 调用 - 成功场景",
+      "category": "POST 请求",
+      "source_file": "utils/rpc.py",
+      "function": "rpc_call",
+      "description": "测试发送 JSON-RPC 2.0 请求并成功获取结果",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "register",
+        "params": {"did_document": {...}},
+        "request_id": 1,
+        "mock_response.status_code": 200,
+        "mock_response.json": {"jsonrpc": "2.0", "result": {"user_id": "xxx"}, "id": 1}
+      },
+      "expected_behavior": {
+        "request_method": "POST",
+        "request_url": "https://awiki.ai/user-service/did-auth/rpc",
+        "request_json.jsonrpc": "2.0",
+        "request_json.method": "register",
+        "request_json.params": {"did_document": {...}},
+        "request_json.id": 1,
+        "return_value": {"user_id": "xxx"}
+      },
+      "httpx_api": [
+        "client.post(endpoint, json=payload)",
+        "resp.raise_for_status()",
+        "resp.json()"
+      ]
+    },
+    {
+      "id": "TC-007",
+      "name": "JSON-RPC 调用 - 服务器返回错误",
+      "category": "POST 请求/错误处理",
+      "source_file": "utils/rpc.py",
+      "function": "rpc_call",
+      "description": "测试服务器返回 JSON-RPC error 时的异常处理",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "register",
+        "params": {"did_document": {...}},
+        "mock_response.status_code": 200,
+        "mock_response.json": {
+          "jsonrpc": "2.0",
+          "error": {"code": -32000, "message": "Invalid did_document"},
+          "id": 1
+        }
+      },
+      "expected_behavior": {
+        "exception": "JsonRpcError",
+        "exception.code": -32000,
+        "exception.message": "Invalid did_document"
+      },
+      "httpx_api": [
+        "client.post(endpoint, json=payload)",
+        "resp.raise_for_status()",
+        "resp.json()"
+      ]
+    },
+    {
+      "id": "TC-008",
+      "name": "JSON-RPC 调用 - HTTP 状态错误",
+      "category": "POST 请求/错误处理",
+      "source_file": "utils/rpc.py",
+      "function": "rpc_call",
+      "description": "测试 HTTP 层错误（如 500）时的异常处理",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "endpoint": "/user-service/did-auth/rpc",
+        "method": "register",
+        "mock_response.status_code": 500,
+        "mock_response.text": "Internal Server Error"
+      },
+      "expected_behavior": {
+        "exception": "httpx.HTTPStatusError"
+      },
+      "httpx_api": [
+        "client.post(endpoint, json=payload)",
+        "resp.raise_for_status()"
+      ]
+    },
+    {
+      "id": "TC-009",
+      "name": "认证 RPC 调用 - 首次成功",
+      "category": "POST 请求/认证",
+      "source_file": "utils/rpc.py",
+      "function": "authenticated_rpc_call",
+      "description": "测试带认证的 RPC 调用，首次请求即成功",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "endpoint": "/group/rpc",
+        "method": "create",
+        "params": {"name": "Test Group"},
+        "auth.get_auth_header()": {"Authorization": "DIDWba ..."},
+        "mock_response.status_code": 200,
+        "mock_response.headers.authorization": "Bearer new_token"
+      },
+      "expected_behavior": {
+        "first_request_headers": {"Authorization": "DIDWba ..."},
+        "auth.update_token()": "called with new token",
+        "credential_store.update_jwt()": "called with new_token",
+        "return_value": {"result": ...}
+      },
+      "httpx_api": [
+        "client.post(endpoint, json=payload, headers=auth_headers)",
+        "resp.status_code",
+        "resp.headers.get('authorization')",
+        "resp.raise_for_status()",
+        "resp.json()"
+      ]
+    },
+    {
+      "id": "TC-010",
+      "name": "认证 RPC 调用 - 401 自动重试",
+      "category": "POST 请求/认证/错误处理",
+      "source_file": "utils/rpc.py",
+      "function": "authenticated_rpc_call",
+      "description": "测试 401 时自动清除 token 并重新认证重试",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "endpoint": "/group/rpc",
+        "method": "create",
+        "auth.get_auth_header()": {"Authorization": "DIDWba expired"},
+        "mock_response_1.status_code": 401,
+        "auth.clear_token()": "called",
+        "auth.get_auth_header(force_new=True)": {"Authorization": "DIDWba new"},
+        "mock_response_2.status_code": 200
+      },
+      "expected_behavior": {
+        "first_request_status": 401,
+        "auth.clear_token()": "called",
+        "auth.get_auth_header(force_new=True)": "called",
+        "retry_request_headers": {"Authorization": "DIDWba new"},
+        "second_request_status": 200,
+        "return_value": {"result": ...}
+      },
+      "httpx_api": [
+        "client.post(endpoint, json=payload, headers=auth_headers)",
+        "resp.status_code",
+        "resp.raise_for_status()"
+      ]
+    },
+    {
+      "id": "TC-011",
+      "name": "DID 注册 - 完整流程",
+      "category": "POST 请求/业务场景",
+      "source_file": "utils/auth.py",
+      "function": "register_did",
+      "description": "测试 DID 注册的完整流程",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "identity.did_document": {...},
+        "name": "Test User",
+        "is_public": false,
+        "is_agent": true,
+        "mock_response.status_code": 200,
+        "mock_response.json.result": {"did": "did:wba:...", "user_id": "xxx"}
+      },
+      "expected_behavior": {
+        "request_json.method": "register",
+        "request_json.params.did_document": {...},
+        "request_json.params.name": "Test User",
+        "request_json.params.is_agent": true,
+        "return_value": {"did": "did:wba:...", "user_id": "xxx"}
+      },
+      "httpx_api": [
+        "rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-012",
+      "name": "DID 文档更新 - WBA 认证",
+      "category": "POST 请求/认证",
+      "source_file": "utils/auth.py",
+      "function": "update_did_document",
+      "description": "测试使用 DID WBA 认证更新 DID 文档",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "identity.did_document": {...},
+        "domain": "awiki.ai",
+        "auth_header": "DIDWba ...",
+        "mock_response.status_code": 200,
+        "mock_response.headers.authorization": "Bearer token"
+      },
+      "expected_behavior": {
+        "request_headers.Authorization": "DIDWba ...",
+        "request_json.method": "update_document",
+        "return_value.access_token": "token (from header)"
+      },
+      "httpx_api": [
+        "client.post(endpoint, json=payload, headers=headers)",
+        "response.headers.get('authorization')",
+        "response.raise_for_status()"
+      ]
+    },
+    {
+      "id": "TC-013",
+      "name": "JWT 获取 - WBA 认证",
+      "category": "POST 请求/认证",
+      "source_file": "utils/auth.py",
+      "function": "get_jwt_via_wba",
+      "description": "测试通过 DID WBA 签名获取 JWT token",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "identity": DIDIdentity,
+        "domain": "awiki.ai",
+        "mock_response.json.result.access_token": "jwt_token_xxx"
+      },
+      "expected_behavior": {
+        "request_json.method": "verify",
+        "request_json.params.authorization": "DIDWba ...",
+        "return_value": "jwt_token_xxx"
+      },
+      "httpx_api": [
+        "rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-014",
+      "name": "Handle 注册 - OTP 验证",
+      "category": "POST 请求/业务场景",
+      "source_file": "utils/handle.py",
+      "function": "register_handle",
+      "description": "测试 Handle 注册流程（包含 OTP 验证）",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "phone": "+8613800138000",
+        "otp_code": "123456",
+        "handle": "alice",
+        "mock_response.status_code": 200,
+        "mock_response.json.result": {"user_id": "xxx", "access_token": "jwt"}
+      },
+      "expected_behavior": {
+        "request_json.method": "register",
+        "request_json.params.phone": "+8613800138000",
+        "request_json.params.otp_code": "123456",
+        "request_json.params.handle": "alice",
+        "return_value.jwt_token": "jwt"
+      },
+      "httpx_api": [
+        "rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-015",
+      "name": "发送 OTP - 手机号格式化",
+      "category": "POST 请求/业务场景",
+      "source_file": "utils/handle.py",
+      "function": "send_otp",
+      "description": "测试发送 OTP 时手机号的自动格式化",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "phone": "13800138000",
+        "mock_response.status_code": 200
+      },
+      "expected_behavior": {
+        "normalized_phone": "+8613800138000",
+        "request_json.params.phone": "+8613800138000"
+      },
+      "httpx_api": [
+        "rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-016",
+      "name": "Handle 解析 - 成功场景",
+      "category": "GET 请求",
+      "source_file": "utils/handle.py",
+      "function": "resolve_handle",
+      "description": "测试解析 Handle 到 DID 映射",
+      "input": {
+        "client.base_url": "https://awiki.ai",
+        "handle": "alice",
+        "mock_response.status_code": 200,
+        "mock_response.json.result": {"handle": "alice", "did": "did:wba:..."}
+      },
+      "expected_behavior": {
+        "request_json.method": "lookup",
+        "request_json.params.handle": "alice",
+        "return_value": {"handle": "alice", "did": "did:wba:..."}
+      },
+      "httpx_api": [
+        "rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-017",
+      "name": "Handle 解析 - .well-known 端点",
+      "category": "GET 请求",
+      "source_file": "utils/resolve.py",
+      "function": "resolve_to_did",
+      "description": "测试通过 .well-known/handle 端点解析 Handle",
+      "input": {
+        "identifier": "alice",
+        "config.user_service_url": "https://awiki.ai",
+        "mock_response.status_code": 200,
+        "mock_response.json": {"status": "active", "did": "did:wba:..."}
+      },
+      "expected_behavior": {
+        "request_url": "https://awiki.ai/user-service/.well-known/handle/alice",
+        "request_method": "GET",
+        "client.timeout": 10.0,
+        "client.trust_env": false,
+        "return_value": "did:wba:..."
+      },
+      "httpx_api": [
+        "httpx.AsyncClient(timeout, trust_env, verify)",
+        "client.get(url)",
+        "resp.status_code",
+        "resp.json()"
+      ]
+    },
+    {
+      "id": "TC-018",
+      "name": "Handle 解析 - 404 处理",
+      "category": "GET 请求/错误处理",
+      "source_file": "utils/resolve.py",
+      "function": "resolve_to_did",
+      "description": "测试 Handle 不存在时的 404 处理",
+      "input": {
+        "identifier": "nonexistent",
+        "mock_response.status_code": 404
+      },
+      "expected_behavior": {
+        "exception": "ValueError",
+        "exception.message": "Handle 'nonexistent' not found"
+      },
+      "httpx_api": [
+        "client.get(url)",
+        "resp.status_code"
+      ]
+    },
+    {
+      "id": "TC-019",
+      "name": "Handle 解析 - 非活跃状态处理",
+      "category": "GET 请求/错误处理",
+      "source_file": "utils/resolve.py",
+      "function": "resolve_to_did",
+      "description": "测试 Handle 状态非 active 时的处理",
+      "input": {
+        "identifier": "alice",
+        "mock_response.status_code": 200,
+        "mock_response.json": {"status": "inactive", "did": "did:wba:..."}
+      },
+      "expected_behavior": {
+        "exception": "ValueError",
+        "exception.message": "Handle 'alice' is not active (status: inactive)"
+      },
+      "httpx_api": [
+        "client.get(url)",
+        "resp.json()"
+      ]
+    },
+    {
+      "id": "TC-020",
+      "name": "群组创建 - 成功场景",
+      "category": "POST 请求/业务场景",
+      "source_file": "manage_group.py",
+      "function": "create_group",
+      "description": "测试创建发现群组",
+      "input": {
+        "credential_name": "default",
+        "name": "OpenClaw Meetup",
+        "slug": "openclaw-meetup",
+        "join_enabled": true,
+        "mock_response.status_code": 200,
+        "mock_response.json": {"group_id": "xxx", "slug": "openclaw-meetup"}
+      },
+      "expected_behavior": {
+        "request_json.method": "create",
+        "request_json.params.slug": "openclaw-meetup",
+        "local_store.upsert_group()": "called",
+        "return_value": {"group_id": "xxx", ...}
+      },
+      "httpx_api": [
+        "authenticated_rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-021",
+      "name": "群组创建 - Slug 冲突处理",
+      "category": "POST 请求/错误处理",
+      "source_file": "manage_group.py",
+      "function": "create_group",
+      "description": "测试 Slug 已被占用时的错误处理",
+      "input": {
+        "slug": "taken-slug",
+        "mock_response.json.error.code": -32004
+      },
+      "expected_behavior": {
+        "exception": "JsonRpcError",
+        "user_message": "Slug 'taken-slug' is already taken. Please choose a different slug."
+      },
+      "httpx_api": [
+        "authenticated_rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-022",
+      "name": "群组消息 - 发布消息",
+      "category": "POST 请求/业务场景",
+      "source_file": "manage_group.py",
+      "function": "post_message",
+      "description": "测试在群组中发布消息",
+      "input": {
+        "group_id": "grp_xxx",
+        "content": "Hello, group!",
+        "client_msg_id": "msg_123",
+        "mock_response.status_code": 200,
+        "mock_response.json": {"message_id": "msg_xxx", "server_seq": 1}
+      },
+      "expected_behavior": {
+        "request_json.method": "post_message",
+        "request_json.params.client_msg_id": "msg_123",
+        "local_store.store_message()": "called",
+        "return_value": {"message_id": "msg_xxx", ...}
+      },
+      "httpx_api": [
+        "authenticated_rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-023",
+      "name": "群组消息 - 获取历史消息",
+      "category": "POST 请求/业务场景",
+      "source_file": "manage_group.py",
+      "function": "list_messages",
+      "description": "测试获取群组历史消息（分页）",
+      "input": {
+        "group_id": "grp_xxx",
+        "since_seq": 10,
+        "limit": 20,
+        "mock_response.status_code": 200,
+        "mock_response.json.messages": [...]
+      },
+      "expected_behavior": {
+        "request_json.method": "list_messages",
+        "request_json.params.since_seq": 10,
+        "request_json.params.limit": 20,
+        "local_store.store_messages_batch()": "called",
+        "return_value": {"messages": [...], "next_since_seq": 30}
+      },
+      "httpx_api": [
+        "authenticated_rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-024",
+      "name": "公共文档获取 - 成功场景",
+      "category": "GET 请求",
+      "source_file": "manage_group.py",
+      "function": "fetch_doc",
+      "description": "测试获取公共群组 markdown 文档",
+      "input": {
+        "doc_url": "https://alice.awiki.ai/docs/readme.md",
+        "mock_response.status_code": 200,
+        "mock_response.text": "# README..."
+      },
+      "expected_behavior": {
+        "request_url": "https://alice.awiki.ai/docs/readme.md",
+        "request_method": "GET",
+        "output": "# README..."
+      },
+      "httpx_api": [
+        "client.get(doc_url)",
+        "resp.status_code",
+        "resp.text"
+      ]
+    },
+    {
+      "id": "TC-025",
+      "name": "公共文档获取 - X-Handle 降级",
+      "category": "GET 请求/降级处理",
+      "source_file": "manage_group.py",
+      "function": "fetch_doc",
+      "description": "测试公共 URL 失败时使用 X-Handle 头降级",
+      "input": {
+        "doc_url": "https://alice.awiki.ai/docs/readme.md",
+        "mock_response_1.status_code": 404,
+        "mock_response_2.status_code": 200,
+        "mock_response_2.request.headers.X-Handle": "alice"
+      },
+      "expected_behavior": {
+        "first_request": "GET https://alice.awiki.ai/docs/readme.md",
+        "first_request_status": 404,
+        "second_request": "GET /docs/readme.md with X-Handle: alice",
+        "second_request_status": 200,
+        "output": "markdown content"
+      },
+      "httpx_api": [
+        "client.get(url)",
+        "client.get(path, headers={'X-Handle': handle})",
+        "resp.raise_for_status()"
+      ]
+    },
+    {
+      "id": "TC-026",
+      "name": "公共文档获取 - 网络错误处理",
+      "category": "GET 请求/错误处理",
+      "source_file": "manage_group.py",
+      "function": "fetch_doc",
+      "description": "测试网络错误时的异常处理",
+      "input": {
+        "doc_url": "https://alice.awiki.ai/docs/readme.md",
+        "mock_exception": "httpx.RequestError"
+      },
+      "expected_behavior": {
+        "exception": "httpx.RequestError",
+        "fallback_attempted": true
+      },
+      "httpx_api": [
+        "client.get(url)",
+        "httpx.RequestError handling"
+      ]
+    },
+    {
+      "id": "TC-027",
+      "name": "WebSocket 监听器 - HTTP 客户端初始化",
+      "category": "AsyncClient 创建",
+      "source_file": "ws_listener.py",
+      "function": "listen_loop",
+      "description": "测试 WebSocket 监听器中 httpx.AsyncClient 的初始化",
+      "input": {
+        "timeout": 10.0,
+        "trust_env": false
+      },
+      "expected_behavior": {
+        "client.timeout": 10.0,
+        "client.trust_env": false,
+        "client.verify": true
+      },
+      "httpx_api": [
+        "httpx.AsyncClient(timeout, trust_env)"
+      ]
+    },
+    {
+      "id": "TC-028",
+      "name": "WebSocket 监听器 - 转发消息到 webhook",
+      "category": "POST 请求/业务场景",
+      "source_file": "ws_listener.py",
+      "function": "_forward",
+      "description": "测试将接收到的消息转发到 webhook 端点",
+      "input": {
+        "route": "agent",
+        "url": "https://agent.example.com/hooks/agent",
+        "token": "bearer_token",
+        "params": {
+          "sender_did": "did:wba:...",
+          "content": "Hello",
+          "type": "text"
+        },
+        "mock_response.status_code": 200
+      },
+      "expected_behavior": {
+        "request_url": "https://agent.example.com/hooks/agent",
+        "request_headers.Authorization": "Bearer bearer_token",
+        "request_json.message": "[IM DM] New message\\n...",
+        "request_json.deliver": true,
+        "return_value": true
+      },
+      "httpx_api": [
+        "http.post(url, json=body, headers=headers)",
+        "resp.is_success",
+        "resp.status_code"
+      ]
+    },
+    {
+      "id": "TC-029",
+      "name": "WebSocket 监听器 - 转发失败处理",
+      "category": "POST 请求/错误处理",
+      "source_file": "ws_listener.py",
+      "function": "_forward",
+      "description": "测试 webhook 转发失败时的处理",
+      "input": {
+        "route": "wake",
+        "url": "https://agent.example.com/hooks/wake",
+        "mock_response.status_code": 500
+      },
+      "expected_behavior": {
+        "log_level": "warning",
+        "return_value": false
+      },
+      "httpx_api": [
+        "http.post(url, json=body, headers=headers)",
+        "resp.is_success"
+      ]
+    },
+    {
+      "id": "TC-030",
+      "name": "WebSocket 监听器 - HTTP 错误异常处理",
+      "category": "POST 请求/错误处理",
+      "source_file": "ws_listener.py",
+      "function": "_forward",
+      "description": "测试 HTTP 层错误（如连接超时）的处理",
+      "input": {
+        "route": "agent",
+        "url": "https://agent.example.com/hooks/agent",
+        "mock_exception": "httpx.HTTPError"
+      },
+      "expected_behavior": {
+        "log_level": "error",
+        "return_value": false
+      },
+      "httpx_api": [
+        "http.post(url, json=body, headers=headers)",
+        "httpx.HTTPError handling"
+      ]
+    },
+    {
+      "id": "TC-031",
+      "name": "JWT 刷新 - WBA 认证",
+      "category": "POST 请求/认证",
+      "source_file": "ws_listener.py",
+      "function": "_refresh_jwt",
+      "description": "测试 WebSocket 监听器中 JWT token 的自动刷新",
+      "input": {
+        "credential_name": "default",
+        "identity.jwt_token": null,
+        "mock_get_jwt_via_wba()": "new_jwt_token"
+      },
+      "expected_behavior": {
+        "credential_store.update_jwt()": "called with new_jwt_token",
+        "return_value": "new_jwt_token"
+      },
+      "httpx_api": [
+        "get_jwt_via_wba() -> rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-032",
+      "name": "DID 已注册 - 直接返回",
+      "category": "业务逻辑优化",
+      "source_file": "utils/resolve.py",
+      "function": "resolve_to_did",
+      "description": "测试输入已经是 DID 时直接返回，无需 HTTP 请求",
+      "input": {
+        "identifier": "did:wba:awiki.ai:user:k1_xxx"
+      },
+      "expected_behavior": {
+        "http_request_made": false,
+        "return_value": "did:wba:awiki.ai:user:k1_xxx"
+      },
+      "httpx_api": []
+    },
+    {
+      "id": "TC-033",
+      "name": "Handle 域名后缀剥离",
+      "category": "业务逻辑优化",
+      "source_file": "utils/resolve.py",
+      "function": "resolve_to_did",
+      "description": "测试 Handle 带域名后缀时自动剥离",
+      "input": {
+        "identifier": "alice.awiki.ai",
+        "config.did_domain": "awiki.ai"
+      },
+      "expected_behavior": {
+        "resolved_handle": "alice",
+        "request_url": "https://awiki.ai/user-service/.well-known/handle/alice"
+      },
+      "httpx_api": [
+        "client.get(url)"
+      ]
+    },
+    {
+      "id": "TC-034",
+      "name": "OTP 代码空白字符清理",
+      "category": "业务逻辑优化",
+      "source_file": "utils/handle.py",
+      "function": "register_handle",
+      "description": "测试 OTP 代码中的空白字符被自动清理",
+      "input": {
+        "otp_code": "12 34\\n56"
+      },
+      "expected_behavior": {
+        "sanitized_otp": "123456",
+        "request_json.params.otp_code": "123456"
+      },
+      "httpx_api": [
+        "rpc_call() -> client.post()"
+      ]
+    },
+    {
+      "id": "TC-035",
+      "name": "响应头 Authorization 转小写处理",
+      "category": "HTTP 协议处理",
+      "source_file": "utils/rpc.py",
+      "function": "authenticated_rpc_call",
+      "description": "测试 httpx 响应头键为小写时的 Authorization 处理",
+      "input": {
+        "mock_response.headers": {"authorization": "Bearer token"}
+      },
+      "expected_behavior": {
+        "auth.update_token()": "called with {'Authorization': 'Bearer token'}",
+        "note": "httpx response header keys are lowercase"
+      },
+      "httpx_api": [
+        "resp.headers.get('authorization')"
+      ]
+    }
+  ],
+  "error_scenarios": [
+    {
+      "id": "ERR-001",
+      "type": "httpx.RequestError",
+      "description": "网络连接失败、DNS 解析失败、超时等底层网络错误",
+      "handled_in": ["manage_group.py:fetch_doc", "ws_listener.py:_forward"],
+      "recovery": "记录日志，尝试降级方案或返回失败"
+    },
+    {
+      "id": "ERR-002",
+      "type": "httpx.HTTPStatusError",
+      "description": "HTTP 状态码表示错误（4xx, 5xx），调用 raise_for_status() 时抛出",
+      "handled_in": ["utils/rpc.py:rpc_call", "utils/auth.py:update_did_document", "utils/resolve.py:resolve_to_did"],
+      "recovery": "向上传播异常或转换为业务异常"
+    },
+    {
+      "id": "ERR-003",
+      "type": "httpx.HTTPError",
+      "description": "HTTP 相关错误的基类",
+      "handled_in": ["ws_listener.py:_forward"],
+      "recovery": "记录错误日志，返回 false 表示转发失败"
+    },
+    {
+      "id": "ERR-004",
+      "type": "401 Unauthorized",
+      "description": "认证失败，token 过期",
+      "handled_in": ["utils/rpc.py:authenticated_rpc_call"],
+      "recovery": "清除过期 token，重新生成认证头，自动重试一次"
+    },
+    {
+      "id": "ERR-005",
+      "type": "404 Not Found",
+      "description": "资源不存在",
+      "handled_in": ["utils/resolve.py:resolve_to_did", "manage_group.py:fetch_doc"],
+      "recovery": "转换为 ValueError 或尝试 X-Handle 降级方案"
+    },
+    {
+      "id": "ERR-006",
+      "type": "JsonRpcError",
+      "description": "服务器返回 JSON-RPC 错误响应",
+      "handled_in": ["utils/rpc.py:rpc_call", "utils/rpc.py:authenticated_rpc_call"],
+      "recovery": "抛出 JsonRpcError 异常，包含错误码和消息"
+    }
+  ],
+  "configuration_matrix": {
+    "timeout_values": [
+      {"value": 10.0, "used_in": ["utils/resolve.py", "ws_listener.py"], "scenario": "简单 GET 请求、WebSocket 辅助 HTTP"},
+      {"value": 30.0, "used_in": ["utils/client.py"], "scenario": "user-service、molt-message 主客户端"}
+    ],
+    "trust_env_values": [
+      {"value": false, "used_in": ["utils/client.py", "utils/resolve.py", "ws_listener.py"], "reason": "不使用系统代理，直接连接"}
+    ],
+    "verify_values": [
+      {"value": true, "scenario": "默认系统证书验证"},
+      {"value": "ssl.SSLContext", "scenario": "自定义 CA 证书（AWIKI_CA_BUNDLE 或 mkcert）"}
+    ]
+  },
+  "summary": {
+    "total_test_cases": 35,
+    "categories": {
+      "AsyncClient 创建": 4,
+      "TLS 配置": 3,
+      "POST 请求": 15,
+      "GET 请求": 6,
+      "错误处理": 8,
+      "认证": 6,
+      "业务场景": 10,
+      "业务逻辑优化": 3,
+      "HTTP 协议处理": 1
+    },
+    "httpx_apis_tested": [
+      "httpx.AsyncClient",
+      "client.post",
+      "client.get",
+      "resp.raise_for_status()",
+      "resp.json()",
+      "resp.text",
+      "resp.status_code",
+      "resp.headers.get",
+      "resp.is_success",
+      "httpx.RequestError",
+      "httpx.HTTPStatusError",
+      "httpx.HTTPError"
+    ],
+    "files_analyzed": 7,
+    "error_scenarios": 6
+  }
+}

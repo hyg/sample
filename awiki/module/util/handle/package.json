@@ -1,0 +1,44 @@
+{
+  "name": "@awiki/handle",
+  "version": "1.0.0",
+  "description": "Handle registration and resolution module for awiki - TypeScript port of python/scripts/utils/handle.py",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "del /Q dist",
+    "prebuild": "npm run clean",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "handle",
+    "did",
+    "registration",
+    "resolution",
+    "awiki"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@awiki/identity": "file:../identity",
+    "@awiki/config": "file:../config",
+    "@awiki/rpc": "file:../rpc",
+    "@awiki/auth": "file:../auth",
+    "@awiki/client": "file:../client"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

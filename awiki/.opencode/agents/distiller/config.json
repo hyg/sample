@@ -1,0 +1,10 @@
+{
+  "name": "distiller",
+  "description": "执行 Python，记录输入输出",
+  "input": "docs/analysis_result.yaml",
+  "output": "distill/results/",
+  "lifecycle": {
+    "create": "分析完成后",
+    "delete": "移植完成后"
+  }
+}
