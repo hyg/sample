@@ -54,7 +54,7 @@ Ate loop size: 6x+2
  * @module
  */
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
-import { sha256 } from '@noble/hashes/sha2.js';
+import { sha256 } from '../lib/hashes/sha2.js';
 import { bls, } from "./abstract/bls.js";
 import { Field } from "./abstract/modular.js";
 import { psiFrobenius, tower12 } from "./abstract/tower.js";

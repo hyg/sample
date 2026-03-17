@@ -3,8 +3,8 @@
  * @module
  */
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
-import { abytes as abytes_, bytesToHex as bytesToHex_, concatBytes as concatBytes_, hexToBytes as hexToBytes_, isBytes as isBytes_, } from '@noble/hashes/utils.js';
-export { abytes, anumber, bytesToHex, bytesToUtf8, concatBytes, hexToBytes, isBytes, randomBytes, utf8ToBytes, } from '@noble/hashes/utils.js';
+import { abytes as abytes_, bytesToHex as bytesToHex_, concatBytes as concatBytes_, hexToBytes as hexToBytes_, isBytes as isBytes_, } from '../hashes/utils.js';
+export { abytes, anumber, bytesToHex, bytesToUtf8, concatBytes, hexToBytes, isBytes, randomBytes, utf8ToBytes, } from '../hashes/utils.js';
 const _0n = /* @__PURE__ */ BigInt(0);
 const _1n = /* @__PURE__ */ BigInt(1);
 export function abool(title, value) {

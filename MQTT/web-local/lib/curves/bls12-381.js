@@ -77,7 +77,7 @@ Filecoin uses little endian byte arrays for secret keys - make sure to reverse b
  * @module
  */
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
-import { sha256 } from '@noble/hashes/sha2.js';
+import { sha256 } from '../lib/hashes/sha2.js';
 import { bls } from "./abstract/bls.js";
 import { Field } from "./abstract/modular.js";
 import { abytes, bitLen, bitMask, bytesToHex, bytesToNumberBE, concatBytes, ensureBytes, numberToBytesBE, } from "./utils.js";
@@ -412,7 +412,7 @@ function signatureG2FromBytes(hex) {
 /**
  * bls12-381 pairing-friendly curve.
  * @example
- * import { bls12_381 as bls } from '@noble/curves/bls12-381';
+ * import { bls12_381 as bls } from '../lib/curves/bls12-381';
  * // G1 keys, G2 signatures
  * const privateKey = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c';
  * const message = '64726e3da8';

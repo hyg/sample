@@ -7,8 +7,8 @@
  * @module
  */
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
-import { shake256 } from '@noble/hashes/sha3.js';
-import { abytes, concatBytes, createHasher as wrapConstructor } from '@noble/hashes/utils.js';
+import { shake256 } from '../lib/hashes/sha3.js';
+import { abytes, concatBytes, createHasher as wrapConstructor } from '../lib/hashes/utils.js';
 import { pippenger } from "./abstract/curve.js";
 import { edwards, PrimeEdwardsPoint, twistedEdwards, } from "./abstract/edwards.js";
 import { _DST_scalar, createHasher, expand_message_xof, } from "./abstract/hash-to-curve.js";
@@ -123,7 +123,7 @@ const ED448_DEF = /* @__PURE__ */ (() => ({
 /**
  * ed448 EdDSA curve and methods.
  * @example
- * import { ed448 } from '@noble/curves/ed448';
+ * import { ed448 } from '../lib/curves/ed448';
  * const { secretKey, publicKey } = ed448.keygen();
  * const msg = new TextEncoder().encode('hello');
  * const sig = ed448.sign(msg, secretKey);
@@ -316,7 +316,7 @@ class _DecafPoint extends PrimeEdwardsPoint {
     init(ep) {
         return new _DecafPoint(ep);
     }
-    /** @deprecated use `import { decaf448_hasher } from '@noble/curves/ed448.js';` */
+    /** @deprecated use `import { decaf448_hasher } from '../lib/curves/ed448.js';` */
     static hashToCurve(hex) {
         return decaf448_map(ensureBytes('decafHash', hex, 112));
     }
@@ -353,7 +353,7 @@ class _DecafPoint extends PrimeEdwardsPoint {
     static fromHex(hex) {
         return _DecafPoint.fromBytes(ensureBytes('decafHex', hex, 56));
     }
-    /** @deprecated use `import { pippenger } from '@noble/curves/abstract/curve.js';` */
+    /** @deprecated use `import { pippenger } from '../lib/curves/abstract/curve.js';` */
     static msm(points, scalars) {
         return pippenger(_DecafPoint, Fn, points, scalars);
     }
@@ -442,13 +442,13 @@ export const ED448_TORSION_SUBGROUP = [
 ];
 /** @deprecated use `decaf448.Point` */
 export const DecafPoint = _DecafPoint;
-/** @deprecated use `import { ed448_hasher } from '@noble/curves/ed448.js';` */
+/** @deprecated use `import { ed448_hasher } from '../lib/curves/ed448.js';` */
 export const hashToCurve = /* @__PURE__ */ (() => ed448_hasher.hashToCurve)();
-/** @deprecated use `import { ed448_hasher } from '@noble/curves/ed448.js';` */
+/** @deprecated use `import { ed448_hasher } from '../lib/curves/ed448.js';` */
 export const encodeToCurve = /* @__PURE__ */ (() => ed448_hasher.encodeToCurve)();
-/** @deprecated use `import { decaf448_hasher } from '@noble/curves/ed448.js';` */
+/** @deprecated use `import { decaf448_hasher } from '../lib/curves/ed448.js';` */
 export const hashToDecaf448 = /* @__PURE__ */ (() => decaf448_hasher.hashToCurve)();
-/** @deprecated use `import { decaf448_hasher } from '@noble/curves/ed448.js';` */
+/** @deprecated use `import { decaf448_hasher } from '../lib/curves/ed448.js';` */
 export const hash_to_decaf448 = /* @__PURE__ */ (() => decaf448_hasher.hashToCurve)();
 /** @deprecated use `ed448.utils.toMontgomery` */
 export function edwardsToMontgomeryPub(edwardsPub) {

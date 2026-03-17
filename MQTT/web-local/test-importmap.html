@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Import Map Test</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "../hashes/": "./lib/hashes/",
+      "./lib/hashes/sha256.js": "./lib/hashes/sha256.js"
+    }
+  }
+  </script>
+  <script type="module">
+    // Test 1: Direct import
+    import { sha256 } from './lib/hashes/sha256.js';
+    console.log('Test 1 - Direct import:', sha256 ? 'SUCCESS' : 'FAIL');
+    
+    // Test 2: Import with path mapping
+    import { sha256 as sha256_2 } from '../hashes/sha256.js';
+    console.log('Test 2 - Path mapping:', sha256_2 ? 'SUCCESS' : 'FAIL');
+    
+    window.addEventListener('load', () => {
+      document.getElementById('status').textContent = 'Import map tests completed!';
+      document.getElementById('status').style.color = 'green';
+    });
+  </script>
+</head>
+<body>
+  <h1>Import Map Test</h1>
+  <p id="status">Loading...</p>
+  <p>Check browser console for test results.</p>
+</body>
+</html>

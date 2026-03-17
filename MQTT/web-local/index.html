@@ -340,9 +340,41 @@
     <!-- 身份管理 -->
     <div class="card">
       <div class="card-title">🔑 身份管理</div>
-      
+
       <div class="form-group">
         <label>创建新身份</label>
+        <div class="form-group" style="margin-top:10px;">
+          <select id="didMethod" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px;">
+            <option value="key">did:key (推荐，简单快速)</option>
+            <option value="ethr">did:ethr (以太坊)</option>
+            <option value="wba">did:wba (跨链)</option>
+          </select>
+          
+          <div id="ethrOptions" class="hidden" style="margin-bottom:10px;">
+            <select id="ethrNetwork" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;">
+              <option value="mainnet">Ethereum Mainnet</option>
+              <option value="sepolia">Sepolia Testnet</option>
+              <option value="bsc">BSC Mainnet</option>
+              <option value="polygon">Polygon</option>
+              <option value="arbitrum">Arbitrum One</option>
+              <option value="optimism">Optimism</option>
+            </select>
+          </div>
+          
+          <div id="wbaOptions" class="hidden" style="margin-bottom:10px;">
+            <select id="wbaChain" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;">
+              <option value="eth">Ethereum</option>
+              <option value="sepolia">Sepolia</option>
+              <option value="bsc">BSC</option>
+              <option value="polygon">Polygon</option>
+              <option value="arb">Arbitrum</option>
+              <option value="op">Optimism</option>
+              <option value="avax">Avalanche</option>
+              <option value="base">Base</option>
+            </select>
+          </div>
+        </div>
+        
         <div class="btn-group">
           <button class="btn btn-secondary" onclick="app.createIdentity('x25519')">创建 X25519 身份 (推荐)</button>
           <button class="btn btn-secondary" onclick="app.createIdentity('p256')">创建 P-256 身份</button>
@@ -355,6 +387,7 @@
           <div class="identity-box">
             <div><strong>DID:</strong> <span class="did" id="myDid"></span></div>
             <div style="margin-top:8px;"><strong>公钥:</strong> <code id="myPublicKey" style="font-size:11px;"></code></div>
+            <div style="margin-top:8px;"><strong>类型:</strong> <span id="myIdentityType"></span></div>
             <div style="margin-top:12px;">
               <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="app.exportIdentity()">💾 导出</button>
               <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="app.copyDid()">📋 复制 DID</button>
@@ -425,8 +458,8 @@
   {
     "imports": {
       "hpke-browser": "./e2ee/hpke-browser.js",
-      "@noble/curves/x25519": "./lib/curves/ed25519.js",
-      "@noble/curves/p256": "./lib/curves/nist.js",
+      "@noble/curves/x25519": "./lib/curves/x25519.js",
+      "@noble/curves/p256": "./lib/curves/p256.js",
       "@noble/hashes/hkdf": "./lib/hashes/hkdf.js",
       "@noble/hashes/hkdf.js": "./lib/hashes/hkdf.js",
       "@noble/hashes/sha256": "./lib/hashes/sha256.js",
@@ -753,53 +786,106 @@
     // 创建身份
     async function createIdentity(keyType = 'x25519') {
       try {
-        log(`正在创建 ${keyType} 身份...`, 'info');
+        // 获取选中的 DID 方法和网络/链
+        const didMethod = document.getElementById('didMethod').value;
+        const ethrNetwork = document.getElementById('ethrNetwork').value;
+        const wbaChain = document.getElementById('wbaChain').value;
         
-        let privateKey, publicKey, publicKeyBytes;
-        
-        if (keyType === 'x25519') {
-          privateKey = x25519.utils.randomPrivateKey();
-          publicKey = x25519.getPublicKey(privateKey);
-          publicKeyBytes = concatTypedArrays(MULTICODEC_PREFIXES.x25519, publicKey);
-        } else {
-          privateKey = p256.utils.randomPrivateKey();
-          publicKey = p256.getPublicKey(privateKey);
-          publicKeyBytes = concatTypedArrays(MULTICODEC_PREFIXES.p256, publicKey);
+        log(`正在创建 ${didMethod} (${keyType}) 身份...`, 'info');
+
+        let did, privateKey, publicKey, chainInfo;
+
+        if (didMethod === 'key') {
+          // did:key
+          let publicKeyBytes;
+          if (keyType === 'x25519') {
+            privateKey = Buffer.from(x25519.utils.randomPrivateKey());
+            publicKey = Buffer.from(x25519.getPublicKey(privateKey));
+            publicKeyBytes = concatTypedArrays(MULTICODEC_PREFIXES.x25519, publicKey);
+          } else {
+            privateKey = Buffer.from(p256.utils.randomPrivateKey());
+            publicKey = Buffer.from(p256.getPublicKey(privateKey));
+            publicKeyBytes = concatTypedArrays(MULTICODEC_PREFIXES.p256, publicKey);
+          }
+          did = `did:key:${base58Encode(publicKeyBytes)}`;
+          chainInfo = 'N/A';
+          
+        } else if (didMethod === 'ethr') {
+          // did:ethr
+          if (keyType === 'x25519') {
+            privateKey = Buffer.from(x25519.utils.randomPrivateKey());
+            publicKey = Buffer.from(x25519.getPublicKey(privateKey));
+          } else {
+            privateKey = Buffer.from(p256.utils.randomPrivateKey());
+            publicKey = Buffer.from(p256.getPublicKey(privateKey));
+          }
+          const address = '0x' + publicKey.slice(0, 20).toString('hex');
+          const chainIdHex = getChainIdHex(ethrNetwork);
+          did = `did:ethr:${chainIdHex}:${address}`;
+          chainInfo = `Ethereum (${ethrNetwork})`;
+          
+        } else if (didMethod === 'wba') {
+          // did:wba
+          if (keyType === 'x25519') {
+            privateKey = Buffer.from(x25519.utils.randomPrivateKey());
+            publicKey = Buffer.from(x25519.getPublicKey(privateKey));
+          } else {
+            privateKey = Buffer.from(p256.utils.randomPrivateKey());
+            publicKey = Buffer.from(p256.getPublicKey(privateKey));
+          }
+          const address = '0x' + publicKey.slice(0, 20).toString('hex');
+          did = `did:wba:${wbaChain}:${address}`;
+          chainInfo = `WBA (${wbaChain})`;
         }
-        
-        const did = `did:key:${base58Encode(publicKeyBytes)}`;
 
         state.myDid = did;
         state.myIdentity = {
           did,
-          privateKey: privateKey,
-          publicKey: publicKey,
-          keyType
+          privateKey,
+          publicKey,
+          keyType,
+          method: didMethod,
+          chain: didMethod === 'ethr' ? ethrNetwork : (didMethod === 'wba' ? wbaChain : null)
         };
 
         document.getElementById('myDid').textContent = did;
-        // 将公钥转换为十六进制字符串
         const publicKeyHex = Array.from(publicKey).map(b => b.toString(16).padStart(2, '0')).join('');
         document.getElementById('myPublicKey').textContent = publicKeyHex;
+        document.getElementById('myIdentityType').textContent = `${didMethod} (${keyType}) ${chainInfo !== 'N/A' ? '- ' + chainInfo : ''}`;
         document.getElementById('identitySection').classList.remove('hidden');
-        
+
         log(`身份创建成功：${did}`, 'success');
         addMessage('system', `✅ 已创建身份：${did.substring(0, 30)}...`);
-        
+
         // 保存到 localStorage
         const privateKeyHex = Array.from(privateKey).map(b => b.toString(16).padStart(2, '0')).join('');
         const publicKeyHexSave = Array.from(publicKey).map(b => b.toString(16).padStart(2, '0')).join('');
         localStorage.setItem('e2ee_identity', JSON.stringify({
           did,
+          method: didMethod,
           privateKey: privateKeyHex,
           publicKey: publicKeyHexSave,
-          keyType
+          keyType,
+          chain: state.myIdentity.chain
         }));
-        
+
       } catch (err) {
         log(`创建身份失败：${err.message}`, 'error');
         addMessage('error', `创建身份失败：${err.message}`);
       }
+    }
+    
+    // 获取以太坊链 ID 十六进制
+    function getChainIdHex(network) {
+      const chainIds = {
+        mainnet: '0x1',
+        sepolia: '0xaa36a7',
+        bsc: '0x38',
+        polygon: '0x89',
+        arbitrum: '0xa4b1',
+        optimism: '0xa'
+      };
+      return chainIds[network] || '0x1';
     }
 
     // 连接 TypedArrays
@@ -1015,13 +1101,19 @@
     // 处理 E2EE 消息
     async function handleE2EEMessage(content) {
       try {
-        const { session_id, seq, ciphertext } = content;
-        
-        if (!state.session || state.session.sessionId !== session_id) {
-          log('收到未知会话的消息', 'warning');
+        const { session_id, seq, ciphertext, sender_did } = content;
+
+        // 检查是否是自己发送的消息
+        if (sender_did && sender_did === state.myDid) {
           return;
         }
-        
+
+        // 检查会话是否匹配
+        if (!state.session || state.session.sessionId !== session_id) {
+          // 非本会话的消息（第三人场景），静默忽略
+          return;
+        }
+
         // 跳过缺失的序列号
         while (state.recvSeq < BigInt(seq)) {
           const { newChainKey } = await decryptMsg(
@@ -1039,14 +1131,14 @@
           state.recvChainKey,
           state.recvSeq
         );
-        
+
         state.recvChainKey = newChainKey;
         state.recvSeq += 1n;
-        
+
         const message = new TextDecoder().decode(plaintext);
         log(`消息解密成功 (seq=${seq})`, 'success');
         addMessage('received', message, { seq });
-        
+
       } catch (err) {
         log(`消息解密失败：${err.message}`, 'error');
         addMessage('error', `解密失败：${err.message}`);
@@ -1251,6 +1343,25 @@
     // 暴露到 window，确保在 DOM 加载后可用
     window.app = app;
 
+    // DID 方法选择变化时显示对应选项
+    document.addEventListener('DOMContentLoaded', () => {
+      const didMethodSelect = document.getElementById('didMethod');
+      const ethrOptions = document.getElementById('ethrOptions');
+      const wbaOptions = document.getElementById('wbaOptions');
+      
+      didMethodSelect.addEventListener('change', () => {
+        const method = didMethodSelect.value;
+        ethrOptions.classList.add('hidden');
+        wbaOptions.classList.add('hidden');
+        
+        if (method === 'ethr') {
+          ethrOptions.classList.remove('hidden');
+        } else if (method === 'wba') {
+          wbaOptions.classList.remove('hidden');
+        }
+      });
+    });
+
     // 页面加载时恢复身份
     window.addEventListener('load', () => {
       const savedIdentity = localStorage.getItem('e2ee_identity');
@@ -1261,32 +1372,40 @@
           state.myIdentity = {
             ...data,
             privateKey: Buffer.from(data.privateKey, 'hex'),
-            publicKey: Buffer.from(data.publicKey, 'hex')
+            publicKey: Buffer.from(data.publicKey, 'hex'),
+            method: data.method || 'key',
+            chain: data.chain || null
           };
 
           document.getElementById('myDid').textContent = data.did;
-          // 确保公钥显示为十六进制
-          if (typeof data.publicKey === 'string' && data.publicKey.includes(',')) {
-            // 旧格式：逗号分隔的十进制数字
-            const nums = data.publicKey.split(',').map(s => parseInt(s.trim()));
-            data.publicKey = nums.map(b => b.toString(16).padStart(2, '0')).join('');
-          }
-          document.getElementById('myPublicKey').textContent = data.publicKey;
+          const publicKeyHex = Array.from(state.myIdentity.publicKey).map(b => b.toString(16).padStart(2, '0')).join('');
+          document.getElementById('myPublicKey').textContent = publicKeyHex;
+          document.getElementById('myIdentityType').textContent = `${data.method || 'key'} (${data.keyType}) ${data.chain ? '- ' + data.chain : ''}`;
           document.getElementById('identitySection').classList.remove('hidden');
+          
+          // 恢复 DID 方法选择
+          if (data.method) {
+            document.getElementById('didMethod').value = data.method;
+            if (data.method === 'ethr' && data.chain) {
+              document.getElementById('ethrNetwork').value = data.chain;
+            } else if (data.method === 'wba' && data.chain) {
+              document.getElementById('wbaChain').value = data.chain;
+            }
+          }
 
           log('已恢复保存的身份', 'success');
         } catch (err) {
           log('恢复身份失败：' + err.message, 'error');
         }
       }
-      
+
       // 添加键盘事件监听器
       document.getElementById('messageInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
           app.sendMessage();
         }
       });
-      
+
       log('E2EE Chat 已加载', 'success');
     });
   </script>

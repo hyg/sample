@@ -6,8 +6,8 @@
  * @module
  */
 /*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
-import { sha256 } from '@noble/hashes/sha2.js';
-import { randomBytes } from '@noble/hashes/utils.js';
+import { sha256 } from '../lib/hashes/sha2.js';
+import { randomBytes } from '../lib/hashes/utils.js';
 import { createCurve } from "./_shortw_utils.js";
 import { createHasher, isogenyMap, } from "./abstract/hash-to-curve.js";
 import { Field, mapHashToField, mod, pow2 } from "./abstract/modular.js";
@@ -71,7 +71,7 @@ const Fpk1 = Field(secp256k1_CURVE.p, { sqrt: sqrtMod });
  *
  * @example
  * ```js
- * import { secp256k1 } from '@noble/curves/secp256k1';
+ * import { secp256k1 } from '../lib/curves/secp256k1';
  * const { secretKey, publicKey } = secp256k1.keygen();
  * const msg = new TextEncoder().encode('hello');
  * const sig = secp256k1.sign(msg, secretKey);
@@ -194,7 +194,7 @@ function schnorrVerify(signature, message, publicKey) {
  * https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
  * @example
  * ```js
- * import { schnorr } from '@noble/curves/secp256k1';
+ * import { schnorr } from '../lib/curves/secp256k1';
  * const { secretKey, publicKey } = schnorr.keygen();
  * // const publicKey = schnorr.getPublicKey(secretKey);
  * const msg = new TextEncoder().encode('hello');
@@ -287,8 +287,8 @@ export const secp256k1_hasher = /* @__PURE__ */ (() => createHasher(secp256k1.Po
     expand: 'xmd',
     hash: sha256,
 }))();
-/** @deprecated use `import { secp256k1_hasher } from '@noble/curves/secp256k1.js';` */
+/** @deprecated use `import { secp256k1_hasher } from '../lib/curves/secp256k1.js';` */
 export const hashToCurve = /* @__PURE__ */ (() => secp256k1_hasher.hashToCurve)();
-/** @deprecated use `import { secp256k1_hasher } from '@noble/curves/secp256k1.js';` */
+/** @deprecated use `import { secp256k1_hasher } from '../lib/curves/secp256k1.js';` */
 export const encodeToCurve = /* @__PURE__ */ (() => secp256k1_hasher.encodeToCurve)();
 //# sourceMappingURL=secp256k1.js.map

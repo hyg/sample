@@ -1,0 +1,7 @@
+{
+  "did": "did:key:DnaeVJuMpauUoNePijhE5AaAdhMeraR6gBQE9zHBNMmHFaJY",
+  "method": "key",
+  "privateKey": "02fb8c7fe7edda1d651d3978a5748d917e6ff4046182fc9ed3bdde12e01a7627",
+  "publicKey": "02487b33646956e125a4dd0be6ac03aecd9a67f5ac4172e98b54bc051aedb543cd",
+  "keyType": "ethr"
+}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test isBytes</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "./lib/hashes/utils.js": "./lib/hashes/utils.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import { isBytes } from './lib/hashes/utils.js';
+    
+    console.log('isBytes function:', isBytes);
+    console.log('isBytes type:', typeof isBytes);
+    
+    // Test isBytes
+    const testArray = new Uint8Array([1, 2, 3]);
+    console.log('isBytes(testArray):', isBytes(testArray));
+    console.log('isBytes("test"):', isBytes("test"));
+    
+    window.addEventListener('load', () => {
+      document.getElementById('status').textContent = 'isBytes test completed!';
+      document.getElementById('status').style.color = 'green';
+    });
+  </script>
+</head>
+<body>
+  <h1>Test isBytes</h1>
+  <p id="status">Loading...</p>
+  <p>Check browser console for test results.</p>
+</body>
+</html>

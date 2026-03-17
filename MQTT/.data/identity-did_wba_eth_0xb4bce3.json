@@ -1,0 +1,9 @@
+{
+  "did": "did:wba:eth:0xb4bce3d8cef8d4c4b8611b1aba82f05b25badbe6",
+  "method": "wba",
+  "privateKey": "accc82d433531e8083d479100eb30ee0fce51445d4fdd0ca2b886cbb83d124b5",
+  "publicKey": "b4bce3d8cef8d4c4b8611b1aba82f05b25badbe6336e6db769188caaf7e84f2c",
+  "keyType": "x25519",
+  "chain": "eth",
+  "chainId": 1
+}

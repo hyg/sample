@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Page</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "../hashes/": "./lib/hashes/",
+      "./lib/curves/utils.js": "./lib/curves/utils.js",
+      "./lib/hashes/utils.js": "./lib/hashes/utils.js"
+    }
+  }
+  </script>
+  <script type="module">
+    // Test 1: Import and check validatorFns
+    import * as utils from './lib/curves/utils.js';
+    
+    console.log('Utils module:', utils);
+    console.log('validateObject:', utils.validateObject);
+    
+    // Test 2: Try to use validateObject
+    try {
+      const testObj = { a: 1, b: 'test' };
+      const result = utils.validateObject(testObj, { a: 'isSafeInteger', b: 'string' });
+      console.log('validateObject test passed:', result);
+    } catch (err) {
+      console.error('validateObject test failed:', err);
+    }
+    
+    window.addEventListener('load', () => {
+      document.getElementById('status').textContent = 'Debug page loaded!';
+      document.getElementById('status').style.color = 'green';
+    });
+  </script>
+</head>
+<body>
+  <h1>Debug Page</h1>
+  <p id="status">Loading...</p>
+  <p>Check browser console for debug information.</p>
+</body>
+</html>

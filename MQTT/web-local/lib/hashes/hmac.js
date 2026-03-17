@@ -77,8 +77,8 @@ export class HMAC extends Hash {
  * @param key - message key
  * @param message - message data
  * @example
- * import { hmac } from '@noble/hashes/hmac';
- * import { sha256 } from '@noble/hashes/sha2';
+ * import { hmac } from '../lib/hashes/hmac';
+ * import { sha256 } from '../lib/hashes/sha2';
  * const mac1 = hmac(sha256, 'key', 'message');
  */
 export const hmac = (hash, key, message) => new HMAC(hash, key).update(message).digest();

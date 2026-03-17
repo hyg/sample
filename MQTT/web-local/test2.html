@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Page 2</title>
+  <!-- Import Map for CDN dependencies -->
+  <script type="importmap">
+  {
+    "imports": {
+      "../hashes/": "./lib/hashes/",
+      "./lib/hashes/sha256.js": "./lib/hashes/sha256.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import { sha256 } from './lib/hashes/sha256.js';
+    
+    console.log('sha256:', sha256);
+    console.log('SHA256 module loaded successfully!');
+    
+    window.addEventListener('load', () => {
+      document.getElementById('status').textContent = 'SHA256 module loaded successfully!';
+      document.getElementById('status').style.color = 'green';
+    });
+  </script>
+</head>
+<body>
+  <h1>SHA256 Module Test</h1>
+  <p id="status">Loading...</p>
+</body>
+</html>

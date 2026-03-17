@@ -64,25 +64,62 @@ function showWelcome() {
  */
 function showHelp() {
   console.log(`
-可用命令:
-  /help                     - 显示帮助
-  /create <method>          - 创建新身份 (method: x25519, p256)
-  /show                     - 显示当前身份
-  /export                   - 导出身份
-  /import <file>            - 导入身份
+========================================
+ MQTT E2EE Chat - 命令帮助
+========================================
+
+基本命令:
+  /help                     - 显示此帮助信息
+  /show                     - 显示当前身份信息
+  /export                   - 导出身份到文件
+  /import <file>            - 从文件导入身份
   /connect <partner-did>    - 连接到伙伴
-  /pubkey <hex>             - 设置伙伴公钥
+  /pubkey <hex>             - 设置伙伴公钥 (X25519 格式)
   /init                     - 初始化 E2EE 会话
   /send <message>           - 发送消息 (明文或加密)
   /session                  - 显示会话状态
-  /quit                     - 退出
+  /quit                     - 退出程序
 
-示例:
-  /create x25519            - 创建 x25519 身份
-  /connect did:key:z6Mk...  - 连接到伙伴
-  /pubkey <hex>             - 设置伙伴公钥
-  /init                     - 初始化 E2EE 会话
-  /send Hello!              - 发送消息
+========================================
+ 身份创建命令 (/create)
+========================================
+
+基本格式: /create <类型> [密钥类型]
+
+支持的 DID 方法:
+  /create x25519            - 创建 did:key 身份 (X25519 密钥)
+  /create p256              - 创建 did:key 身份 (P-256 密钥)
+  /create ethr              - 创建 did:ethr 身份 (X25519 密钥)
+  /create wba               - 创建 did:wba 身份 (X25519 密钥)
+
+指定密钥类型:
+  /create ethr x25519       - 创建 did:ethr 身份 (X25519 密钥)
+  /create wba p256          - 创建 did:wba 身份 (P-256 密钥)
+
+========================================
+ 使用示例
+========================================
+
+1. 创建身份:
+   /create x25519           # 创建 X25519 密钥的 did:key 身份
+   /create ethr             # 创建以太坊 DID 身份
+   /create wba              # 创建 WBA 跨链 DID 身份
+
+2. 连接到伙伴:
+   /connect did:key:z6Mk... # 连接到 did:key 伙伴
+   /pubkey 03c8ef41...      # 设置伙伴公钥 (32字节X25519或33字节P-256)
+
+3. 初始化会话并发送消息:
+   /init                    # 初始化 E2EE 会话
+   /send Hello!             # 发送加密消息
+
+========================================
+ 注意事项
+========================================
+
+• 公钥格式: 支持 32 字节 X25519 公钥或 33 字节 P-256 压缩公钥
+• DID 方法: did:key, did:ethr, did:wba 均支持跨方法通信
+• 加密模式: 默认使用 HPKE Base 模式加密
   `);
 }
 
@@ -93,9 +130,32 @@ function createIdentity(method) {
   try {
     console.log(`\n[身份] 创建新的 ${method} 身份...`);
 
-    // 转换为小写
-    const keyType = method.toLowerCase();
-    const identity = didManager.generate('key', { keyType });
+    // 解析 DID 方法和密钥类型
+    let didMethod = 'key';
+    let keyType = 'x25519';
+    
+    // 支持的格式: /create x25519, /create ethr, /create wba, /create ethr x25519
+    const parts = method.toLowerCase().split(' ');
+    
+    if (parts.length === 1) {
+      // 只有一个参数，可能是密钥类型或 DID 方法
+      const arg = parts[0];
+      if (arg === 'x25519' || arg === 'p256') {
+        // 密钥类型，默认使用 did:key
+        didMethod = 'key';
+        keyType = arg;
+      } else if (arg === 'ethr' || arg === 'wba') {
+        // DID 方法，默认使用 x25519
+        didMethod = arg;
+        keyType = 'x25519';
+      }
+    } else if (parts.length === 2) {
+      // 两个参数: DID方法 密钥类型
+      didMethod = parts[0];
+      keyType = parts[1];
+    }
+    
+    const identity = didManager.generate(didMethod, { keyType });
 
     state.myDid = identity.did;
     state.myIdentity = identity;
@@ -206,8 +266,24 @@ function connectToPartner(partnerDid) {
  */
 function setPartnerPublicKey(publicKeyHex) {
   try {
-    state.partnerPublicKey = Buffer.from(publicKeyHex, 'hex');
-    console.log(`\n[连接] 伙伴公钥已设置`);
+    let publicKey = Buffer.from(publicKeyHex, 'hex');
+    
+    // 验证公钥长度
+    if (publicKey.length === 33) {
+      // 可能是压缩的 P-256 公钥 (0x02 或 0x03 开头)
+      const prefix = publicKey[0];
+      if (prefix === 0x02 || prefix === 0x03) {
+        console.log(`\n[警告] 检测到 P-256 压缩公钥 (33字节)，自动去掉前缀`);
+        publicKey = publicKey.slice(1);
+      }
+    }
+    
+    if (publicKey.length !== 32) {
+      throw new Error(`公钥长度应为 32 字节 (X25519)，当前长度: ${publicKey.length}`);
+    }
+    
+    state.partnerPublicKey = publicKey;
+    console.log(`\n[连接] 伙伴公钥已设置 (长度: ${publicKey.length} 字节)`);
     return true;
   } catch (err) {
     console.error(`[错误] 无效的公钥格式：${err.message}`);

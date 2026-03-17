@@ -1,13 +1,17 @@
 /**
  * did:key 方法实现
- * 
+ *
  * 基于 W3C DID Key 规范:
  * https://w3c-ccg.github.io/did-method-key/
- * 
+ *
  * 支持的密钥类型:
  * - X25519 (密钥协商)
  * - Ed25519 (签名)
- * - P-256 (签名，用于与 ANP 兼容)
+ * - P-256 (签名和密钥协商)
+ *
+ * 跨 DID 通信:
+ * - 与 did:ethr 通信：使用 X25519 或 P-256 进行密钥协商
+ * - 与 did:wba 通信：使用 X25519 或 P-256 进行密钥协商
  */
 
 import { ed25519, x25519 } from '@noble/curves/ed25519';
@@ -24,18 +28,17 @@ const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvw
 export function base58Encode(bytes) {
   let num = BigInt('0x' + Buffer.from(bytes).toString('hex'));
   let encoded = '';
-  
+
   while (num > 0n) {
     const remainder = num % 58n;
     num = num / 58n;
     encoded = BASE58_ALPHABET[Number(remainder)] + encoded;
   }
-  
-  // 处理前导零
+
   for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
     encoded = '1' + encoded;
   }
-  
+
   return encoded;
 }
 
@@ -50,41 +53,36 @@ export function base58Decode(str) {
     if (value === -1) throw new Error('Invalid base58 character');
     num = num * 58n + BigInt(value);
   }
-  
+
   let hex = num.toString(16);
   if (hex.length % 2) hex = '0' + hex;
-  
+
   const bytes = Uint8Array.from(Buffer.from(hex, 'hex'));
-  
-  // 处理前导零
+
   for (let i = 0; i < str.length && str[i] === '1'; i++) {
-    const zero = new Uint8Array([0]);
-    const newBytes = new Uint8Array(zero.length + bytes.length);
-    newBytes.set(zero, 0);
-    newBytes.set(bytes, zero.length);
+    const newBytes = new Uint8Array(bytes.length + 1);
+    newBytes.set(bytes, 1);
     bytes = newBytes;
   }
-  
+
   return bytes;
 }
 
 // 多字节编码 (用于 DID Key)
 const MULTICODEC_PREFIXES = {
-  x25519: new Uint8Array([0xec, 0x01]), // 0x00ec = X25519
-  ed25519: new Uint8Array([0xed, 0x01]), // 0x00ed = Ed25519
-  p256: new Uint8Array([0x80, 0x24]), // 0x8024 = P-256 (NIST P-256)
+  x25519: new Uint8Array([0xec, 0x01]),
+  ed25519: new Uint8Array([0xed, 0x01]),
+  p256: new Uint8Array([0x80, 0x24]),
 };
 
 export class DIDKeyHandler {
   /**
    * 生成新的 DID Key 身份
    * @param {string} keyType - 密钥类型：'x25519', 'ed25519', 'p256'
-   * @returns {Object} - 包含私钥、公钥和 DID 文档
+   * @returns {Object}
    */
-  generate(keyType = 'x25519') {  // 默认使用 X25519 (ANP 推荐)
+  generate(keyType = 'x25519') {
     let privateKey, publicKey, publicKeyBytes;
-
-    // 转换为小写处理
     const type = keyType.toLowerCase();
 
     switch (type) {
@@ -113,32 +111,61 @@ export class DIDKeyHandler {
     return {
       did,
       privateKey: Buffer.from(privateKey),
-      publicKey: Buffer.from(publicKey),  // 32 字节原始公钥
+      publicKey: Buffer.from(publicKey),
       keyType,
       didDocument: this.createDIDDocument(did, publicKey, keyType)
     };
   }
 
   /**
-   * 从私钥恢复身份
-   * @param {Uint8Array|Buffer} privateKey 
-   * @param {string} keyType 
+   * 从公钥创建身份（用于跨 DID 通信）
+   * @param {Uint8Array} publicKey - 原始公钥字节
+   * @param {string} keyType - 密钥类型
+   * @param {string} did - 目标 DID
    * @returns {Object}
    */
-  fromPrivateKey(privateKey, keyType = 'p256') {
-    let publicKey, publicKeyBytes, did;
+  fromPublicKey(publicKey, keyType = 'x25519', did = null) {
+    let publicKeyBytes;
 
-    switch (keyType) {
+    switch (keyType.toLowerCase()) {
+      case 'x25519':
+        publicKeyBytes = this.concatTypedArrays(MULTICODEC_PREFIXES.x25519, publicKey);
+        break;
+      case 'ed25519':
+        publicKeyBytes = this.concatTypedArrays(MULTICODEC_PREFIXES.ed25519, publicKey);
+        break;
+      case 'p256':
+      default:
+        publicKeyBytes = this.concatTypedArrays(MULTICODEC_PREFIXES.p256, publicKey);
+        break;
+    }
+
+    const finalDid = did || `did:key:${base58Encode(publicKeyBytes)}`;
+
+    return {
+      did: finalDid,
+      publicKey: Buffer.from(publicKey),
+      keyType,
+      didDocument: this.createDIDDocument(finalDid, publicKey, keyType)
+    };
+  }
+
+  /**
+   * 从私钥恢复身份
+   */
+  fromPrivateKey(privateKey, keyType = 'x25519') {
+    let publicKey, publicKeyBytes;
+    const type = keyType.toLowerCase();
+
+    switch (type) {
       case 'x25519':
         publicKey = x25519.getPublicKey(privateKey);
         publicKeyBytes = this.concatTypedArrays(MULTICODEC_PREFIXES.x25519, publicKey);
         break;
-      
       case 'ed25519':
         publicKey = ed25519.getPublicKey(privateKey);
         publicKeyBytes = this.concatTypedArrays(MULTICODEC_PREFIXES.ed25519, publicKey);
         break;
-      
       case 'p256':
       default:
         publicKey = p256.getPublicKey(privateKey);
@@ -146,7 +173,7 @@ export class DIDKeyHandler {
         break;
     }
 
-    did = `did:key:${base58Encode(publicKeyBytes)}`;
+    const did = `did:key:${base58Encode(publicKeyBytes)}`;
 
     return {
       did,
@@ -159,16 +186,12 @@ export class DIDKeyHandler {
 
   /**
    * 从 DID 解析公钥
-   * @param {string} did 
-   * @returns {Object} - { publicKey, keyType }
    */
   resolvePublicKey(did) {
     const keyBytes = base58Decode(did.replace('did:key:', ''));
-    
-    // 读取多字节前缀
     const prefix = Buffer.from(keyBytes.slice(0, 2)).toString('hex');
     const publicKeyBytes = keyBytes.slice(2);
-    
+
     let keyType;
     switch (prefix) {
       case 'ec01':
@@ -183,7 +206,7 @@ export class DIDKeyHandler {
       default:
         throw new Error(`Unsupported multicodec prefix: ${prefix}`);
     }
-    
+
     return {
       publicKey: Buffer.from(publicKeyBytes),
       keyType,
@@ -192,11 +215,50 @@ export class DIDKeyHandler {
   }
 
   /**
+   * 获取共享密钥（跨 DID 通信的关键方法）
+   * 
+   * @param {Uint8Array} myPrivateKey - 我的私钥
+   * @param {Uint8Array} theirPublicKey - 对方的公钥（原始字节）
+   * @param {Object} options - 选项
+   * @param {string} options.myMethod - 我的 DID 方法
+   * @param {string} options.theirMethod - 对方的 DID 方法
+   * @returns {Promise<Uint8Array>} - 共享密钥
+   */
+  async getSharedSecret(myPrivateKey, theirPublicKey, options = {}) {
+    const { theirMethod } = options;
+    
+    // 无论对方是什么 DID 方法，只要公钥格式正确就可以进行密钥协商
+    // 这是跨 DID 通信的关键
+    
+    // 尝试 X25519 密钥协商（最常用）
+    try {
+      if (theirPublicKey.length === 32) {
+        const sharedSecret = x25519.getSharedSecret(myPrivateKey, theirPublicKey);
+        return new Uint8Array(sharedSecret);
+      }
+    } catch (e) {
+      // 继续尝试其他方法
+    }
+
+    // 尝试 P-256 密钥协商
+    try {
+      if (theirPublicKey.length === 65 || theirPublicKey.length === 33) {
+        const sharedSecret = p256.getSharedSecret(myPrivateKey, theirPublicKey);
+        return new Uint8Array(sharedSecret);
+      }
+    } catch (e) {
+      // 继续尝试其他方法
+    }
+
+    throw new Error(`Cannot derive shared secret: incompatible key types (my: did:key, their: ${theirMethod})`);
+  }
+
+  /**
    * 创建 DID 文档
    */
   createDIDDocument(did, publicKey, keyType) {
     const keyId = `${did}#${did.substring(0, 16)}`;
-    
+
     let verificationMethod;
     switch (keyType) {
       case 'x25519':
@@ -207,7 +269,7 @@ export class DIDKeyHandler {
           publicKeyMultibase: 'z' + base58Encode(this.concatTypedArrays(MULTICODEC_PREFIXES.x25519, publicKey))
         };
         break;
-      
+
       case 'ed25519':
         verificationMethod = {
           id: keyId,
@@ -216,10 +278,9 @@ export class DIDKeyHandler {
           publicKeyMultibase: 'z' + base58Encode(this.concatTypedArrays(MULTICODEC_PREFIXES.ed25519, publicKey))
         };
         break;
-      
+
       case 'p256':
       default:
-        // JWK 格式 (用于 ECDSA P-256)
         const jwk = this.publicKeyToJWK(publicKey);
         verificationMethod = {
           id: keyId,
@@ -230,7 +291,7 @@ export class DIDKeyHandler {
         break;
     }
 
-    const didDocument = {
+    return {
       '@context': [
         'https://www.w3.org/ns/did/v1',
         'https://w3id.org/security/suites/jws-2020/v1'
@@ -241,20 +302,16 @@ export class DIDKeyHandler {
       assertionMethod: [keyId],
       keyAgreement: [keyId]
     };
-
-    return didDocument;
   }
 
   /**
    * 将原始公钥转换为 JWK 格式
    */
   publicKeyToJWK(publicKey) {
-    // 确保公钥是未压缩格式 (65 字节：0x04 + x + y)
     let uncompressed;
     if (publicKey.length === 33) {
-      // 压缩格式：0x02 或 0x03 + x 坐标，需要解压缩
       const point = p256.ProjectivePoint.fromHex(publicKey);
-      uncompressed = point.toRawBytes(false); // false = 未压缩
+      uncompressed = point.toRawBytes(false);
     } else if (publicKey.length === 65 && publicKey[0] === 0x04) {
       uncompressed = publicKey;
     } else {
@@ -274,9 +331,6 @@ export class DIDKeyHandler {
 
   /**
    * 签名消息
-   * @param {Uint8Array} message 
-   * @param {Uint8Array} privateKey 
-   * @returns {Uint8Array} 签名
    */
   sign(message, privateKey, keyType = 'p256') {
     if (keyType === 'p256') {
@@ -290,11 +344,6 @@ export class DIDKeyHandler {
 
   /**
    * 验证签名
-   * @param {Uint8Array} message 
-   * @param {Uint8Array} signature 
-   * @param {Uint8Array} publicKey 
-   * @param {string} keyType 
-   * @returns {boolean}
    */
   verify(message, signature, publicKey, keyType = 'p256') {
     if (keyType === 'p256') {

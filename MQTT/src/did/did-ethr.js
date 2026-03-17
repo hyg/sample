@@ -1,213 +1,245 @@
 /**
  * did:ethr 方法实现
  * 
- * 基于以太坊的 DID 方法:
- * https://github.com/decentralized-identity/ethr-did-resolver
+ * 基于以太坊的 DID 方法，支持多链
+ * 规范：https://github.com/uport-project/ethr-did/blob/develop/doc/did-method-spec.md
  * 
- * DID 格式：did:ethr:<chainId>:<address>
- * 简化格式：did:ethr:<address> (默认主网)
+ * DID 格式:
+ * - did:ethr:<chainId>:<address>
+ * - did:ethr:<chainId>:<publicKey>
+ * 
+ * 跨 DID 通信：
+ * - 统一使用 X25519 或 P-256 进行 E2EE 密钥协商
+ * - 以太坊地址用于身份标识，不直接用于加密
  */
 
+import { x25519 } from '@noble/curves/ed25519.js';
 import { p256 } from '@noble/curves/p256';
-import { keccak_256 } from '@noble/hashes/sha3';
+import { randomBytes } from '@noble/hashes/utils';
 
-/**
- * 地址工具函数
- */
-export const addressUtils = {
-  /**
-   * 从公钥推导以太坊地址
-   * @param {Uint8Array} publicKey - 65 字节原始公钥 (0x04 + x + y)
-   * @returns {string} - 42 字节地址 (带 0x 前缀)
-   */
-  fromPublicKey(publicKey) {
-    if (publicKey.length !== 65 || publicKey[0] !== 0x04) {
-      throw new Error('Invalid P-256 public key');
-    }
-    
-    // 跳过 0x04 前缀，取 x+y
-    const pubKeyBytes = publicKey.slice(1);
-    
-    // Keccak-256 哈希
-    const hash = keccak_256(pubKeyBytes);
-    
-    // 取最后 20 字节
-    const addressBytes = hash.slice(-20);
-    
-    // 转换为十六进制
-    return '0x' + Buffer.from(addressBytes).toString('hex');
-  },
-
-  /**
-   * 验证地址格式
-   * @param {string} address 
-   * @returns {boolean}
-   */
-  isValid(address) {
-    return /^0x[a-fA-F0-9]{40}$/.test(address);
-  }
+// 支持的以太坊网络
+const ETHEREUM_NETWORKS = {
+  mainnet: { chainId: 1, name: 'Ethereum Mainnet' },
+  sepolia: { chainId: 11155111, name: 'Sepolia Testnet' },
+  bsc: { chainId: 56, name: 'BSC Mainnet' },
+  polygon: { chainId: 137, name: 'Polygon' },
+  arbitrum: { chainId: 42161, name: 'Arbitrum One' },
+  optimism: { chainId: 10, name: 'Optimism' }
 };
 
-export class DIDETHRHandler {
-  constructor(defaultChainId = '0x1') {
-    this.defaultChainId = defaultChainId;
+export class DIDEthrHandler {
+  constructor(options = {}) {
+    this.defaultNetwork = options.network || 'mainnet';
   }
 
   /**
-   * 生成新的 DID ETHR 身份
-   * @param {string} chainId - 以太坊链 ID (可选)
+   * 获取网络配置
+   */
+  getNetwork(chainId) {
+    for (const [name, config] of Object.entries(ETHEREUM_NETWORKS)) {
+      if (config.chainId === chainId) {
+        return { name, ...config };
+      }
+    }
+    return ETHEREUM_NETWORKS.mainnet;
+  }
+
+  /**
+   * 生成新的 DID Ethr 身份
+   * @param {string|number} chainIdOrNetwork - 链 ID 或网络名称
+   * @param {string} keyType - 密钥类型：'x25519', 'p256' (用于 E2EE)
    * @returns {Object}
    */
-  generate(chainId = this.defaultChainId) {
-    // 生成 P-256 密钥对 (用于签名和密钥协商)
-    const privateKey = p256.utils.randomPrivateKey();
-    const publicKey = p256.getPublicKey(privateKey);
+  generate(chainIdOrNetwork = 'mainnet', keyType = 'x25519') {
+    const network = typeof chainIdOrNetwork === 'string' 
+      ? (ETHEREUM_NETWORKS[chainIdOrNetwork] || ETHEREUM_NETWORKS.mainnet)
+      : this.getNetwork(chainIdOrNetwork);
+
+    const type = keyType.toLowerCase();
+    let privateKey, publicKey;
+
+    // 生成 E2EE 密钥（X25519 或 P-256）
+    if (type === 'x25519') {
+      privateKey = Buffer.from(x25519.utils.randomPrivateKey());
+      publicKey = Buffer.from(x25519.getPublicKey(privateKey));
+    } else if (type === 'p256') {
+      privateKey = Buffer.from(p256.utils.randomPrivateKey());
+      publicKey = Buffer.from(p256.getPublicKey(privateKey));
+    } else {
+      throw new Error(`Unsupported key type: ${keyType}. Use 'x25519' or 'p256' for E2EE.`);
+    }
+
+    // 从公钥派生地址（用于 DID 标识）
+    const address = '0x' + publicKey.slice(0, 20).toString('hex');
     
-    // 推导以太坊地址
-    const address = addressUtils.fromPublicKey(publicKey);
-    
-    // 构建 DID
-    const did = chainId && chainId !== '0x1' 
-      ? `did:ethr:${chainId}:${address}`
-      : `did:ethr:${address}`;
+    // DID 格式：did:ethr:<chainIdHex>:<address>
+    const chainIdHex = '0x' + network.chainId.toString(16);
+    const did = `did:ethr:${chainIdHex}:${address}`;
 
     return {
       did,
+      privateKey,
+      publicKey,
       address,
-      chainId,
-      privateKey: Buffer.from(privateKey),
+      keyType,
+      chainId: network.chainId,
+      network: network.name,
+      didDocument: this.createDIDDocument(did, publicKey, address, network.chainId, keyType)
+    };
+  }
+
+  /**
+   * 从公钥创建身份（用于跨 DID 通信）
+   * @param {Uint8Array} publicKey - 原始公钥字节
+   * @param {string} keyType - 密钥类型
+   * @param {string} did - 目标 DID（可选）
+   * @returns {Object}
+   */
+  fromPublicKey(publicKey, keyType = 'x25519', did = null) {
+    const address = '0x' + Buffer.from(publicKey).slice(0, 20).toString('hex');
+    const finalDid = did || `did:ethr:0x1:${address}`;
+
+    return {
+      did: finalDid,
       publicKey: Buffer.from(publicKey),
-      keyType: 'p256',
-      didDocument: this.createDIDDocument(did, publicKey, address, chainId)
+      address,
+      keyType: keyType.toLowerCase(),
+      didDocument: this.createDIDDocument(finalDid, publicKey, address, 1, keyType)
     };
   }
 
   /**
    * 从私钥恢复身份
-   * @param {Uint8Array|Buffer} privateKey 
-   * @param {string} chainId 
-   * @returns {Object}
    */
-  fromPrivateKey(privateKey, chainId = this.defaultChainId) {
-    const publicKey = p256.getPublicKey(privateKey);
-    const address = addressUtils.fromPublicKey(publicKey);
-    
-    const did = chainId && chainId !== '0x1'
-      ? `did:ethr:${chainId}:${address}`
-      : `did:ethr:${address}`;
+  fromPrivateKey(privateKey, chainIdOrNetwork = 'mainnet', keyType = 'x25519') {
+    const network = typeof chainIdOrNetwork === 'string' 
+      ? (ETHEREUM_NETWORKS[chainIdOrNetwork] || ETHEREUM_NETWORKS.mainnet)
+      : this.getNetwork(chainIdOrNetwork);
+
+    const type = keyType.toLowerCase();
+    let publicKey;
+
+    if (type === 'x25519') {
+      publicKey = Buffer.from(x25519.getPublicKey(privateKey));
+    } else if (type === 'p256') {
+      publicKey = Buffer.from(p256.getPublicKey(privateKey));
+    } else {
+      throw new Error(`Unsupported key type: ${keyType}`);
+    }
+
+    const address = '0x' + publicKey.slice(0, 20).toString('hex');
+    const chainIdHex = '0x' + network.chainId.toString(16);
+    const did = `did:ethr:${chainIdHex}:${address}`;
 
     return {
       did,
-      address,
-      chainId,
       privateKey: Buffer.from(privateKey),
-      publicKey: Buffer.from(publicKey),
-      keyType: 'p256',
-      didDocument: this.createDIDDocument(did, publicKey, address, chainId)
+      publicKey,
+      address,
+      keyType: type,
+      chainId: network.chainId,
+      didDocument: this.createDIDDocument(did, publicKey, address, network.chainId, type)
     };
   }
 
   /**
-   * 从地址解析 DID 文档
-   * @param {string} did 
-   * @param {Uint8Array} publicKey - 实际使用中需要从链上查询
-   * @returns {Object}
+   * 从 DID 解析公钥
    */
-  resolve(did, publicKey = null) {
-    const parsed = this.parse(did);
+  resolvePublicKey(did) {
+    const parts = did.split(':');
+    const id = parts[parts.length - 1];
     
-    if (!publicKey) {
-      return {
-        did,
-        address: parsed.address,
-        chainId: parsed.chainId,
-        didDocument: this.createMinimalDIDDocument(did, parsed.address, parsed.chainId)
+    return {
+      address: id,
+      didDocument: {
+        '@context': ['https://www.w3.org/ns/did/v1'],
+        id: did,
+        verificationMethod: [{
+          id: `${did}#controller`,
+          type: 'EcdsaSecp256k1RecoveryMethod2020',
+          controller: did,
+          blockchainAccountId: `eip155:1:${id}`
+        }]
+      }
+    };
+  }
+
+  /**
+   * 获取共享密钥（跨 DID 通信的关键方法）
+   * 
+   * 无论对方是什么 DID 方法，只要公钥格式正确就可以进行密钥协商
+   * 
+   * @param {Uint8Array} myPrivateKey - 我的私钥
+   * @param {Uint8Array} theirPublicKey - 对方的公钥（原始字节）
+   * @param {Object} options
+   * @returns {Promise<Uint8Array>}
+   */
+  async getSharedSecret(myPrivateKey, theirPublicKey, options = {}) {
+    // 尝试 X25519 密钥协商（优先）
+    try {
+      if (theirPublicKey.length === 32) {
+        const sharedSecret = x25519.getSharedSecret(myPrivateKey, theirPublicKey);
+        return new Uint8Array(sharedSecret);
+      }
+    } catch (e) {
+      // 继续尝试其他方法
+    }
+
+    // 尝试 P-256 密钥协商
+    try {
+      if (theirPublicKey.length === 65 || theirPublicKey.length === 33) {
+        const sharedSecret = p256.getSharedSecret(myPrivateKey, theirPublicKey);
+        return new Uint8Array(sharedSecret);
+      }
+    } catch (e) {
+      // 继续尝试其他方法
+    }
+
+    throw new Error(`Cannot derive shared secret: incompatible key types (my: did:ethr, their: ${options.theirMethod})`);
+  }
+
+  /**
+   * 创建 DID 文档
+   */
+  createDIDDocument(did, publicKey, address, chainId, keyType) {
+    const keyId = `${did}#controller`;
+    
+    let verificationMethod;
+    
+    if (keyType === 'x25519') {
+      verificationMethod = {
+        id: `${did}#key-agreement`,
+        type: 'X25519KeyAgreementKey2020',
+        controller: did,
+        publicKeyMultibase: 'z' + Buffer.from(publicKey).toString('hex')
+      };
+    } else if (keyType === 'p256') {
+      const jwk = this.publicKeyToJWK(publicKey);
+      verificationMethod = {
+        id: keyId,
+        type: 'JsonWebKey2020',
+        controller: did,
+        publicKeyJwk: jwk
+      };
+    } else {
+      verificationMethod = {
+        id: keyId,
+        type: 'EcdsaSecp256k1RecoveryMethod2020',
+        controller: did,
+        blockchainAccountId: `eip155:${chainId}:${address}`
       };
     }
 
     return {
-      did,
-      address: parsed.address,
-      chainId: parsed.chainId,
-      publicKey: Buffer.from(publicKey),
-      keyType: 'p256',
-      didDocument: this.createDIDDocument(did, publicKey, parsed.address, parsed.chainId)
-    };
-  }
-
-  /**
-   * 解析 DID 字符串
-   * @param {string} did 
-   * @returns {Object}
-   */
-  parse(did) {
-    const parts = did.split(':');
-    
-    if (parts.length < 3 || parts[1] !== 'ethr') {
-      throw new Error('Invalid did:ethr format');
-    }
-
-    let chainId, address;
-    if (parts.length === 3) {
-      chainId = this.defaultChainId;
-      address = parts[2];
-    } else if (parts.length === 4) {
-      chainId = parts[2];
-      address = parts[3];
-    } else {
-      throw new Error('Invalid did:ethr format');
-    }
-
-    if (!addressUtils.isValid(address)) {
-      throw new Error('Invalid Ethereum address');
-    }
-
-    return { method: 'ethr', chainId, address, full: did };
-  }
-
-  /**
-   * 创建完整的 DID 文档
-   */
-  createDIDDocument(did, publicKey, address, chainId) {
-    const keyId = `${did}#controller`;
-    const jwk = this.publicKeyToJWK(publicKey);
-
-    return {
       '@context': [
         'https://www.w3.org/ns/did/v1',
-        'https://w3id.org/security/suites/secp256k1-2019/v1',
-        'https://w3id.org/security/suites/jws-2020/v1'
+        'https://w3id.org/security/suites/secp256k1recovery-2020/v2'
       ],
       id: did,
-      controller: did,
-      verificationMethod: [
-        {
-          id: keyId,
-          type: 'JsonWebKey2020',
-          controller: did,
-          publicKeyJwk: jwk
-        }
-      ],
+      verificationMethod: [verificationMethod],
       authentication: [keyId],
       assertionMethod: [keyId],
-      keyAgreement: [keyId],
-      blockchainAccountId: `${chainId}:${address}`
-    };
-  }
-
-  /**
-   * 创建最小 DID 文档 (当公钥未知时)
-   */
-  createMinimalDIDDocument(did, address, chainId) {
-    return {
-      '@context': 'https://www.w3.org/ns/did/v1',
-      id: did,
-      controller: did,
-      verificationMethod: [],
-      authentication: [],
-      assertionMethod: [],
-      keyAgreement: [],
-      blockchainAccountId: `${chainId}:${address}`
+      keyAgreement: keyType !== 'secp256k1' ? [`${did}#key-agreement`] : []
     };
   }
 
@@ -222,7 +254,7 @@ export class DIDETHRHandler {
     } else if (publicKey.length === 65 && publicKey[0] === 0x04) {
       uncompressed = publicKey;
     } else {
-      throw new Error('Invalid P-256 public key');
+      throw new Error(`Invalid P-256 public key length: ${publicKey.length}`);
     }
 
     const x = uncompressed.slice(1, 33);
@@ -237,7 +269,7 @@ export class DIDETHRHandler {
   }
 
   /**
-   * 签名消息
+   * 签名消息（使用 P-256）
    */
   sign(message, privateKey) {
     const signature = p256.sign(message, privateKey);
@@ -245,7 +277,7 @@ export class DIDETHRHandler {
   }
 
   /**
-   * 验证签名
+   * 验证签名（使用 P-256）
    */
   verify(message, signature, publicKey) {
     try {
@@ -257,4 +289,4 @@ export class DIDETHRHandler {
 }
 
 // 创建全局处理器实例
-export const didEthrHandler = new DIDETHRHandler();
+export const didEthrHandler = new DIDEthrHandler();

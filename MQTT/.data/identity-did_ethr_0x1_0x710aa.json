@@ -1,0 +1,8 @@
+{
+  "did": "did:ethr:0x1:0x710aa19dda5b2ab9ad1ae6a78a2ffad8a02df7af",
+  "method": "ethr",
+  "privateKey": "6c1aba98f73eee74ad9f6b72d1170fb65c3ac4053aeba7e9d3202f2d923c603d",
+  "publicKey": "710aa19dda5b2ab9ad1ae6a78a2ffad8a02df7af0fa90581f3cad7b89fef7639",
+  "keyType": "x25519",
+  "chainId": 1
+}

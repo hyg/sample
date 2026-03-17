@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Final Test</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "./lib/curves/ed25519.js": "./lib/curves/ed25519.js",
+      "../hashes/": "./lib/hashes/",
+      "../utils.js": "./lib/curves/utils.js"
+    }
+  }
+  </script>
+  <script type="module">
+    // Test 1: Import utils
+    import { validateObject } from './lib/curves/utils.js';
+    
+    console.log('validateObject:', validateObject);
+    console.log('Utils module loaded successfully!');
+    
+    // Test 2: Import ed25519
+    import { x25519 } from './lib/curves/ed25519.js';
+    
+    console.log('x25519:', x25519);
+    console.log('X25519 module loaded successfully!');
+    
+    window.addEventListener('load', () => {
+      document.getElementById('status').textContent = 'All modules loaded successfully!';
+      document.getElementById('status').style.color = 'green';
+    });
+  </script>
+</head>
+<body>
+  <h1>Final Test Page</h1>
+  <p id="status">Loading...</p>
+  <p>Check browser console for test results.</p>
+</body>
+</html>

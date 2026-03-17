@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Page 3</title>
+  <!-- Import Map for CDN dependencies -->
+  <script type="importmap">
+  {
+    "imports": {
+      "hpke-browser": "./e2ee/hpke-browser.js",
+      "@noble/curves/x25519": "./lib/curves/ed25519.js",
+      "@noble/hashes/sha256": "./lib/hashes/sha256.js",
+      "@noble/hashes/hmac": "./lib/hashes/hmac.js",
+      "@noble/hashes/utils": "./lib/hashes/utils.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import { hpkeSeal, hpkeOpen } from './e2ee/hpke-browser.js';
+    
+    console.log('hpkeSeal:', hpkeSeal);
+    console.log('hpkeOpen:', hpkeOpen);
+    console.log('HPKE functions loaded successfully!');
+    
+    window.addEventListener('load', () => {
+      document.getElementById('status').textContent = 'HPKE functions loaded successfully!';
+      document.getElementById('status').style.color = 'green';
+    });
+  </script>
+</head>
+<body>
+  <h1>HPKE Functions Test</h1>
+  <p id="status">Loading...</p>
+</body>
+</html>

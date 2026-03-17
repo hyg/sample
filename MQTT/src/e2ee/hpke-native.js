@@ -5,7 +5,7 @@
  * 套件：DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/AES-128-GCM
  */
 
-import { x25519 } from '@noble/curves/ed25519';
+import { x25519 } from '@noble/curves/ed25519.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { hmac } from '@noble/hashes/hmac';
@@ -98,6 +98,11 @@ function labeledExpand(prk, suiteContext, label, info, length) {
  * X25519 KEM 封装
  */
 function kemEncrypt(recipientPublicKey, info) {
+  // 验证公钥长度
+  if (!recipientPublicKey || recipientPublicKey.length !== 32) {
+    throw new Error(`Invalid X25519 public key length: ${recipientPublicKey ? recipientPublicKey.length : 'null'} (expected 32)`);
+  }
+  
   // 生成临时密钥对
   const ephemeralPrivateKey = x25519.utils.randomPrivateKey();
   const ephemeralPublicKey = x25519.getPublicKey(ephemeralPrivateKey);

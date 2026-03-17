@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Page</title>
+  <!-- Import Map for CDN dependencies -->
+  <script type="importmap">
+  {
+    "imports": {
+      "hpke-browser": "./e2ee/hpke-browser.js",
+      "@noble/curves/x25519": "./lib/curves/ed25519.js",
+      "@noble/curves/p256": "./lib/curves/p256.js",
+      "@noble/hashes/hkdf": "./lib/hashes/hkdf.js",
+      "@noble/hashes/hkdf.js": "./lib/hashes/hkdf.js",
+      "@noble/hashes/sha256": "./lib/hashes/sha256.js",
+      "@noble/hashes/sha256.js": "./lib/hashes/sha256.js",
+      "@noble/hashes/hmac": "./lib/hashes/hmac.js",
+      "@noble/hashes/hmac.js": "./lib/hashes/hmac.js",
+      "@noble/hashes/utils": "./lib/hashes/utils.js",
+      "@noble/hashes/utils.js": "./lib/hashes/utils.js",
+      "@noble/hashes/sha2": "./lib/hashes/sha2.js",
+      "@noble/hashes/sha2.js": "./lib/hashes/sha2.js",
+      "@noble/hashes/sha3": "./lib/hashes/sha3.js",
+      "@noble/hashes/sha3.js": "./lib/hashes/sha3.js",
+      "@noble/hashes/_md": "./lib/hashes/_md.js",
+      "@noble/hashes/_md.js": "./lib/hashes/_md.js",
+      "@noble/hashes/_u64": "./lib/hashes/_u64.js",
+      "@noble/hashes/_u64.js": "./lib/hashes/_u64.js",
+      "@noble/hashes/_assert": "./lib/hashes/_assert.js",
+      "@noble/hashes/_assert.js": "./lib/hashes/_assert.js",
+      "@noble/hashes/crypto": "./lib/hashes/crypto.js",
+      "@noble/hashes/crypto.js": "./lib/hashes/crypto.js",
+      "@noble/hashes": "./lib/hashes/index.js",
+      "mqtt": "./lib/mqtt.esm.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import { Mode, AEAD } from './e2ee/hpke-browser.js';
+    
+    console.log('Mode:', Mode);
+    console.log('AEAD:', AEAD);
+    console.log('HPKE module loaded successfully!');
+    
+    window.addEventListener('load', () => {
+      document.getElementById('status').textContent = 'HPKE module loaded successfully!';
+      document.getElementById('status').style.color = 'green';
+    });
+  </script>
+</head>
+<body>
+  <h1>HPKE Module Test</h1>
+  <p id="status">Loading...</p>
+</body>
+</html>
