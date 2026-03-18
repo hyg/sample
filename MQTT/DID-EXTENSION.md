@@ -4,42 +4,7 @@
 
 本文档描述 E2EE MQTT Chat 项目的 DID 方法扩展架构，支持多种 DID 方法并确保它们之间可以互相通信。
 
-## 架构设计
-
-### 核心原则
-
-1. **统一接口**: 所有 DID 方法实现相同的接口
-2. **动态注册**: 支持运行时注册新的 DID 方法
-3. **跨方法通信**: 不同 DID 方法之间可以互相通信
-4. **公共密钥格式**: 统一使用原始字节作为公钥格式用于 E2EE
-
-### 架构图
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        应用层 (CLI/Web)                          │
-├─────────────────────────────────────────────────────────────────┤
-│                         DID Manager                             │
-│  - generate()    - import()    - resolve()                      │
-│  - sign()        - verify()    - getSharedSecret()              │
-├─────────────────────────────────────────────────────────────────┤
-│                      DID Method Registry                        │
-│  - register()    - get()       - parse()                        │
-├──────────────┬────────────────┬────────────────┬────────────────┤
-│  did:key     │   did:ethr     │    did:wba     │   did:web      │
-│  Handler     │   Handler      │    Handler     │   Handler      │
-│              │                │                │   (扩展点)     │
-├──────────────┴────────────────┴────────────────┴────────────────┤
-│                    统一接口 (Unified Interface)                  │
-│  - generate()        - fromPublicKey()    - resolvePublicKey()  │
-│  - fromPrivateKey()  - getSharedSecret()  - sign()/verify()    │
-├─────────────────────────────────────────────────────────────────┤
-│                   加密原语 (Crypto Primitives)                   │
-│  - X25519 (密钥协商)  - P-256 (签名/协商)  - Ed25519 (签名)     │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## 已实现的 DID 方法
+## 支持的 DID 方法
 
 ### 1. did:key
 
@@ -47,22 +12,10 @@
 
 **格式**: `did:key:<multibase-encoded-key>`
 
-**支持的密钥类型**:
-| 类型 | 用途 | 字节数 |
-|------|------|--------|
-| X25519 | 密钥协商 | 32 |
-| Ed25519 | 签名 | 32 |
-| P-256 | 签名/密钥协商 | 65 (未压缩) |
-
-**使用示例**:
-```javascript
-// 创建身份
-const identity = didManager.generate('key', { keyType: 'x25519' });
-// did:key:z6LSbysY2xFMRpGMhb7tFTLMpeuPRaqaWM1yECx2AtzE3KCc
-
-// 导入身份
-const identity = didManager.import('key', privateKey, { keyType: 'x25519' });
-```
+**特点**:
+- ✅ 简单快速，无需域名或区块链
+- ✅ 即时生成，适合测试和临时通信
+- ❌ 没有持久的身份标识
 
 ### 2. did:ethr
 
@@ -70,67 +23,35 @@ const identity = didManager.import('key', privateKey, { keyType: 'x25519' });
 
 **格式**: `did:ethr:<chainId>:<address>`
 
-**支持的网络**:
-| 网络 | Chain ID | 说明 |
-|------|----------|------|
-| mainnet | 1 | 以太坊主网 |
-| sepolia | 11155111 | Sepolia 测试网 |
-| bsc | 56 | 币安智能链 |
-| polygon | 137 | Polygon |
-| arbitrum | 42161 | Arbitrum One |
-| optimism | 10 | Optimism |
+**特点**:
+- ✅ 基于以太坊，去中心化
+- ✅ 支持多链（Ethereum, BSC, Polygon 等）
+- ❌ 需要链上交互（可选）
 
-**使用示例**:
-```javascript
-// 创建身份（以太坊主网）
-const identity = didManager.generate('ethr', { 
-  network: 'mainnet', 
-  keyType: 'x25519' 
-});
-// did:ethr:0x1:0x1234567890abcdef1234567890abcdef12345678
+### 3. did:wba（符合 ANP 规范）
 
-// 创建身份（Polygon）
-const identity = didManager.generate('ethr', { 
-  chainId: 137, 
-  keyType: 'x25519' 
-});
-// did:ethr:0x89:0x1234567890abcdef...
-```
+**规范**: https://www.agent-network-protocol.com/specs/did-method
 
-### 3. did:wba
+**格式**: 
+- `did:wba:example.com`
+- `did:wba:example.com:user:alice`
+- `did:wba:example.com%3A8800:user:alice`（带端口）
 
-**说明**: WBA (Web3 Blockchain Alliance) DID 方法，支持跨链身份
+**特点**:
+- ✅ 基于 Web 基础设施，易于部署
+- ✅ 符合 W3C DID 标准
+- ✅ 支持完整的认证流程
+- ✅ 密钥分离设计（签名、协商、人工授权）
+- ❌ 需要域名和 HTTPS 服务器
 
-**格式**: `did:wba:<chain>:<address>`
+**部署位置**:
+| DID | did.json 部署 URL |
+|-----|------------------|
+| `did:wba:example.com` | `https://example.com/.well-known/did.json` |
+| `did:wba:example.com:user:alice` | `https://example.com/user/alice/did.json` |
+| `did:wba:example.com%3A8800:user:alice` | `https://example.com:8800/user/alice/did.json` |
 
-**支持的链**:
-| 链 | 简写 | Chain ID |
-|----|------|----------|
-| Ethereum | eth | 1 |
-| Sepolia | sepolia | 11155111 |
-| BSC | bsc | 56 |
-| Polygon | polygon | 137 |
-| Arbitrum | arb | 42161 |
-| Optimism | op | 10 |
-| Avalanche | avax | 43114 |
-| Base | base | 8453 |
-
-**使用示例**:
-```javascript
-// 创建身份（以太坊）
-const identity = didManager.generate('wba', { 
-  chain: 'eth', 
-  keyType: 'x25519' 
-});
-// did:wba:eth:0x1234567890abcdef1234567890abcdef12345678
-
-// 创建身份（Base）
-const identity = didManager.generate('wba', { 
-  chain: 'base', 
-  keyType: 'x25519' 
-});
-// did:wba:base:0x1234567890abcdef...
-```
+详见 [DEPLOY-DID.md](DEPLOY-DID.md)
 
 ## 跨 DID 通信
 

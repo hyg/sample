@@ -16,6 +16,8 @@ import { didRegistry } from './registry.js';
 import { didKeyHandler } from './did-key.js';
 import { didEthrHandler } from './did-ethr.js';
 import { didWbaHandler } from './did-wba.js';
+import { deploymentManager, ManualDeployer } from './deployment-manager.js';
+import { verificationManager } from './verification-manager.js';
 
 export class DIDManager {
   constructor() {
@@ -26,6 +28,12 @@ export class DIDManager {
 
     // 存储本地身份
     this.identities = new Map();
+    
+    // 部署管理器（用于 did:wba 部署）
+    this.deploymentManager = deploymentManager;
+    
+    // 验证管理器（用于 DID 验证）
+    this.verificationManager = verificationManager;
   }
 
   /**
@@ -48,7 +56,12 @@ export class DIDManager {
     } else if (method === 'ethr') {
       identity = handler.generate(options.chainId || options.network || 'mainnet', options.keyType || 'x25519');
     } else if (method === 'wba') {
-      identity = handler.generate(options.chain || 'eth', options.keyType || 'x25519');
+      // did:wba 需要 domain 参数
+      identity = handler.generate({ 
+        domain: options.domain, 
+        path: options.path || null, 
+        keyType: options.keyType || 'x25519' 
+      });
     }
 
     // 存储身份
@@ -239,6 +252,104 @@ export class DIDManager {
    */
   getSupportedMethods() {
     return didRegistry.getSupportedMethods();
+  }
+
+  /**
+   * 部署 DID 文档（主要用于 did:wba）
+   * @param {string} did - DID 字符串
+   * @param {Object} options - 部署选项
+   * @returns {Promise<Object>} 部署结果
+   */
+  async deployDidDocument(did, options = {}) {
+    const identity = this.identities.get(did);
+    if (!identity) {
+      throw new Error(`Identity not found: ${did}`);
+    }
+
+    const handler = didRegistry.get(identity.method);
+    if (!handler || !handler.generateDidJson) {
+      throw new Error(`DID method ${identity.method} does not support deployment`);
+    }
+
+    // 生成 DID 文档
+    const didDocument = handler.generateDidJson(did, identity.publicKey, identity.keyType);
+
+    // 部署
+    const method = options.method || 'manual';
+    const result = await this.deploymentManager.deploy(did, didDocument, method);
+
+    return {
+      success: result.success,
+      did: result.did,
+      didJsonUrl: result.didJsonUrl,
+      message: result.message,
+      instructions: result.details.instructions || null,
+      deployPath: result.details.deployPath || null
+    };
+  }
+
+  /**
+   * 验证 DID 文档
+   * @param {string} did - DID 字符串
+   * @param {Object} didDocument - DID 文档对象（可选，不提供则从网络获取）
+   * @returns {Promise<Object>} 验证结果
+   */
+  async verifyDidDocument(did, didDocument = null) {
+    let result;
+    
+    if (didDocument) {
+      // 本地验证
+      result = this.verificationManager.validateLocal(did, didDocument);
+    } else {
+      // 远程验证（从网络下载）
+      result = await this.verificationManager.verifyRemote(did);
+    }
+
+    return {
+      verified: result.isValid(),
+      did: result.did,
+      didDocument: result.didDocument,
+      errors: result.errors,
+      warnings: result.warnings,
+      timestamp: result.timestamp
+    };
+  }
+
+  /**
+   * 验证公钥（用于跨 DID 通信）
+   * @param {string} did - DID 字符串
+   * @param {Uint8Array} publicKey - 公钥
+   * @param {string} keyType - 密钥类型
+   * @returns {Promise<Object>} 验证结果
+   */
+  async verifyPublicKey(did, publicKey, keyType) {
+    return await this.verificationManager.verifyPublicKey(did, publicKey, keyType);
+  }
+
+  /**
+   * 验证签名
+   * @param {string} did - DID 字符串
+   * @param {Uint8Array} message - 消息
+   * @param {Uint8Array} signature - 签名
+   * @returns {Promise<boolean>} 验证结果
+   */
+  async verifySignature(did, message, signature) {
+    const identity = this.identities.get(did);
+    if (!identity) {
+      throw new Error(`Identity not found: ${did}`);
+    }
+
+    const handler = didRegistry.get(identity.method);
+    return handler.verify(message, signature, identity.publicKey, identity.keyType);
+  }
+
+  /**
+   * 注册自定义部署器
+   * @param {string} type - 部署器类型（api, ssh 等）
+   * @param {Object} deployer - 部署器实例
+   */
+  registerDeployer(type, deployer) {
+    this.deploymentManager.registerDeployer(type, deployer);
   }
 }
 

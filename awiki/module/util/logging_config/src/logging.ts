@@ -15,6 +15,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { Writable } from 'stream';
 import type { SDKConfig, Clock, CleanupOptions, GetLogFilePathOptions, ConfigureLoggingOptions } from './types.js';
 
@@ -93,17 +94,16 @@ export function getLogDir(config?: SDKConfig | null): string {
  * Get default data directory (mimics Python SDKConfig behavior)
  */
 function getDefaultDataDir(): string {
-  const os = require('os');
   const envData = process.env.AWIKI_DATA_DIR;
   if (envData) {
     return envData;
   }
-  
+
   const workspace = process.env.AWIKI_WORKSPACE;
   if (workspace) {
-    return path.join(workspace, 'data', 'awiki-agent-id-message');
+    return path.join(os.homedir(), 'data', 'awiki-agent-id-message');
   }
-  
+
   return path.join(os.homedir(), '.openclaw', 'workspace', 'data', 'awiki-agent-id-message');
 }
 

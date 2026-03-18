@@ -128,34 +128,76 @@ function showHelp() {
  */
 function createIdentity(method) {
   try {
-    console.log(`\n[身份] 创建新的 ${method} 身份...`);
-
-    // 解析 DID 方法和密钥类型
+    // 解析 DID 方法、域名和密钥类型
     let didMethod = 'key';
+    let domain = null;  // did:wba 需要域名
     let keyType = 'x25519';
-    
-    // 支持的格式: /create x25519, /create ethr, /create wba, /create ethr x25519
+
+    // 支持的格式:
+    // /create x25519                    - did:key
+    // /create ethr                      - did:ethr (主网)
+    // /create wba example.com           - did:wba:example.com
+    // /create wba example.com p256      - did:wba:example.com (P-256 密钥)
     const parts = method.toLowerCase().split(' ');
-    
+
     if (parts.length === 1) {
-      // 只有一个参数，可能是密钥类型或 DID 方法
-      const arg = parts[0];
-      if (arg === 'x25519' || arg === 'p256') {
-        // 密钥类型，默认使用 did:key
+      // 简单格式：/create x25519 或 /create ethr 或 /create wba
+      const first = parts[0];
+      if (['x25519', 'p256'].includes(first)) {
         didMethod = 'key';
-        keyType = arg;
-      } else if (arg === 'ethr' || arg === 'wba') {
-        // DID 方法，默认使用 x25519
-        didMethod = arg;
-        keyType = 'x25519';
+        keyType = first;
+      } else if (['ethr', 'wba'].includes(first)) {
+        didMethod = first;
+      } else {
+        console.log(`\n[错误] 未知的密钥类型：${first}`);
+        console.log('支持的密钥类型：x25519, p256');
+        return null;
       }
-    } else if (parts.length === 2) {
-      // 两个参数: DID方法 密钥类型
+    } else if (parts.length >= 2) {
+      // 复杂格式：/create ethr x25519 或 /create wba example.com [p256]
       didMethod = parts[0];
-      keyType = parts[1];
+      
+      if (didMethod === 'wba') {
+        // did:wba 需要域名
+        domain = parts[1];
+        if (parts.length >= 3) {
+          keyType = parts[2];
+        }
+      } else if (didMethod === 'ethr') {
+        // did:ethr 可以有密钥类型
+        if (['x25519', 'p256'].includes(parts[1])) {
+          keyType = parts[1];
+        }
+      } else {
+        console.log(`\n[错误] 未知的方法：${didMethod}`);
+        console.log('支持的方法：key, ethr, wba');
+        return null;
+      }
     }
-    
-    const identity = didManager.generate(didMethod, { keyType });
+
+    // 验证密钥类型
+    if (!['x25519', 'p256'].includes(keyType)) {
+      console.log(`\n[错误] 不支持的密钥类型：${keyType}`);
+      console.log('支持的密钥类型：x25519, p256');
+      return null;
+    }
+
+    // 验证 did:wba 的域名
+    if (didMethod === 'wba' && !domain) {
+      console.log(`\n[错误] 创建 did:wba 需要指定域名`);
+      console.log(`用法：/create wba example.com [x25519|p256]`);
+      console.log(`示例：/create wba example.com x25519`);
+      return null;
+    }
+
+    // 生成身份
+    let identity;
+    if (didMethod === 'wba') {
+      // did:wba 需要域名参数
+      identity = didManager.generate(didMethod, { domain, keyType });
+    } else {
+      identity = didManager.generate(didMethod, { keyType });
+    }
 
     state.myDid = identity.did;
     state.myIdentity = identity;
@@ -181,6 +223,31 @@ function createIdentity(method) {
     const savePath = join(CONFIG.dataDir, `identity-${safeDid.substring(0, 20)}.json`);
     writeFileSync(savePath, JSON.stringify(exportData, null, 2));
     console.log(`\n  身份已保存到：${savePath}`);
+
+    // 如果是 did:wba，生成 did.json 文件
+    if (didMethod === 'wba') {
+      const didJsonPath = join(CONFIG.dataDir, `did-${safeDid.substring(0, 20)}.json`);
+      const didJson = {
+        '@context': [
+          'https://www.w3.org/ns/did/v1',
+          'https://w3id.org/security/suites/jws-2020/v1',
+          'https://w3id.org/security/suites/x25519-2019/v1'
+        ],
+        id: identity.did,
+        verificationMethod: [{
+          id: `${identity.did}#key-1`,
+          type: 'X25519KeyAgreementKey2019',
+          controller: identity.did,
+          publicKeyMultibase: 'z' + identity.publicKey.toString('hex')
+        }],
+        authentication: [`${identity.did}#key-1`],
+        assertionMethod: [`${identity.did}#key-1`],
+        keyAgreement: [`${identity.did}#key-1`]
+      };
+      writeFileSync(didJsonPath, JSON.stringify(didJson, null, 2));
+      console.log(`\n  did.json 已生成：${didJsonPath}`);
+      console.log(`  💡 提示：将此文件部署到 https://${identity.domain}/.well-known/did.json`);
+    }
 
     return identity;
   } catch (err) {
@@ -444,10 +511,11 @@ async function startCLI() {
           break;
 
         case '/create':
-          if (args[0]) {
-            createIdentity(args[0]);
+          if (args.length > 0) {
+            createIdentity(args.join(' '));
           } else {
-            console.log('\n用法：/create <method> (method: x25519, p256)');
+            console.log('\n用法：/create <method> [domain] [keyType]');
+            console.log('示例：/create wba example.com x25519');
           }
           break;
 

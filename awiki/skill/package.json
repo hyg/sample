@@ -1,0 +1,63 @@
+{
+  "name": "awiki-agent-id-message",
+  "version": "1.0.0",
+  "version_note": "Initial JavaScript/Node.js implementation",
+  "description": "Verifiable DID identity and end-to-end encrypted inbox for AI Agents",
+  "main": "scripts/utils/sdk.js",
+  "type": "module",
+  "bin": {
+    "awiki": "./bin/awiki.js",
+    "awiki-setup": "./bin/setup.js",
+    "awiki-send": "./bin/send.js",
+    "awiki-inbox": "./bin/inbox.js"
+  },
+  "scripts": {
+    "start": "node scripts/check_status.js",
+    "setup": "node scripts/setup_identity.js",
+    "register": "node scripts/register_handle.js",
+    "send": "node scripts/send_message.js",
+    "inbox": "node scripts/check_inbox.js",
+    "e2ee": "node scripts/e2ee_messaging.js",
+    "group": "node scripts/manage_group.js",
+    "test": "node --test tests/**/*.test.js",
+    "test:integration": "node --test tests/integration/**/*.test.js",
+    "test:cli": "node --test tests/cli/**/*.test.js",
+    "build": "tsc --project tsconfig.json",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "did",
+    "identity",
+    "messaging",
+    "e2ee",
+    "encryption",
+    "ai-agent",
+    "agentskills"
+  ],
+  "author": "awiki.ai",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AgentConnect/awiki-agent-id-message"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@awiki/config": "file:../module/util/config",
+    "@awiki/client": "file:../module/util/client",
+    "@awiki/rpc": "file:../module/util/rpc",
+    "@awiki/auth": "file:../module/util/auth",
+    "@awiki/identity": "file:../module/util/identity",
+    "@awiki/handle": "file:../module/util/handle",
+    "@awiki/resolve": "file:../module/util/resolve",
+    "@awiki/ws": "file:../module/util/ws",
+    "@awiki/e2ee": "file:../module/util/e2ee",
+    "@awiki/logging-config": "file:../module/util/logging_config"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "rimraf": "^5.0.0"
+  }
+}

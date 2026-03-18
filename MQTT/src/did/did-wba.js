@@ -1,211 +1,218 @@
 /**
- * did:wba 方法实现
+ * did:wba 方法实现（符合 ANP 规范 v0.1）
  * 
- * WBA (Web3 Blockchain Alliance) DID 方法
- * 支持跨链身份标识
+ * 规范：https://www.agent-network-protocol.com/specs/did-method
+ * GitHub: https://github.com/agent-network-protocol/AgentNetworkProtocol/blob/main/03-did-wba-method-design-specification.md
  * 
- * DID 格式:
- * - did:wba:<chain>:<address>
- * - did:wba:eth:<address>      (Ethereum)
- * - did:wba:bsc:<address>      (BSC)
- * - did:wba:polygon:<address>  (Polygon)
- * - did:wba:arb:<address>      (Arbitrum)
- * - did:wba:op:<address>       (Optimism)
+ * DID 格式：
+ * - did:wba:example.com
+ * - did:wba:example.com:user:alice
+ * - did:wba:example.com%3A3000 (带端口)
  * 
- * 跨 DID 通信：
- * - 统一使用 X25519 或 P-256 进行 E2EE 密钥协商
- * - 区块链地址用于身份标识
+ * 部署位置：
+ * - did:wba:example.com → https://example.com/.well-known/did.json
+ * - did:wba:example.com:user:alice → https://example.com/user/alice/did.json
+ * - did:wba:example.com%3A3000 → https://example.com:3000/.well-known/did.json
+ * 
+ * 注意：当前实现为简化版本，用于 E2EE 通信标识
+ * 完整实现需要：域名、HTTPS 服务器、did.json 部署
  */
 
-import { x25519 } from '@noble/curves/ed25519.js';
+import { x25519 } from '@noble/curves/ed25519';
 import { p256 } from '@noble/curves/p256';
+import { ed25519 } from '@noble/curves/ed25519';
 import { randomBytes } from '@noble/hashes/utils';
-
-// 支持的区块链配置
-const CHAIN_CONFIGS = {
-  eth: { chainId: 1, name: 'Ethereum', explorer: 'https://etherscan.io' },
-  sepolia: { chainId: 11155111, name: 'Sepolia', explorer: 'https://sepolia.etherscan.io' },
-  bsc: { chainId: 56, name: 'BSC', explorer: 'https://bscscan.com' },
-  polygon: { chainId: 137, name: 'Polygon', explorer: 'https://polygonscan.com' },
-  arb: { chainId: 42161, name: 'Arbitrum', explorer: 'https://arbiscan.io' },
-  op: { chainId: 10, name: 'Optimism', explorer: 'https://optimistic.etherscan.io' },
-  avax: { chainId: 43114, name: 'Avalanche', explorer: 'https://snowtrace.io' },
-  base: { chainId: 8453, name: 'Base', explorer: 'https://basescan.org' }
-};
-
-// 链名称到简写的映射
-const CHAIN_ALIASES = {
-  ethereum: 'eth',
-  eth: 'eth',
-  bsc: 'bsc',
-  binance: 'bsc',
-  polygon: 'polygon',
-  matic: 'polygon',
-  arbitrum: 'arb',
-  arb: 'arb',
-  optimism: 'op',
-  op: 'op',
-  avalanche: 'avax',
-  avax: 'avax',
-  base: 'base'
-};
 
 export class DIDWbaHandler {
   constructor(options = {}) {
-    this.defaultChain = options.defaultChain || 'eth';
-    this.chains = { ...CHAIN_CONFIGS, ...options.chains };
-  }
-
-  /**
-   * 规范化链名称
-   */
-  normalizeChain(chain) {
-    const lower = chain.toLowerCase();
-    return CHAIN_ALIASES[lower] || lower;
-  }
-
-  /**
-   * 获取链配置
-   */
-  getChainConfig(chain) {
-    const normalized = this.normalizeChain(chain);
-    return this.chains[normalized] || this.chains.eth;
-  }
-
-  /**
-   * 生成新的 DID WBA 身份
-   * @param {string} chain - 链名称或简写
-   * @param {string} keyType - 密钥类型：'x25519', 'p256'
-   * @returns {Object}
-   */
-  generate(chain = 'eth', keyType = 'x25519') {
-    const chainConfig = this.getChainConfig(chain);
-    const normalizedChain = this.normalizeChain(chain);
-    const type = keyType.toLowerCase();
-
-    let privateKey, publicKey;
-
-    // 生成 E2EE 密钥
-    if (type === 'x25519') {
-      privateKey = Buffer.from(x25519.utils.randomPrivateKey());
-      publicKey = Buffer.from(x25519.getPublicKey(privateKey));
-    } else if (type === 'p256') {
-      privateKey = Buffer.from(p256.utils.randomPrivateKey());
-      publicKey = Buffer.from(p256.getPublicKey(privateKey));
-    } else {
-      throw new Error(`Unsupported key type: ${keyType}. Use 'x25519' or 'p256' for E2EE.`);
-    }
-
-    // 从公钥派生地址
-    const address = '0x' + publicKey.slice(0, 20).toString('hex');
-    
-    // DID 格式：did:wba:<chain>:<address>
-    const did = `did:wba:${normalizedChain}:${address}`;
-
-    return {
-      did,
-      privateKey,
-      publicKey,
-      address,
-      keyType: type,
-      chain: normalizedChain,
-      chainId: chainConfig.chainId,
-      chainName: chainConfig.name,
-      didDocument: this.createDIDDocument(did, publicKey, address, chainConfig, type)
-    };
-  }
-
-  /**
-   * 从公钥创建身份（用于跨 DID 通信）
-   */
-  fromPublicKey(publicKey, chain = 'eth', keyType = 'x25519', did = null) {
-    const chainConfig = this.getChainConfig(chain);
-    const normalizedChain = this.normalizeChain(chain);
-    const address = '0x' + Buffer.from(publicKey).slice(0, 20).toString('hex');
-    const finalDid = did || `did:wba:${normalizedChain}:${address}`;
-
-    return {
-      did: finalDid,
-      publicKey: Buffer.from(publicKey),
-      address,
-      keyType: keyType.toLowerCase(),
-      chain: normalizedChain,
-      chainId: chainConfig.chainId,
-      didDocument: this.createDIDDocument(finalDid, publicKey, address, chainConfig, keyType)
-    };
-  }
-
-  /**
-   * 从私钥恢复身份
-   */
-  fromPrivateKey(privateKey, chain = 'eth', keyType = 'x25519') {
-    const chainConfig = this.getChainConfig(chain);
-    const normalizedChain = this.normalizeChain(chain);
-    const type = keyType.toLowerCase();
-
-    let publicKey;
-    if (type === 'x25519') {
-      publicKey = Buffer.from(x25519.getPublicKey(privateKey));
-    } else if (type === 'p256') {
-      publicKey = Buffer.from(p256.getPublicKey(privateKey));
-    } else {
-      throw new Error(`Unsupported key type: ${keyType}`);
-    }
-
-    const address = '0x' + publicKey.slice(0, 20).toString('hex');
-    const did = `did:wba:${normalizedChain}:${address}`;
-
-    return {
-      did,
-      privateKey: Buffer.from(privateKey),
-      publicKey,
-      address,
-      keyType: type,
-      chain: normalizedChain,
-      chainId: chainConfig.chainId,
-      didDocument: this.createDIDDocument(did, publicKey, address, chainConfig, type)
-    };
-  }
-
-  /**
-   * 从 DID 解析信息
-   */
-  resolvePublicKey(did) {
-    const { chain, id } = this.parseDID(did);
-    
-    return {
-      chain,
-      address: id,
-      didDocument: {
-        '@context': ['https://www.w3.org/ns/did/v1'],
-        id: did,
-        verificationMethod: [{
-          id: `${did}#controller`,
-          type: 'EcdsaSecp256k1RecoveryMethod2020',
-          controller: did,
-          blockchainAccountId: `eip155:${this.getChainConfig(chain).chainId}:${id}`
-        }]
-      }
-    };
+    this.defaultDomain = options.defaultDomain || 'example.com';
+    this.chains = options.chains || {}; // 保留链配置用于兼容
   }
 
   /**
    * 解析 DID 字符串
+   * 格式：did:wba:<domain>[:<path>]
+   * 端口编码：%3A 表示冒号
    */
   parseDID(did) {
     if (!did.startsWith('did:wba:')) {
       throw new Error('Invalid did:wba format');
     }
 
-    const parts = did.split(':');
-    if (parts.length < 4) {
-      throw new Error('Invalid did:wba format: expected did:wba:<chain>:<address>');
+    const methodSpecificId = did.substring(8); // 去掉 'did:wba:'
+    
+    // 分割域名和路径
+    const parts = methodSpecificId.split(':');
+    const domainWithPort = parts[0];
+    const path = parts.slice(1).join('/'); // 路径用 / 连接
+
+    // 解析域名和端口
+    let domain = domainWithPort;
+    let port = null;
+    
+    if (domainWithPort.includes('%3A')) {
+      const decoded = domainWithPort.replace('%3A', ':');
+      const colonIndex = decoded.lastIndexOf(':');
+      domain = decoded.substring(0, colonIndex);
+      port = parseInt(decoded.substring(colonIndex + 1));
     }
 
     return {
-      chain: parts[2],
-      id: parts[3],
+      domain,
+      port,
+      path: path || null,
       full: did
+    };
+  }
+
+  /**
+   * 生成 did.json URL
+   */
+  getDidJsonUrl(did) {
+    const { domain, port, path } = this.parseDID(did);
+    
+    let url = `https://${domain}`;
+    if (port) {
+      url += `:${port}`;
+    }
+    
+    if (path) {
+      url += `/${path}`;
+    } else {
+      url += '/.well-known';
+    }
+    
+    url += '/did.json';
+    return url;
+  }
+
+  /**
+   * 生成新的 DID WBA 身份
+   * @param {Object} options - 选项
+   * @param {string} options.domain - 域名（必需）
+   * @param {string} options.path - 可选路径（如 'user:alice'）
+   * @param {string} options.keyType - 密钥类型：'x25519', 'p256', 'ed25519'
+   * @returns {Object}
+   */
+  generate(options = {}) {
+    const domain = options.domain;
+    const path = options.path || null;
+    const keyType = (options.keyType || 'x25519').toLowerCase();
+    
+    if (!domain) {
+      throw new Error('did:wba requires a domain name. Use: { domain: "example.com" }');
+    }
+
+    let privateKey, publicKey;
+
+    // 生成密钥对
+    if (keyType === 'x25519') {
+      privateKey = Buffer.from(x25519.utils.randomPrivateKey());
+      publicKey = Buffer.from(x25519.getPublicKey(privateKey));
+    } else if (keyType === 'p256') {
+      privateKey = Buffer.from(p256.utils.randomPrivateKey());
+      publicKey = Buffer.from(p256.getPublicKey(privateKey));
+    } else if (keyType === 'ed25519') {
+      privateKey = Buffer.from(ed25519.utils.randomPrivateKey());
+      publicKey = Buffer.from(ed25519.getPublicKey(privateKey));
+    } else {
+      throw new Error(`Unsupported key type: ${keyType}. Use 'x25519', 'p256', or 'ed25519'.`);
+    }
+
+    // 构建 DID: did:wba:<domain>[:<path>]
+    let did = `did:wba:${domain}`;
+    if (path) {
+      did += `:${path.replace(/\//g, ':')}`; // 路径中的 / 用 : 连接
+    }
+
+    return {
+      did,
+      privateKey,
+      publicKey,
+      keyType,
+      domain,
+      path,
+      didDocument: this.createDIDDocument(did, publicKey, keyType)
+    };
+  }
+
+  /**
+   * 从公钥创建身份（用于跨 DID 通信）
+   */
+  fromPublicKey(publicKey, domain, keyType = 'x25519', path = null, did = null) {
+    const finalDid = did || this.buildDID(domain, path);
+
+    return {
+      did: finalDid,
+      publicKey: Buffer.from(publicKey),
+      keyType: keyType.toLowerCase(),
+      domain,
+      path,
+      didDocument: this.createDIDDocument(finalDid, publicKey, keyType)
+    };
+  }
+
+  /**
+   * 从私钥恢复身份
+   */
+  fromPrivateKey(privateKey, domain, keyType = 'x25519', path = null) {
+    const type = keyType.toLowerCase();
+    let publicKey;
+
+    if (type === 'x25519') {
+      publicKey = Buffer.from(x25519.getPublicKey(privateKey));
+    } else if (type === 'p256') {
+      publicKey = Buffer.from(p256.getPublicKey(privateKey));
+    } else if (type === 'ed25519') {
+      publicKey = Buffer.from(ed25519.getPublicKey(privateKey));
+    } else {
+      throw new Error(`Unsupported key type: ${keyType}`);
+    }
+
+    const did = this.buildDID(domain, path);
+
+    return {
+      did,
+      privateKey: Buffer.from(privateKey),
+      publicKey,
+      keyType: type,
+      domain,
+      path,
+      didDocument: this.createDIDDocument(did, publicKey, type)
+    };
+  }
+
+  /**
+   * 构建 DID 字符串
+   */
+  buildDID(domain, path = null) {
+    let did = `did:wba:${domain}`;
+    if (path) {
+      did += `:${path.replace(/\//g, ':')}`;
+    }
+    return did;
+  }
+
+  /**
+   * 从 DID 解析公钥（需要从 did.json 获取）
+   */
+  resolvePublicKey(did) {
+    const { domain, path } = this.parseDID(did);
+    
+    return {
+      domain,
+      path,
+      didJsonUrl: this.getDidJsonUrl(did),
+      didDocument: {
+        '@context': ['https://www.w3.org/ns/did/v1'],
+        id: did,
+        verificationMethod: [{
+          id: `${did}#key-1`,
+          type: 'JsonWebKey2020',
+          controller: did,
+          publicKeyJwk: { /* 需要从服务器获取 */ }
+        }]
+      }
     };
   }
 
@@ -237,17 +244,18 @@ export class DIDWbaHandler {
   }
 
   /**
-   * 创建 DID 文档
+   * 创建 DID 文档（符合 ANP 规范）
    */
-  createDIDDocument(did, publicKey, address, chainConfig, keyType) {
-    const keyId = `${did}#controller`;
+  createDIDDocument(did, publicKey, keyType) {
+    const keyId = `${did}#key-1`;
     
+    // 根据密钥类型创建验证方法
     let verificationMethod;
     
     if (keyType === 'x25519') {
       verificationMethod = {
         id: `${did}#key-agreement`,
-        type: 'X25519KeyAgreementKey2020',
+        type: 'X25519KeyAgreementKey2019',
         controller: did,
         publicKeyMultibase: 'z' + Buffer.from(publicKey).toString('hex')
       };
@@ -255,31 +263,34 @@ export class DIDWbaHandler {
       const jwk = this.publicKeyToJWK(publicKey);
       verificationMethod = {
         id: keyId,
-        type: 'JsonWebKey2020',
+        type: 'EcdsaSecp256r1VerificationKey2019',
         controller: did,
         publicKeyJwk: jwk
       };
-    } else {
+    } else if (keyType === 'ed25519') {
       verificationMethod = {
         id: keyId,
-        type: 'EcdsaSecp256k1RecoveryMethod2020',
+        type: 'Ed25519VerificationKey2020',
         controller: did,
-        blockchainAccountId: `eip155:${chainConfig.chainId}:${address}`
+        publicKeyMultibase: 'z' + Buffer.from(publicKey).toString('hex')
       };
     }
 
-    return {
+    // 构建完整的 DID 文档
+    const didDocument = {
       '@context': [
         'https://www.w3.org/ns/did/v1',
-        'https://w3id.org/security/suites/secp256k1recovery-2020/v2'
+        'https://w3id.org/security/suites/jws-2020/v1',
+        'https://w3id.org/security/suites/x25519-2019/v1'
       ],
       id: did,
-      alsoKnownAs: [`${chainConfig.explorer}/address/${address}`],
       verificationMethod: [verificationMethod],
       authentication: [keyId],
       assertionMethod: [keyId],
-      keyAgreement: keyType !== 'secp256k1' ? [`${did}#key-agreement`] : []
+      keyAgreement: keyType === 'x25519' ? [`${did}#key-agreement`] : []
     };
+
+    return didDocument;
   }
 
   /**
@@ -308,39 +319,68 @@ export class DIDWbaHandler {
   }
 
   /**
-   * 签名消息（使用 P-256）
+   * 签名消息（使用 Ed25519 或 P-256）
    */
-  sign(message, privateKey) {
-    const signature = p256.sign(message, privateKey);
-    return new Uint8Array(signature.toCompactRawBytes());
+  sign(message, privateKey, keyType = 'ed25519') {
+    if (keyType === 'ed25519') {
+      return ed25519.sign(message, privateKey);
+    } else if (keyType === 'p256') {
+      const signature = p256.sign(message, privateKey);
+      return new Uint8Array(signature.toCompactRawBytes());
+    }
+    throw new Error(`Unsupported key type for signing: ${keyType}`);
   }
 
   /**
-   * 验证签名（使用 P-256）
+   * 验证签名
    */
-  verify(message, signature, publicKey) {
+  verify(message, signature, publicKey, keyType = 'ed25519') {
     try {
-      return p256.verify(signature, message, publicKey);
+      if (keyType === 'ed25519') {
+        return ed25519.verify(signature, message, publicKey);
+      } else if (keyType === 'p256') {
+        return p256.verify(signature, message, publicKey);
+      }
     } catch {
       return false;
     }
+    throw new Error(`Unsupported key type for verification: ${keyType}`);
   }
 
   /**
-   * 获取支持的链列表
+   * 生成 did.json 文件内容（用于部署）
    */
-  getSupportedChains() {
-    return Object.keys(this.chains).map(key => ({
-      key,
-      ...this.chains[key]
-    }));
+  generateDidJson(did, publicKey, keyType) {
+    return this.createDIDDocument(did, publicKey, keyType);
   }
 
   /**
-   * 添加自定义链
+   * 获取部署说明
    */
-  addChain(key, config) {
-    this.chains[key.toLowerCase()] = config;
+  getDeploymentInstructions(did) {
+    const { domain, port, path } = this.parseDID(did);
+    const url = this.getDidJsonUrl(did);
+    
+    return {
+      did,
+      domain,
+      port,
+      path,
+      didJsonUrl: url,
+      deploymentPath: path ? `./${path.replace(/:/g, '/')}/did.json` : './.well-known/did.json',
+      instructions: `
+将生成的 did.json 文件部署到以下位置：
+${url}
+
+部署方式：
+1. 如果使用 Nginx/Apache，创建对应的文件路径
+2. 确保可以通过 HTTPS 访问
+3. 设置正确的 MIME 类型：application/json
+
+验证部署：
+curl ${url}
+      `.trim()
+    };
   }
 }
 

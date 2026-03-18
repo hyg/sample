@@ -1,0 +1,7 @@
+{
+  "did": "did:wba:mars22.com",
+  "method": "wba",
+  "privateKey": "c92eccdd724c784160cfb56ac3df1c06df31fa7dc85272c4ac5b0a6e19a29771",
+  "publicKey": "c95c1ec818034117f0f44156666dfb3564afcc04944de86d563d45e770f6e449",
+  "keyType": "x25519"
+}
