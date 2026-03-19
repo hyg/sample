@@ -1,7 +1,0 @@
-{
-  "did": "did:wba:eth:x25519",
-  "method": "wba",
-  "privateKey": "3c6ec92585d7df162715f01b3ebc9caf94fed2dcade9d7bdc2a9b9dd3871e4bf",
-  "publicKey": "d3e037f8db97a79c14a295edf4e3311e811c8b6f394d07cc0f0d9a12177a5a1d",
-  "keyType": "x25519"
-}

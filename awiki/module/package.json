@@ -1,0 +1,44 @@
+{
+  "name": "@awiki/module",
+  "version": "1.0.0",
+  "description": "awiki-agent-id-message Python 版本的 Node.js 移植前置项目",
+  "private": true,
+  "type": "commonjs",
+  "main": "scripts/index.js",
+  "directories": {
+    "lib": "lib",
+    "scripts": "scripts",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:unit": "jest --testPathPattern=tests/unit",
+    "test:integration": "jest --testPathPattern=tests/integration",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:compare": "node scripts/compare-tests.js",
+    "lint": "eslint scripts/ tests/"
+  },
+  "dependencies": {
+    "@node-rs/hpke": "^1.0.0",
+    "better-sqlite3": "^9.0.0",
+    "undici": "^6.0.0",
+    "ws": "^8.14.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "awiki",
+    "did",
+    "identity",
+    "e2ee",
+    "messaging"
+  ],
+  "author": "awiki.ai",
+  "license": "Apache-2.0"
+}

@@ -1,198 +1,297 @@
-# E2EE MQTT Chat
+# E2EE Chat - 端到端加密聊天应用
 
-端到端加密的 MQTT 聊天工具，支持多种 DID 方法和群组通信功能。基于 ANP（Agent Network Protocol）规范扩展实现。
+基于三层架构的端到端加密聊天应用，支持多种DID身份、消息类型和传输协议。
 
-**项目地址**: https://github.com/your-repo/e2ee-mqtt-chat
-
-## 特性
-
-- 🔐 **端到端加密** - 基于 HPKE (RFC 9180) 和双棘轮密钥派生
-- 🔑 **多 DID 支持** - 支持 did:key、did:ethr、did:wba，可扩展到 did:web 等
-- 🔗 **跨 DID 通信** - 不同 DID 方法之间可以互相通信
-- 💻 **双客户端** - CLI 命令行工具和 HTML 网页客户端
-- 🌐 **去中心化通信** - 通过公共 MQTT Broker 进行消息传递
-- 📦 **模块化架构** - 易于扩展和集成
-
-## 快速开始
-
-### CLI 客户端
-
-```bash
-# 启动 CLI
-node src/cli.js
-
-# 创建身份（支持多种 DID 方法）
-/create x25519           # did:key
-/create ethr x25519      # did:ethr (以太坊)
-/create wba x25519       # did:wba (跨链)
-
-# 查看身份
-/show
-
-# 连接伙伴
-/connect <partner-did>
-/pubkey <partner-public-key-hex>
-
-# 初始化 E2EE 会话
-/init
-
-# 发送消息
-/send Hello, secure world!
-或直接输入消息
-```
-
-### Web 客户端
-
-```bash
-# CDN 版本（轻量，约 20KB）
-cd web-cdn
-npx http-server -p 8080
-
-# 本地文件版本（离线，约 700KB）
-cd web-local
-npx http-server -p 8080
-```
-
-访问 http://localhost:8080
-
-## 支持的 DID 方法
-
-| 方法 | 格式 | 支持网络 | 密钥类型 |
-|------|------|----------|----------|
-| **did:key** | `did:key:z6Mk...` | N/A | X25519, Ed25519, P-256 |
-| **did:ethr** | `did:ethr:0x1:0x123...` | Ethereum, Sepolia, BSC, Polygon, Arbitrum, Optimism | X25519, P-256 |
-| **did:wba** | `did:wba:eth:0x123...` | ETH, BSC, Polygon, Arbitrum, Optimism, Avalanche, Base | X25519, P-256 |
-
-### 跨 DID 通信示例
+## 架构设计
 
 ```
-Alice (did:key)  ←→  Bob (did:ethr)  ←→  Carol (did:wba)
-     ↓                    ↓                   ↓
-  X25519 密钥协商     X25519 密钥协商      X25519 密钥协商
-     ↓                    ↓                   ↓
-  HPKE 加密通信        HPKE 加密通信       HPKE 加密通信
+┌─────────────────────────────────────────────────────────────┐
+│                      CLI / Web 界面                         │
+├─────────────────────────────────────────────────────────────┤
+│                    身份层 (Identity)                        │
+│   did:key (Ed25519/X25519) │ did:ethr │ did:wba │ ...      │
+├─────────────────────────────────────────────────────────────┤
+│                    消息层 (Message)                         │
+│          明文 (plaintext) │ 密文 (ciphertext) │ ...         │
+├─────────────────────────────────────────────────────────────┤
+│                    传输层 (Transport)                       │
+│          MQTT │ PeerJS │ GUN │ HTTP │ WebSocket │ ...       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-所有 DID 方法使用统一的 X25519/P-256 密钥协商接口，确保互操作性。
+### 三层职责
 
-## 技术架构
+| 层级 | 职责 | 扩展点 |
+|------|------|--------|
+| **身份层** | DID创建、导入、验证 | 新增DID方法 |
+| **消息层** | 明文/密文处理、加密/解密 | 新增消息类型 |
+| **传输层** | 消息收发、连接管理 | 新增传输协议 |
 
-### 加密实现
+## 加密实现
 
-**HPKE 套件**: `DHKEM-X25519-HKDF-SHA256/HKDF-SHA256/AES-128-GCM`
+### RFC 9180 HPKE
 
-**完整 RFC 9180 实现**:
-- ✅ KEM: DHKEM-X25519-HKDF-SHA256
-- ✅ KDF: HKDF-SHA256
-- ✅ AEAD: AES-128-GCM, AES-256-GCM, ChaCha20-Poly1305
-- ✅ 模式：Base Mode, Auth Mode
-- ✅ Labeled Extract/Expand
-- ✅ Key Schedule
+本项目实现完整的 **RFC 9180 Hybrid Public Key Encryption (HPKE)** 标准。
 
-**双棘轮密钥派生**:
+#### 支持的套件
+
+| 类型 | 算法 | 状态 |
+|------|------|------|
+| **KEM** | DHKEM-X25519-HKDF-SHA256 | ✅ 完全实现 |
+| **KEM** | DHKEM-P256-HKDF-SHA256 | 🔄 计划中 |
+| **KDF** | HKDF-SHA256 | ✅ 完全实现 |
+| **KDF** | HKDF-SHA384 | 🔄 计划中 |
+| **AEAD** | AES-128-GCM | ✅ 完全实现 |
+| **AEAD** | AES-256-GCM | ✅ 支持 |
+| **AEAD** | ChaCha20-Poly1305 | ✅ 支持 |
+
+#### 支持的模式
+
+| 模式 | 描述 | 状态 |
+|------|------|------|
+| **Base Mode** | 基础加密模式 | ✅ 完全实现 |
+| **Auth Mode** | 发送方认证模式 | ✅ 完全实现 |
+| **PSK Mode** | 预共享密钥模式 | 🔄 计划中 |
+| **AuthPSK Mode** | 认证+预共享密钥模式 | 🔄 计划中 |
+
+#### 密钥派生链
+
 ```
-root_seed → init_chain_key, resp_chain_key
-    │
-    └── 每消息派生：msg_key → enc_key + nonce
+Root Seed
+    ├── Init Chain Key (发起方消息密钥链)
+    │   ├── Message Key 0
+    │   ├── Message Key 1
+    │   └── ...
+    └── Resp Chain Key (响应方消息密钥链)
+        ├── Message Key 0
+        ├── Message Key 1
+        └── ...
 ```
 
-### DID 架构
+每条消息使用独立的密钥和 nonce，确保前向保密。
 
-```
-┌─────────────────────────────────────────┐
-│            DID Manager                  │
-├─────────────────────────────────────────┤
-│         DID Method Registry             │
-├──────────┬────────────┬─────────────────┤
-│ did:key  │  did:ethr  │    did:wba      │
-│ Handler  │  Handler   │    Handler      │
-└──────────┴────────────┴─────────────────┘
-         │
-         └──→ 统一接口：getSharedSecret()
-```
-
-详见 [DID-EXTENSION.md](DID-EXTENSION.md)
-
-## 项目结构
+## 目录结构
 
 ```
 MQTT/
 ├── src/
-│   ├── cli.js                  # CLI 入口
-│   ├── did/
-│   │   ├── registry.js         # DID 方法注册表
-│   │   ├── manager.js          # DID 管理器
-│   │   ├── did-key.js          # did:key 实现
-│   │   ├── did-ethr.js         # did:ethr 实现
-│   │   └── did-wba.js          # did:wba 实现
+│   ├── cli.js                    # CLI入口
 │   ├── e2ee/
-│   │   ├── hpke-rfc9180.js     # HPKE 完整实现 (RFC 9180)
-│   │   └── session.js          # 会话管理
-│   └── core/
-│       └── mqtt-client.js      # MQTT 客户端
-├── web-cdn/                    # Web 客户端 (CDN 版本)
-│   ├── index.html
-│   └── e2ee/hpke-browser.js
-├── web-local/                  # Web 客户端 (本地版本)
-│   ├── index.html
-│   ├── e2ee/hpke-browser.js
-│   └── lib/
-├── HPKE-RFC9180.md             # HPKE 实现说明
-├── DID-EXTENSION.md            # DID 扩展设计
-└── README.md
+│   │   ├── protocol.js           # E2EE协议处理
+│   │   ├── session.js            # 会话管理
+│   │   ├── hpke-rfc9180.js       # RFC 9180 HPKE 完整实现
+│   │   └── hpke-native.js        # 简化版 HPKE（参考）
+│   ├── transport/
+│   │   ├── base.js               # 统一传输层抽象基类
+│   │   ├── mqtt-transport.js     # MQTT 传输实现
+│   │   ├── peer-transport.cjs    # PeerJS/WebRTC P2P 传输
+│   │   └── gun-transport.js      # GUN 去中心化传输
+│   └── did/
+│       ├── manager.js            # DID管理器
+│       ├── did-key.js            # did:key实现
+│       ├── did-ethr.js           # did:ethr实现
+│       └── did-wba.js            # did:wba实现
+├── web-local/                    # 本地Web界面
+├── web-cdn/                      # CDN版本Web界面
+└── .data/                        # 身份数据存储
 ```
 
-## 扩展指南
+## 传输层统一设计
 
-### 添加新的 DID 方法
+所有传输层实现相同的抽象接口，CLI 无需关心具体协议：
 
-1. 创建 `src/did/did-<method>.js`
-2. 实现统一接口（generate, fromPublicKey, getSharedSecret 等）
-3. 在 `src/did/manager.js` 中注册
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    统一传输层接口 (base.js)                  │
+│   connect()  send()  broadcast()  sendTo()  joinRoom()      │
+├─────────────────────────────────────────────────────────────┤
+│   MQTT           │   PeerJS         │   GUN                │
+│   roomId→topic   │   peerId=DID     │   roomId→path        │
+│   peerId→clientId│   无房间(广播)    │   peerId→sender_did  │
+└─────────────────────────────────────────────────────────────┘
+```
 
-详见 [DID-EXTENSION.md](DID-EXTENSION.md#扩展新的-did-方法)
+### 统一参数
 
-### 添加新的加密套件
+| 参数 | 说明 | MQTT | PeerJS | GUN |
+|------|------|------|--------|-----|
+| `roomId` | 房间/主题 | topic | 无 | path |
+| `peerId` | 节点标识 | clientId | peer ID | sender_did |
+| `serverUrl` | 服务器 | broker URL | 信令服务器 | peers URL |
 
-1. 在 `src/e2ee/hpke-rfc9180.js` 中添加 KEM/KDF/AEAD 实现
-2. 更新 `SUITE_CONFIG` 配置
-3. 在 `HPKE` 类中添加新的套件组合
+## 快速开始
 
-详见 [HPKE-RFC9180.md](HPKE-RFC9180.md)
+### 安装
 
-## 安全考虑
+```bash
+npm install
+```
 
-1. **私钥存储** - 使用加密存储，密码派生自用户口令
-2. **会话过期** - 会话默认 24 小时过期
-3. **前向保密** - 每条消息使用独立的密钥
-4. **重放攻击防护** - 序列号严格递增
-5. **跨 DID 验证** - 使用统一的签名验证接口
+### CLI版本
 
-## 限制
+```bash
+# 使用 MQTT (默认)
+node src/cli.js
 
-1. **单设备** - 当前实现不支持同一 DID 在多个设备上使用
-2. **群聊** - 群聊 E2EE 功能在开发中
-3. **大文件** - 仅支持文本消息
+# 使用 PeerJS (WebRTC)
+node src/cli.js -t peer
 
-## 参考文档
+# 使用 PeerJS 并指定 ID
+node src/cli.js -t peer --peer-id my-id
 
-- [DID Core Specification](https://www.w3.org/TR/did-core/)
-- [did:key Specification](https://w3c-ccg.github.io/did-method-key/)
-- [did:ethr Specification](https://github.com/uport-project/ethr-did/blob/develop/doc/did-method-spec.md)
-- [RFC 9180 HPKE](https://www.rfc-editor.org/rfc/rfc9180.html)
-- [RFC 7748 X25519](https://www.rfc-editor.org/rfc/rfc7748.html)
-- [ANP E2EE 协议规范](https://github.com/agent-network-protocol/AgentNetworkProtocol/blob/main/09-ANP-end-to-end-instant-messaging-protocol-specification.md)
+# 使用 PeerJS 并连接到指定 peer
+node src/cli.js -t peer --connect target-peer-id
 
-## 版本历史
+# 使用 GUN (去中心化网络)
+node src/cli.js -t gun
 
-- **v2.0** (2026-03-14): 
-  - 完整 RFC 9180 HPKE 实现
-  - 支持 did:ethr, did:wba
-  - 跨 DID 通信支持
-  - 可扩展 DID 架构
-  
-- **v1.0**: 初始版本，支持 did:key
+# 查看所有选项
+node src/cli.js --help
+```
 
-## 许可证
+### Web版本
+
+本地版本：
+```bash
+cd web-local
+# 使用任意静态服务器
+python -m http.server 8080
+# 或
+npx serve
+```
+
+CDN版本：
+```bash
+cd web-cdn
+# 同上
+```
+
+## 传输协议
+
+### MQTT (默认)
+- 优点：稳定可靠，支持大量并发连接
+- 服务器：`mqtt://broker.emqx.io:1883`
+- 房间映射：topic
+- 协议：MQTT over WebSocket
+
+### PeerJS (peer)
+- 优点：WebRTC P2P，端到端加密，跨局域网
+- 信令服务器：`0.peerjs.com` (PeerJS Cloud)
+- 数据传输：WebRTC DataChannel
+- Node.js 支持：`@roamhq/wrtc`
+- 官网：https://peerjs.com
+- **注意**：需要手动连接到对方的 peer ID（使用 `/peer <id>` 命令）
+
+### GUN (gun)
+- 优点：去中心化网状网络，离线优先
+- 服务器：`https://gun-manhattan.herokuapp.com/gun`
+- 房间映射：`gun.get('e2ee').get(roomId)`
+- 特性：自动同步，冲突解决
+
+## 使用说明
+
+### CLI 命令
+
+```bash
+# 传输协议切换
+/transport mqtt      # 切换到 MQTT
+/transport peer      # 切换到 PeerJS
+/transport gun       # 切换到 GUN
+/transport           # 查看当前传输协议
+
+# PeerJS 连接 (peer 模式专用)
+/peer                # 显示我的 PeerJS ID
+/peer <peer-id>      # 连接到指定的 peer
+
+# 身份管理
+/create x25519       # 创建 did:key 身份
+/create wba xuemen.com  # 创建 did:wba 身份
+/import .data/identity-xxx.json  # 导入身份
+
+# 连接与会话
+/connect did:key:xxx  # 设置伙伴DID
+/pubkey <hex>         # 设置伙伴公钥
+/init                 # 发起E2EE会话
+/sessions             # 列出所有会话
+/switch <id>          # 切换会话
+
+# 消息
+Hello                 # 发送消息 (自动加密或明文)
+/send Hello           # 显式发送
+```
+
+### PeerJS 使用示例
+
+```bash
+# 节点 A
+node src/cli.js -t peer
+# 输出: [PeerJS] Connected to PeerJS Cloud, ID: abc-123
+
+# 节点 B
+node src/cli.js -t peer
+# 输出: [PeerJS] Connected to PeerJS Cloud, ID: xyz-789
+
+# 节点 B 连接到节点 A
+> /peer abc-123
+# 输出: [PeerJS] ✓ 已发起连接
+
+# 现在可以发送消息了
+> Hello from B
+
+# 节点 A 收到消息
+[PeerJS] Connected to peer: xyz-789
+[📢 公共] unknown: Hello from B
+```
+
+### Web 界面
+
+1. 选择传输协议（MQTT/PeerJS/GUN）
+2. 创建或导入身份
+3. 设置伙伴DID和公钥
+4. 发起E2EE会话
+5. 开始聊天
+
+## 扩展开发
+
+### 添加新的DID方法
+
+1. 在 `src/did/` 创建新实现文件
+2. 实现DID创建、导入、验证接口
+3. 在 `manager.js` 注册新方法
+
+### 添加新的消息类型
+
+1. 在 `protocol.js` 添加消息类型常量
+2. 实现构建和处理逻辑
+3. 在 `cli.js` 添加命令处理
+
+### 添加新的传输协议
+
+1. 继承 `Transport` 抽象类
+2. 实现 `connect()`、`send()`、`broadcast()` 等方法
+3. 在 `cli.js` 替换传输实例
+
+### 添加新的 HPKE 套件
+
+1. 在 `hpke-rfc9180.js` 添加 KEM/KDF/AEAD 实现
+2. 注册到 `SUITE_CONFIG`
+3. 更新 `HPKE` 类支持新套件
+
+## 依赖
+
+- mqtt: MQTT客户端
+- peer: PeerJS WebRTC客户端
+- gun: GUN去中心化数据库
+- @noble/hashes: 密码学哈希
+- @noble/curves: 椭圆曲线
+- @noble/ciphers: 对称加密
+
+## 参考
+
+- [RFC 9180 - HPKE](https://www.rfc-editor.org/rfc/rfc9180.html)
+- [RFC 5869 - HKDF](https://www.rfc-editor.org/rfc/rfc5869.html)
+- [RFC 7748 - X25519/X448](https://www.rfc-editor.org/rfc/rfc7748.html)
+
+## 许可
 
 ISC

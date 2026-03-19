@@ -21,9 +21,9 @@ pip install -r requirements.txt
 
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
-| `--identity` | 指定身份名称 | default |
-| `--verbose` | 详细输出 | false |
-| `--debug` | 调试模式 | false |
+| `--credential` | 指定凭证名称 | `default` |
+| `--verbose` | 详细输出 | `false` |
+| `--debug` | 调试模式 | `false` |
 
 ---
 
@@ -37,16 +37,16 @@ pip install -r requirements.txt
 
 ```bash
 # 创建新身份
-python scripts/setup_identity.py --name <身份名称>
+uv run python scripts/setup_identity.py --name <身份名称>
 
 # 加载现有身份
-python scripts/setup_identity.py --load <身份名称>
+uv run python scripts/setup_identity.py --load <身份名称>
 
 # 列出所有身份
-python scripts/setup_identity.py --list
+uv run python scripts/setup_identity.py --list
 
 # 删除身份
-python scripts/setup_identity.py --delete <身份名称>
+uv run python scripts/setup_identity.py --delete <身份名称>
 ```
 
 **参数**:
@@ -78,10 +78,13 @@ DID: did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g
 
 ```bash
 # 注册新 Handle
-python scripts/register_handle.py --handle <用户名> --phone <手机号>
+uv run python scripts/register_handle.py --handle <用户名> --phone <手机号>
 
 # 输入 OTP 验证码
-python scripts/register_handle.py --handle <用户名> --otp-code <验证码>
+uv run python scripts/register_handle.py --handle <用户名> --otp-code <验证码>
+
+# 带邀请码（短 Handle ≤ 4 字符）
+uv run python scripts/register_handle.py --handle bob --phone +8613800138000 --invite-code ABC123
 ```
 
 **参数**:
@@ -91,6 +94,7 @@ python scripts/register_handle.py --handle <用户名> --otp-code <验证码>
 | `--handle` | 要注册的 Handle | 是 |
 | `--phone` | 手机号码 | 发送 OTP 时必需 |
 | `--otp-code` | OTP 验证码 | 验证时必需 |
+| `--invite-code` | 邀请码 | 短 Handle 时必需 |
 
 **流程**:
 
@@ -104,7 +108,7 @@ python scripts/register_handle.py --handle <用户名> --otp-code <验证码>
 **命令**:
 
 ```bash
-python scripts/recover_handle.py --handle <用户名> --phone <手机号>
+uv run python scripts/recover_handle.py --handle <用户名> --phone <手机号>
 ```
 
 ### 3.3 resolve_handle.py
@@ -115,10 +119,10 @@ python scripts/recover_handle.py --handle <用户名> --phone <手机号>
 
 ```bash
 # 通过 Handle 解析
-python scripts/resolve_handle.py --handle <用户名>
+uv run python scripts/resolve_handle.py --handle <用户名>
 
 # 通过 DID 解析
-python scripts/resolve_handle.py --did <DID>
+uv run python scripts/resolve_handle.py --did <DID>
 ```
 
 **输出**:
@@ -141,7 +145,7 @@ python scripts/resolve_handle.py --did <DID>
 **命令**:
 
 ```bash
-python scripts/send_message.py --to <DID 或 Handle> --content <消息内容> [--type <类型>]
+uv run python scripts/send_message.py --to <DID 或 Handle> --content <消息内容> [--type <类型>]
 ```
 
 **参数**:
@@ -156,10 +160,10 @@ python scripts/send_message.py --to <DID 或 Handle> --content <消息内容> [-
 
 ```bash
 # 发送文本消息
-python scripts/send_message.py --to @alice --content "Hello!"
+uv run python scripts/send_message.py --to @alice --content "Hello!"
 
 # 发送到 DID
-python scripts/send_message.py --to did:wba:... --content "Hello!" --type text
+uv run python scripts/send_message.py --to did:wba:... --content "Hello!" --type text
 ```
 
 ### 4.2 check_inbox.py
@@ -170,13 +174,19 @@ python scripts/send_message.py --to did:wba:... --content "Hello!" --type text
 
 ```bash
 # 查看最新 10 条
-python scripts/check_inbox.py --limit 10
+uv run python scripts/check_inbox.py --limit 10
 
 # 查看历史消息
-python scripts/check_inbox.py --history --peer <DID>
+uv run python scripts/check_inbox.py --history --peer <DID>
+
+# 仅查看群消息
+uv run python scripts/check_inbox.py --scope group
+
+# 查看指定群消息
+uv run python scripts/check_inbox.py --group-id <群 ID> --limit 50
 
 # 标记已读
-python scripts/check_inbox.py --mark-read --ids <消息 ID 列表>
+uv run python scripts/check_inbox.py --mark-read <消息 ID 列表>
 ```
 
 **参数**:
@@ -184,10 +194,11 @@ python scripts/check_inbox.py --mark-read --ids <消息 ID 列表>
 | 参数 | 描述 | 默认值 |
 |------|------|--------|
 | `--limit` | 消息数量 | 10 |
-| `--history` | 查看历史 | false |
+| `--history` | 查看历史 | `false` |
 | `--peer` | 对等方 DID | - |
-| `--mark-read` | 标记已读 | false |
-| `--ids` | 消息 ID 列表 | - |
+| `--scope` | 消息范围 (`all`/`direct`/`group`) | `all` |
+| `--group-id` | 群 ID | - |
+| `--mark-read` | 标记已读 | `false` |
 
 **输出**:
 
@@ -215,22 +226,22 @@ python scripts/check_inbox.py --mark-read --ids <消息 ID 列表>
 
 ```bash
 # 创建群组
-python scripts/manage_group.py --create --name <群名> --members <成员 DID 列表>
+uv run python scripts/manage_group.py --create --name <群名> --slug <标识>
 
-# 加入群组
-python scripts/manage_group.py --join --group <群 ID>
+# 加入群组（6 位加入码）
+uv run python scripts/manage_group.py --join --join-code 314159
 
 # 离开群组
-python scripts/manage_group.py --leave --group <群 ID>
+uv run python scripts/manage_group.py --leave --group-id <群 ID>
 
 # 列出成员
-python scripts/manage_group.py --members --group <群 ID>
+uv run python scripts/manage_group.py --members --group-id <群 ID>
 
 # 发送群消息
-python scripts/manage_group.py --send --group <群 ID> --content <消息>
+uv run python scripts/manage_group.py --post-message --group-id <群 ID> --content <消息>
 
 # 列出群消息
-python scripts/manage_group.py --messages --group <群 ID> --limit 10
+uv run python scripts/manage_group.py --messages --group-id <群 ID> --limit 10
 ```
 
 **参数**:
@@ -241,10 +252,11 @@ python scripts/manage_group.py --messages --group <群 ID> --limit 10
 | `--join` | 加入群组 | - |
 | `--leave` | 离开群组 | - |
 | `--members` | 列出成员 | - |
-| `--send` | 发送消息 | - |
+| `--post-message` | 发送消息 | - |
 | `--messages` | 列出消息 | - |
 | `--name` | 群名称 | 创建时必需 |
-| `--group` | 群 ID | 操作时必需 |
+| `--slug` | 群标识 | 创建时必需 |
+| `--group-id` | 群 ID | 操作时必需 |
 | `--content` | 消息内容 | 发送时必需 |
 
 ---
@@ -259,19 +271,19 @@ python scripts/manage_group.py --messages --group <群 ID> --limit 10
 
 ```bash
 # 关注用户
-python scripts/manage_relationship.py --follow <目标 DID>
+uv run python scripts/manage_relationship.py --follow <目标 DID>
 
 # 取消关注
-python scripts/manage_relationship.py --unfollow <目标 DID>
+uv run python scripts/manage_relationship.py --unfollow <目标 DID>
 
 # 查看关注列表
-python scripts/manage_relationship.py --following [--did <DID>]
+uv run python scripts/manage_relationship.py --following [--did <DID>]
 
 # 查看粉丝列表
-python scripts/manage_relationship.py --followers [--did <DID>]
+uv run python scripts/manage_relationship.py --followers [--did <DID>]
 
 # 检查关系状态
-python scripts/manage_relationship.py --status <目标 DID>
+uv run python scripts/manage_relationship.py --status <目标 DID>
 ```
 
 **输出示例**:
@@ -295,16 +307,16 @@ python scripts/manage_relationship.py --status <目标 DID>
 
 ```bash
 # 获取自己的 Profile
-python scripts/get_profile.py
+uv run python scripts/get_profile.py
 
 # 通过 DID 获取
-python scripts/get_profile.py --did <DID>
+uv run python scripts/get_profile.py --did <DID>
 
 # 通过 Handle 获取
-python scripts/get_profile.py --handle <用户名>
+uv run python scripts/get_profile.py --handle <用户名>
 
 # 解析 DID
-python scripts/get_profile.py --resolve <DID>
+uv run python scripts/get_profile.py --resolve <DID>
 ```
 
 **输出**:
@@ -326,7 +338,7 @@ python scripts/get_profile.py --resolve <DID>
 **命令**:
 
 ```bash
-python scripts/update_profile.py --nick-name <昵称> --bio <简介> --tags <标签列表>
+uv run python scripts/update_profile.py --nick-name <昵称> --bio <简介> --tags <标签列表>
 ```
 
 **参数**:
@@ -349,22 +361,22 @@ python scripts/update_profile.py --nick-name <昵称> --bio <简介> --tags <标
 
 ```bash
 # 创建页面
-python scripts/manage_content.py --create --title <标题> --content <内容> [--parent <父 ID>]
+uv run python scripts/manage_content.py --create --title <标题> --content <内容> [--parent <父 ID>]
 
 # 更新页面
-python scripts/manage_content.py --update --page <页面 ID> --content <新内容>
+uv run python scripts/manage_content.py --update --page <页面 ID> --content <新内容>
 
 # 重命名
-python scripts/manage_content.py --rename --page <页面 ID> --title <新标题>
+uv run python scripts/manage_content.py --rename --page <页面 ID> --title <新标题>
 
 # 删除页面
-python scripts/manage_content.py --delete --page <页面 ID>
+uv run python scripts/manage_content.py --delete --page <页面 ID>
 
 # 列出页面
-python scripts/manage_content.py --list [--parent <父 ID>]
+uv run python scripts/manage_content.py --list [--parent <父 ID>]
 
 # 获取页面
-python scripts/manage_content.py --get --page <页面 ID>
+uv run python scripts/manage_content.py --get --page <页面 ID>
 ```
 
 ---
@@ -379,10 +391,10 @@ python scripts/manage_content.py --get --page <页面 ID>
 
 ```bash
 # 记录推荐联系人
-python scripts/manage_contacts.py --record-recommendation --from <来源> --contacts <联系人列表>
+uv run python scripts/manage_contacts.py --record-recommendation --from <来源> --contacts <联系人列表>
 
 # 从群组保存联系人
-python scripts/manage_contacts.py --save-from-group --group <群 ID>
+uv run python scripts/manage_contacts.py --save-from-group --group <群 ID>
 ```
 
 ---
@@ -396,7 +408,7 @@ python scripts/manage_contacts.py --save-from-group --group <群 ID>
 **命令**:
 
 ```bash
-python scripts/search_users.py <搜索关键词>
+uv run python scripts/search_users.py <搜索关键词>
 ```
 
 **输出**:
@@ -423,13 +435,13 @@ python scripts/search_users.py <搜索关键词>
 
 ```bash
 # 查询余额
-python scripts/manage_credits.py --balance
+uv run python scripts/manage_credits.py --balance
 
 # 查询交易记录
-python scripts/manage_credits.py --transactions [--limit 10]
+uv run python scripts/manage_credits.py --transactions [--limit 10]
 
 # 查询积分规则
-python scripts/manage_credits.py --rules
+uv run python scripts/manage_credits.py --rules
 ```
 
 ---
@@ -444,10 +456,10 @@ python scripts/manage_credits.py --rules
 
 ```bash
 # 检查所有状态
-python scripts/check_status.py
+uv run python scripts/check_status.py
 
 # 仅检查升级
-python scripts/check_status.py --upgrade-only
+uv run python scripts/check_status.py --upgrade-only
 ```
 
 ---
@@ -462,19 +474,19 @@ WebSocket 消息监听器。
 
 ```bash
 # 运行监听器
-python scripts/ws_listener.py run
+uv run python scripts/ws_listener.py run
 
 # 安装系统服务
-python scripts/ws_listener.py install
+uv run python scripts/ws_listener.py install
 
 # 卸载系统服务
-python scripts/ws_listener.py uninstall
+uv run python scripts/ws_listener.py uninstall
 
 # 启动服务
-python scripts/ws_listener.py start
+uv run python scripts/ws_listener.py start
 
 # 停止服务
-python scripts/ws_listener.py stop
+uv run python scripts/ws_listener.py stop
 ```
 
 **Webhook 配置**:
@@ -500,7 +512,7 @@ python scripts/ws_listener.py stop
 **命令**:
 
 ```bash
-python scripts/query_db.py "SELECT * FROM messages LIMIT 10"
+uv run python scripts/query_db.py "SELECT * FROM messages LIMIT 10"
 ```
 
 **可用表**:
@@ -515,55 +527,76 @@ python scripts/query_db.py "SELECT * FROM messages LIMIT 10"
 
 ---
 
-## 15. 业务场景调用时序
+## 15. E2EE 加密消息
 
-### 15.1 首次使用流程
+### 15.1 e2ee_messaging.py
 
-```
-1. 创建身份
-   python scripts/setup_identity.py --name myid
+E2EE 加密消息处理。
 
-2. 注册 Handle（可选）
-   python scripts/register_handle.py --handle myname --phone 1234567890
-   python scripts/register_handle.py --handle myname --otp-code 123456
+**命令**:
 
-3. 更新 Profile
-   python scripts/update_profile.py --nick-name "我的昵称" --bio "简介"
+```bash
+# 发送 E2EE 消息
+uv run python scripts/e2ee_messaging.py --send <DID> --content <消息>
 
-4. 开始使用其他功能
-```
+# 处理接收的 E2EE 消息
+uv run python scripts/e2ee_messaging.py --process --peer <DID>
 
-### 15.2 发送消息流程
-
-```
-1. 确保身份已加载
-   python scripts/setup_identity.py --load myid
-
-2. 发送消息（自动建立 E2EE 会话）
-   python scripts/send_message.py --to @alice --content "Hello!"
-
-3. 查看回复
-   python scripts/check_inbox.py --limit 10
-```
-
-### 15.3 创建群组流程
-
-```
-1. 创建群组
-   python scripts/manage_group.py --create --name "测试群" --members did1,did2,did3
-
-2. 发送群消息
-   python scripts/manage_group.py --send --group <群 ID> --content "大家好!"
-
-3. 查看群消息
-   python scripts/manage_group.py --messages --group <群 ID> --limit 10
+# 重试失败的发送
+uv run python scripts/e2ee_messaging.py --retry <发件箱 ID>
 ```
 
 ---
 
-## 16. 故障排除
+## 16. 业务场景调用时序
 
-### 16.1 常见问题
+### 16.1 首次使用流程
+
+```
+1. 创建身份
+   uv run python scripts/setup_identity.py --name myid
+
+2. 注册 Handle（可选）
+   uv run python scripts/register_handle.py --handle myname --phone 1234567890
+   uv run python scripts/register_handle.py --handle myname --otp-code 123456
+
+3. 更新 Profile
+   uv run python scripts/update_profile.py --nick-name "我的昵称" --bio "简介"
+
+4. 开始使用其他功能
+```
+
+### 16.2 发送消息流程
+
+```
+1. 确保身份已加载
+   uv run python scripts/setup_identity.py --load myid
+
+2. 发送消息（自动建立 E2EE 会话）
+   uv run python scripts/send_message.py --to @alice --content "Hello!"
+
+3. 查看回复
+   uv run python scripts/check_inbox.py --limit 10
+```
+
+### 16.3 创建群组流程
+
+```
+1. 创建群组
+   uv run python scripts/manage_group.py --create --name "测试群" --slug test-group
+
+2. 发送群消息
+   uv run python scripts/manage_group.py --post-message --group-id <群 ID> --content "大家好!"
+
+3. 查看群消息
+   uv run python scripts/manage_group.py --messages --group-id <群 ID> --limit 10
+```
+
+---
+
+## 17. 故障排除
+
+### 17.1 常见问题
 
 **问题**: 身份加载失败
 **解决**: 检查凭证目录是否存在，身份名称是否正确
@@ -574,10 +607,10 @@ python scripts/query_db.py "SELECT * FROM messages LIMIT 10"
 **问题**: E2EE 解密失败
 **解决**: 清除 E2EE 状态重新建立会话
 
-### 16.2 日志位置
+### 17.2 日志位置
 
 启用详细日志：
 ```bash
-python scripts/<script>.py --verbose
-python scripts/<script>.py --debug
+uv run python scripts/<script>.py --verbose
+uv run python scripts/<script>.py --debug
 ```

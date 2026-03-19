@@ -1,0 +1,7 @@
+{
+  "did": "did:wba:xuemen.com",
+  "method": "wba",
+  "privateKey": "b582afa6be98c818c509f4056687f677fd35cab36538b7d343fd699e808b8066",
+  "publicKey": "7258acb462370af0dd05d7265173cb0a951a0f498d08cd429a0db48e27b3b557",
+  "keyType": "x25519"
+}

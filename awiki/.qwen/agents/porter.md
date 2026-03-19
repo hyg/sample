@@ -2,11 +2,13 @@
 name: porter
 description: 将 Python 代码移植为 Node.js。用于移植阶段。
 tools:
-  - read_file
-  - write_file
-  - run_shell_command
-  - glob
-  - grep
+  - ReadFile
+  - WriteFile
+  - Edit
+  - Shell
+  - Glob
+  - Grep
+  - TodoWrite
 ---
 # Port Agent
 

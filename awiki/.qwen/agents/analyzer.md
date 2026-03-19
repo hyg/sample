@@ -2,11 +2,14 @@
 name: analyzer
 description: 扫描 Python 代码，提取函数签名和依赖关系。用于项目分析阶段。
 tools:
-  - read_file
-  - write_file
-  - run_shell_command
-  - glob
-  - grep
+  - ListFiles
+  - ReadFile
+  - WriteFile
+  - Edit
+  - Shell
+  - Glob
+  - Grep
+  - TodoWrite
 ---
 # Analyze Agent
 

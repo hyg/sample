@@ -10,7 +10,7 @@
       "id": "did:wba:mars22.com#key-1",
       "type": "X25519KeyAgreementKey2019",
       "controller": "did:wba:mars22.com",
-      "publicKeyMultibase": "zc95c1ec818034117f0f44156666dfb3564afcc04944de86d563d45e770f6e449"
+      "publicKeyMultibase": "zd4ff6978094229d9f26aed7c7c2228b2e5e92d0ac7b40f604330b25b0a58353d"
     }
   ],
   "authentication": [

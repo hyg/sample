@@ -1,0 +1,79 @@
+{
+  "file": "python/scripts/utils/config.py",
+  "doc_path": "doc/scripts/utils/config.py",
+  "functions": [
+    {
+      "name": "SDKConfig.load",
+      "type": "classmethod",
+      "signature": "() -> SDKConfig",
+      "tests": [
+        {
+          "input": {},
+          "output": {
+            "user_service_url": "https://awiki.ai",
+            "molt_message_url": "https://awiki.ai",
+            "molt_message_ws_url": null,
+            "did_domain": "awiki.ai",
+            "credentials_dir": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message",
+            "data_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message"
+          },
+          "scenario": "\u52a0\u8f7d\u9ed8\u8ba4\u914d\u7f6e\uff08\u73af\u5883\u53d8\u91cf\u6216\u9ed8\u8ba4\u503c\uff09"
+        }
+      ]
+    }
+  ],
+  "constants": {},
+  "classes": {
+    "SDKConfig": {
+      "description": "awiki \u7cfb\u7edf\u670d\u52a1\u914d\u7f6e",
+      "properties": [
+        "user_service_url",
+        "molt_message_url",
+        "molt_message_ws_url",
+        "did_domain",
+        "credentials_dir",
+        "data_dir"
+      ],
+      "methods": [
+        "load"
+      ],
+      "decorators": [
+        "@dataclass(frozen=True, slots=True)"
+      ]
+    }
+  },
+  "environment": {
+    "variables": [
+      {
+        "name": "E2E_USER_SERVICE_URL",
+        "default": "https://awiki.ai",
+        "purpose": "\u7528\u6237\u670d\u52a1 URL"
+      },
+      {
+        "name": "E2E_MOLT_MESSAGE_URL",
+        "default": "https://awiki.ai",
+        "purpose": "\u6d88\u606f\u670d\u52a1 URL"
+      },
+      {
+        "name": "E2E_MOLT_MESSAGE_WS_URL",
+        "default": null,
+        "purpose": "WebSocket \u670d\u52a1 URL"
+      },
+      {
+        "name": "E2E_DID_DOMAIN",
+        "default": "awiki.ai",
+        "purpose": "DID \u57df\u540d"
+      },
+      {
+        "name": "AWIKI_DATA_DIR",
+        "default": null,
+        "purpose": "\u6570\u636e\u76ee\u5f55\u8986\u76d6"
+      },
+      {
+        "name": "AWIKI_WORKSPACE",
+        "default": null,
+        "purpose": "\u5de5\u4f5c\u7a7a\u95f4\u76ee\u5f55"
+      }
+    ]
+  }
+}

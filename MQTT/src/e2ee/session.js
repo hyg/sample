@@ -36,6 +36,8 @@ export class PrivateSession {
     
     // 会话密钥状态
     this.rootSeed = params.rootSeed || null;
+    this.initChainKey = params.initChainKey || null;
+    this.respChainKey = params.respChainKey || null;
     this.sendChainKey = params.sendChainKey || null;
     this.recvChainKey = params.recvChainKey || null;
     
@@ -47,7 +49,7 @@ export class PrivateSession {
     this.expiresAt = params.expiresAt || (Date.now() + 86400000);
     
     // 会话状态
-    this.isActive = !!(this.sendChainKey && this.recvChainKey);
+    this.isActive = !!(this.rootSeed && (this.initChainKey || this.respChainKey));
     this.isInitiator = params.isInitiator ?? this.compareDids() < 0;
   }
 
@@ -125,22 +127,25 @@ export class PrivateSession {
   /**
    * 加密消息
    */
-  async encrypt(plaintext) {
+  async encrypt(plaintext, chainKeyOverride = null) {
     if (!this.isActive) {
       throw new Error('Session is not active');
     }
     
+    const chainKey = chainKeyOverride || this.sendChainKey;
     const plaintextBytes = typeof plaintext === 'string' 
       ? new TextEncoder().encode(plaintext)
       : plaintext;
     
     const { ciphertext, newChainKey } = await encryptMessage(
       plaintextBytes,
-      this.sendChainKey,
+      chainKey,
       this.sendSeq
     );
     
-    this.sendChainKey = newChainKey;
+    if (!chainKeyOverride) {
+      this.sendChainKey = newChainKey;
+    }
     const seq = this.sendSeq;
     this.sendSeq += 1n;
     
@@ -150,35 +155,33 @@ export class PrivateSession {
   /**
    * 解密消息
    */
-  async decrypt(ciphertext, seq) {
+  async decrypt(ciphertext, seq, chainKeyOverride = null) {
     if (!this.isActive) {
       throw new Error('Session is not active');
     }
     
+    const chainKey = chainKeyOverride || this.recvChainKey;
+    const seqNum = BigInt(seq);
+    
     // 检查重放
-    if (BigInt(seq) < this.recvSeq) {
+    if (seqNum < this.recvSeq) {
       throw new Error('Message replay detected');
     }
     
-    // 跳过缺失的消息
-    while (this.recvSeq < BigInt(seq)) {
-      const { newChainKey } = await decryptMessage(
-        new Uint8Array(), // 空密文用于跳过
-        this.recvChainKey,
-        this.recvSeq
-      );
-      this.recvChainKey = newChainKey;
-      this.recvSeq += 1n;
-    }
-    
+    // 对于乱序消息，我们需要派生到正确的链密钥位置
+    // 但这在流密码中很复杂，因为每个消息使用不同的密钥
+    // 简化：直接使用接收到的seq来解密
     const { plaintext, newChainKey } = await decryptMessage(
       ciphertext,
-      this.recvChainKey,
-      this.recvSeq
+      chainKey,
+      seqNum
     );
     
-    this.recvChainKey = newChainKey;
-    this.recvSeq += 1n;
+    // 更新状态到 seq+1
+    if (!chainKeyOverride) {
+      this.recvChainKey = newChainKey;
+    }
+    this.recvSeq = seqNum + 1n;
     
     return plaintext;
   }
@@ -195,8 +198,8 @@ export class PrivateSession {
       hpkeSuite: this.hpkeSuite,
       kemType: this.kemType,
       rootSeed: this.rootSeed ? Array.from(this.rootSeed) : null,
-      sendChainKey: this.sendChainKey ? Array.from(this.sendChainKey) : null,
-      recvChainKey: this.recvChainKey ? Array.from(this.recvChainKey) : null,
+      initChainKey: this.initChainKey ? Array.from(this.initChainKey) : null,
+      respChainKey: this.respChainKey ? Array.from(this.respChainKey) : null,
       sendSeq: Number(this.sendSeq),
       recvSeq: Number(this.recvSeq),
       expiresAt: this.expiresAt,
@@ -213,8 +216,8 @@ export class PrivateSession {
       hpkeSuite: data.hpkeSuite,
       kemType: data.kemType,
       rootSeed: data.rootSeed ? new Uint8Array(data.rootSeed) : null,
-      sendChainKey: data.sendChainKey ? new Uint8Array(data.sendChainKey) : null,
-      recvChainKey: data.recvChainKey ? new Uint8Array(data.recvChainKey) : null,
+      initChainKey: data.initChainKey ? new Uint8Array(data.initChainKey) : null,
+      respChainKey: data.respChainKey ? new Uint8Array(data.respChainKey) : null,
       sendSeq: BigInt(data.sendSeq),
       recvSeq: BigInt(data.recvSeq),
       expiresAt: data.expiresAt,

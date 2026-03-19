@@ -1,0 +1,232 @@
+"""E2EE Outbox 蒸馏脚本 - 记录输入输出作为黄金标准"""
+
+import sys
+import os
+
+# 添加 python 脚本目录到路径
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'python', 'scripts'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'python'))
+
+print("=" * 60)
+print("E2EE Outbox 蒸馏脚本 - 黄金标准记录")
+print("=" * 60)
+
+# ============================================================================
+# 模块信息
+# ============================================================================
+print("\n[模块] e2ee_outbox.py")
+print("[用途] E2EE 发件箱助手，用于可重发的私有加密消息")
+print("[位置] Persistence helper layer between E2EE messaging scripts/listener and SQLite outbox state")
+
+# ============================================================================
+# 导入验证
+# ============================================================================
+print("\n[导入验证]")
+try:
+    from e2ee_outbox import (
+        begin_send_attempt,
+        mark_send_success,
+        record_remote_failure,
+        record_local_failure,
+        list_failed_records,
+        get_record,
+        mark_dropped,
+    )
+    print("✓ 成功导入所有导出函数")
+except ImportError as e:
+    print(f"✗ 导入失败：{e}")
+    sys.exit(1)
+
+# ============================================================================
+# 函数签名记录
+# ============================================================================
+print("\n[函数签名]")
+
+print("""
+1. begin_send_attempt(
+       *,
+       peer_did: str,
+       plaintext: str,
+       original_type: str,
+       credential_name: str,
+       session_id: str | None,
+       outbox_id: str | None = None,
+   ) -> str
+   [用途] 在尝试网络发送之前创建或重置 E2EE 发件箱条目
+   [返回] outbox_id
+
+2. mark_send_success(
+       *,
+       outbox_id: str,
+       credential_name: str,
+       local_did: str,
+       peer_did: str,
+       plaintext: str,
+       original_type: str,
+       session_id: str | None,
+       sent_msg_id: str | None,
+       sent_server_seq: int | None,
+       sent_at: str | None,
+       client_msg_id: str,
+       title: str | None = None,
+   ) -> None
+   [用途] 将成功的加密发送持久化到发件箱和本地消息
+
+3. record_remote_failure(
+       *,
+       credential_name: str,
+       peer_did: str,
+       content: dict[str, Any],
+   ) -> str | None
+   [用途] 从接收到的 e2ee_error 负载更新最佳匹配的发件箱条目
+   [返回] 匹配的发件箱 ID 或 None
+
+4. record_local_failure(
+       *,
+       outbox_id: str,
+       credential_name: str,
+       error_code: str,
+       retry_hint: str | None = None,
+       metadata: str | None = None,
+   ) -> None
+   [用途] 在任何对等响应存在之前将本地发送尝试标记为失败
+
+5. list_failed_records(credential_name: str) -> list[dict[str, Any]]
+   [用途] 列出凭证的失败 E2EE 发件箱条目
+
+6. get_record(outbox_id: str, credential_name: str) -> dict[str, Any] | None
+   [用途] 获取一个 E2EE 发件箱记录
+
+7. mark_dropped(outbox_id: str, credential_name: str) -> None
+   [用途] 将 E2EE 发件箱记录标记为被本地用户丢弃
+""")
+
+# ============================================================================
+# 依赖关系
+# ============================================================================
+print("\n[依赖关系]")
+print("""
+e2ee_outbox.py
+├── credential_store (加载所有者 DID)
+│   └── load_identity(credential_name) -> dict | None
+└── local_store (SQLite 发件箱操作)
+    ├── get_connection() -> Connection
+    ├── ensure_schema(conn) -> None
+    ├── queue_e2ee_outbox(...) -> str
+    ├── update_e2ee_outbox_status(...) -> None
+    ├── mark_e2ee_outbox_sent(...) -> None
+    ├── store_message(...) -> None
+    ├── upsert_contact(...) -> None
+    ├── make_thread_id(local_did, peer_did) -> str
+    ├── mark_e2ee_outbox_failed(...) -> str | None
+    ├── list_e2ee_outbox(...) -> list[dict]
+    ├── get_e2ee_outbox(...) -> dict | None
+    └── set_e2ee_outbox_failure_by_id(...) -> None
+""")
+
+# ============================================================================
+# 被调用关系
+# ============================================================================
+print("\n[被调用关系]")
+print("""
+被以下文件调用:
+├── check_inbox.py    -> record_remote_failure
+├── check_status.py   -> record_remote_failure
+├── e2ee_handler.py   -> record_remote_failure
+└── e2ee_messaging.py -> begin_send_attempt, get_record, list_failed_records,
+                        mark_dropped, record_local_failure, mark_send_success,
+                        record_remote_failure
+""")
+
+# ============================================================================
+# 导出接口
+# ============================================================================
+print("\n[导出接口 __all__]")
+print("""
+__all__ = [
+    "begin_send_attempt",
+    "mark_send_success",
+    "record_remote_failure",
+    "record_local_failure",
+    "list_failed_records",
+    "get_record",
+    "mark_dropped",
+]
+""")
+
+# ============================================================================
+# 使用示例
+# ============================================================================
+print("\n[使用示例]")
+print("""
+# 1. 开始发送尝试
+outbox_id = begin_send_attempt(
+    peer_did="did:bob",
+    plaintext="Hello",
+    original_type="text",
+    credential_name="default",
+    session_id="sess_123",
+)
+
+# 2. 标记发送成功
+mark_send_success(
+    outbox_id=outbox_id,
+    credential_name="default",
+    local_did="did:alice",
+    peer_did="did:bob",
+    plaintext="Hello",
+    original_type="text",
+    session_id="sess_123",
+    sent_msg_id="msg_123",
+    sent_server_seq=1,
+    sent_at="2026-03-19T10:00:00Z",
+    client_msg_id="client_123",
+)
+
+# 3. 记录远程失败
+record_remote_failure(
+    credential_name="default",
+    peer_did="did:bob",
+    content={"error_code": "session_not_found", "session_id": "sess_123"},
+)
+
+# 4. 记录本地失败
+record_local_failure(
+    outbox_id=outbox_id,
+    credential_name="default",
+    error_code="network_error",
+    retry_hint="retry_later",
+)
+
+# 5. 列出失败记录
+failed = list_failed_records("default")
+
+# 6. 获取记录
+record = get_record(outbox_id, "default")
+
+# 7. 丢弃记录
+mark_dropped(outbox_id, "default")
+""")
+
+# ============================================================================
+# 协议说明
+# ============================================================================
+print("\n[协议说明]")
+print("""
+[PROTOCOL]:
+1. Update this header when logic changes
+2. Check the folder's CLAUDE.md after updating
+
+[INPUT]: local_store (SQLite persistence), outgoing encrypted message context,
+         incoming e2ee_error payloads
+         
+[OUTPUT]: begin_send_attempt(), mark_send_success(), record_remote_failure(),
+          list_failed_records(), get_record(), mark_dropped()
+          
+[POS]: Persistence helper layer between E2EE messaging scripts/listener and SQLite
+       outbox state, enabling user-driven resend decisions after peer-side failures
+""")
+
+print("\n" + "=" * 60)
+print("蒸馏完成 - 黄金标准记录结束")
+print("=" * 60)

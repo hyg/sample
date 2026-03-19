@@ -1,0 +1,58 @@
+{
+  "file": "python/scripts/utils/logging_config.py",
+  "doc_path": "doc/scripts/utils/logging_config.py",
+  "functions": [
+    {
+      "name": "get_log_dir",
+      "type": "function",
+      "signature": "(config=None) -> Path",
+      "tests": [
+        {
+          "input": {},
+          "output": {
+            "log_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\logs"
+          },
+          "scenario": "\u83b7\u53d6\u65e5\u5fd7\u76ee\u5f55\uff08\u4f7f\u7528\u9ed8\u8ba4\u914d\u7f6e\uff09"
+        },
+        {
+          "input": {
+            "config": "SDKConfig()"
+          },
+          "output": {
+            "log_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\logs"
+          },
+          "scenario": "\u83b7\u53d6\u65e5\u5fd7\u76ee\u5f55\uff08\u4f7f\u7528 SDKConfig\uff09"
+        }
+      ]
+    },
+    {
+      "name": "configure_logging",
+      "type": "function",
+      "signature": "(level=None, log_file=True) -> None",
+      "tests": [
+        {
+          "input": {},
+          "output": {
+            "error": "'WindowsPath' object has no attribute 'handlers'"
+          },
+          "scenario": "\u914d\u7f6e\u65e5\u5fd7"
+        }
+      ]
+    }
+  ],
+  "constants": {
+    "LOG_FILE_PREFIX": "awiki-agent",
+    "MAX_RETENTION_DAYS": 15,
+    "MAX_TOTAL_SIZE_BYTES": 15728640
+  },
+  "classes": {
+    "DailyRetentionFileHandler": {
+      "description": "\u6309\u5929\u8f6e\u6362\u7684\u6587\u4ef6\u65e5\u5fd7\u5904\u7406\u5668",
+      "base_class": "logging.handlers.TimedRotatingFileHandler",
+      "methods": [
+        "__init__",
+        "shouldRollover"
+      ]
+    }
+  }
+}

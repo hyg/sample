@@ -88,7 +88,22 @@ export class DIDManager {
     } else if (method === 'ethr') {
       identity = handler.fromPrivateKey(privateKey, options.chainId || options.network || 'mainnet', options.keyType || 'x25519');
     } else if (method === 'wba') {
-      identity = handler.fromPrivateKey(privateKey, options.chain || 'eth', options.keyType || 'x25519');
+      // 对于 wba，从 options.domain 或 options.did 解析域名
+      let domain = options.domain;
+      if (!domain && options.did) {
+        // 从 DID 中提取域名
+        const match = options.did.match(/^did:wba:(.+?)(?::|$)/);
+        if (match) {
+          domain = match[1].split(':')[0]; // 取第一部分作为域名
+        }
+      }
+      domain = domain || 'unknown';
+      identity = handler.fromPrivateKey(privateKey, domain, options.keyType || 'x25519', options.path || null);
+    }
+
+    // 如果指定了原始 DID，使用原始 DID
+    if (options.did) {
+      identity.did = options.did;
     }
 
     this.identities.set(identity.did, {

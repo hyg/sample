@@ -1,0 +1,92 @@
+[
+  {
+    "name": "constants",
+    "input": "N/A",
+    "output": "{\n  \"INDEX_SCHEMA_VERSION\": 3,\n  \"INDEX_FILE_NAME\": \"index.json\",\n  \"IDENTITY_FILE_NAME\": \"identity.json\",\n  \"AUTH_FILE_NAME\": \"auth.json\",\n  \"DID_DOCUMENT_FILE_NAME\": \"did_document.json\",\n  \"KEY1_PRIVATE_FILE_NAME\": \"key-1-private.pem\",\n  \"KEY1_PUBLIC_FILE_NAME\": \"key-1-public.pem\",\n  \"E2EE_SIGNING_PRIVATE_FILE_NAME\": \"e2ee-signing-private.pem\",\n  \"E2EE_AGREEMENT_PRIVATE_FILE_NAME\": \"e2ee-agreement-private.pem\",\n  \"E2EE_STATE_FILE_NAME\": \"e2ee-state.json\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "_default_index",
+    "input": "N/A",
+    "output": "{\n  \"schema_version\": 3,\n  \"default_credential_name\": null,\n  \"credentials\": {}\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "_normalize_index_payload",
+    "input": "{\n  \"schema_version\": 2,\n  \"credentials\": {\n    \"test_cred\": {\n      \"dir_name\": \"test_dir\"\n    }\n  }\n}",
+    "output": "{\n  \"schema_version\": 3,\n  \"default_credential_name\": null,\n  \"credentials\": {\n    \"test_cred\": {\n      \"dir_name\": \"test_dir\",\n      \"credential_name\": \"test_cred\",\n      \"is_default\": false\n    }\n  }\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "sanitize_credential_dir_name",
+    "input": "[\"test-cred\", \"test_cred\", \"test.cred\", \"test@cred!\"]",
+    "output": "{\n  \"test-cred\": \"test-cred\",\n  \"test_cred\": \"test_cred\",\n  \"test.cred\": \"test.cred\",\n  \"test@cred!\": \"test_cred\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "preferred_credential_dir_name",
+    "input": "{\"handle\": \"test_handle\", \"unique_id\": \"abc123\"}",
+    "output": "{\n  \"result\": \"abc123\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "ensure_credentials_root",
+    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\"\n}",
+    "output": "{\n  \"root\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\",\n  \"exists\": true\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "index_path",
+    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\"\n}",
+    "output": "{\n  \"index_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\index.json\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "legacy_backup_root",
+    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\"\n}",
+    "output": "{\n  \"backup_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\.legacy-backup\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "build_credential_paths",
+    "input": "{\n  \"dir_name\": \"test_dir_name\"\n}",
+    "output": "{\n  \"root_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\",\n  \"dir_name\": \"test_dir_name\",\n  \"credential_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\",\n  \"identity_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\identity.json\",\n  \"auth_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\auth.json\",\n  \"did_document_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\did_document.json\",\n  \"key1_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\key-1-private.pem\",\n  \"key1_public_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\key-1-public.pem\",\n  \"e2ee_signing_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\e2ee-signing-private.pem\",\n  \"e2ee_agreement_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\e2ee-agreement-private.pem\",\n  \"e2ee_state_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\e2ee-state.json\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "write_secure_text",
+    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_text.txt\",\n  \"content\": \"test content\"\n}",
+    "output": "{\n  \"written\": true,\n  \"content\": \"test content\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "write_secure_json",
+    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_json.json\",\n  \"payload\": {\n    \"key\": \"value\",\n    \"number\": 42\n  }\n}",
+    "output": "{\n  \"written\": true,\n  \"content\": {\n    \"key\": \"value\",\n    \"number\": 42\n  }\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "write_secure_bytes",
+    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_bytes.bin\",\n  \"content\": \"b'binary content'\"\n}",
+    "output": "{\n  \"written\": true,\n  \"content\": \"b'binary content'\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "_is_legacy_identity_payload",
+    "input": "{\n  \"legacy_payload\": {\n    \"did\": \"did:wba:test\",\n    \"private_key_pem\": \"-----BEGIN...\"\n  },\n  \"non_legacy_payload\": {\n    \"key\": \"value\"\n  }\n}",
+    "output": "{\n  \"legacy_result\": true,\n  \"non_legacy_result\": false\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "legacy_layout_hint",
+    "input": "N/A",
+    "output": "{\n  \"hint\": \"Legacy credential layout detected. Run 'uv run python scripts/check_status.py' once to migrate credentials.\"\n}",
+    "status": "PASS"
+  },
+  {
+    "name": "CredentialPaths",
+    "input": "{\n  \"dir_name\": \"test_dir_name\"\n}",
+    "output": "{\n  \"type\": \"CredentialPaths\",\n  \"dir_name\": \"test_dir_name\",\n  \"credential_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\"\n}",
+    "status": "PASS"
+  }
+]

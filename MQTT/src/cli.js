@@ -1,199 +1,268 @@
 #!/usr/bin/env node
 
 /**
- * E2EE MQTT CLI 聊天工具
+ * E2EE CLI v2 - 基于 Transport + Protocol 架构
  * 
- * 支持角色:
- * - trustee: 受托者，等待连接
- * - delegator: 委托者，主动连接
+ * 架构说明：
+ * - Transport: 抽象传输层 (MQTT, PeerJS, GUN...)
+ * - Protocol: E2EE 协议处理 (握手、加密解密)
+ * - Session: 密钥管理和会话状态
  * 
- * 支持的 DID 方法：did:key, did:ethr
+ * 使用方法:
+ *   node src/cli.js [options]
+ * 
+ * 选项:
+ *   --transport, -t  传输协议: mqtt|peer|gun (默认: mqtt)
+ *   --topic      主题/房间 (默认: psmd/e2ee/chat)
+ *   --broker     MQTT broker URL
+ *   --peers      GUN peers URL
  */
 
 import { readFileSync, mkdirSync, existsSync, writeFileSync } from 'fs';
 import { createInterface } from 'readline';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import * as readline from 'readline';
 import { didManager } from './did/manager.js';
 import { sessionManager } from './e2ee/session.js';
-import { MQTTE2EEClient } from './core/mqtt-client.js';
+import { E2EEProtocol } from './e2ee/protocol.js';
+import { MQTTTransport } from './transport/mqtt-transport.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// 配置
+// 解析命令行参数
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const options = {
+    transport: 'mqtt',
+    topic: 'psmd/e2ee/chat',
+    broker: 'mqtt://broker.emqx.io:1883',
+    peers: 'https://gun-manhattan.herokuapp.com/gun',
+    peerId: null,
+    connectUrl: null  // Peer 连接地址
+  };
+
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--transport':
+      case '-t':
+        options.transport = args[++i] || 'mqtt';
+        break;
+      case '--topic':
+        options.topic = args[++i] || options.topic;
+        break;
+      case '--broker':
+        options.broker = args[++i] || options.broker;
+        break;
+      case '--peers':
+        options.peers = args[++i] || options.peers;
+        break;
+      case '--peer-id':
+        options.peerId = args[++i] || null;
+        break;
+      case '--connect':
+        options.connectUrl = args[++i] || null;
+        break;
+      case '--ws-port':
+        options.wsPort = parseInt(args[++i]) || 8081;
+        break;
+      case '--help':
+      case '-h':
+        showUsage();
+        process.exit(0);
+    }
+  }
+
+  return options;
+}
+
+function showUsage() {
+  console.log(`
+E2EE Chat CLI - 端到端加密聊天
+
+用法: node src/cli.js [options]
+
+选项:
+  -t, --transport <type>  传输协议: mqtt|peer|gun (默认: mqtt)
+  --topic <name>          主题/房间名称 (默认: psmd/e2ee/chat)
+  --broker <url>          MQTT broker URL (默认: mqtt://broker.emqx.io:1883)
+  --peers <url>           GUN peers URL (默认: https://gun-manhattan.herokuapp.com/gun)
+  --peer-id <id>          PeerJS ID (默认: 自动生成)
+  --connect <url>         连接到其他 Peer CLI (ws://host:port)
+  --ws-port <port>        WebSocket 服务器端口 (默认: 8081)
+  -h, --help              显示帮助
+
+示例:
+  node src/cli.js                           # 使用 MQTT
+  node src/cli.js -t peer                   # 启动 Peer 服务器
+  node src/cli.js -t gun                    # 使用 GUN
+  node src/cli.js --topic my-room           # 指定主题
+  node src/cli.js -t peer --peer-id myid    # PeerJS 指定 ID
+  `);
+}
+
+const CLI_OPTIONS = parseArgs();
+
 const CONFIG = {
-  brokerUrl: process.env.MQTT_BROKER_URL || 'mqtt://broker.emqx.io:1883',
-  topic: process.env.MQTT_TOPIC || 'psmd/e2ee/chat',
+  brokerUrl: CLI_OPTIONS.broker,
+  topic: CLI_OPTIONS.topic,
+  peers: CLI_OPTIONS.peers,
+  peerId: CLI_OPTIONS.peerId,
+  transportType: CLI_OPTIONS.transport,
   dataDir: join(__dirname, '..', '.data')
 };
 
-// 确保数据目录存在
 if (!existsSync(CONFIG.dataDir)) {
   mkdirSync(CONFIG.dataDir, { recursive: true });
 }
 
-// CLI 状态
 const state = {
-  role: null,
   myDid: null,
   myIdentity: null,
-  client: null,
-  currentSession: null,
+  transport: null,
+  protocol: null,
+  sessions: new Map(),
+  currentSessionId: null,
   partnerDid: null,
-  partnerPublicKey: null
+  partnerPublicKey: null,
+  sessionIndex: 0,
+  transportType: CONFIG.transportType
 };
 
-/**
- * 显示欢迎信息
- */
+// 传输层工厂 - 统一接口
+async function createTransport(type, options = {}) {
+  const transportConfig = {
+    roomId: options.roomId || CONFIG.topic,
+    peerId: state.myDid || options.peerId,
+    serverUrl: options.serverUrl
+  };
+
+  switch (type.toLowerCase()) {
+    case 'mqtt': {
+      const { MQTTTransport } = await import('./transport/mqtt-transport.js');
+      return new MQTTTransport({
+        ...transportConfig,
+        serverUrl: options.broker || CONFIG.brokerUrl
+      });
+    }
+
+    case 'peer':
+    case 'peerjs': {
+      const { createRequire } = await import('module');
+      const require = createRequire(import.meta.url);
+      const { PeerTransport } = require('./transport/peer-transport.cjs');
+      return new PeerTransport({
+        peerId: transportConfig.peerId,
+        connectTarget: options.connectUrl || CONFIG.connectUrl
+      });
+    }
+
+    case 'gun': {
+      const { GunTransport } = await import('./transport/gun-transport.js');
+      return new GunTransport({
+        ...transportConfig,
+        serverUrl: options.peers || CONFIG.peers
+      });
+    }
+
+    default:
+      throw new Error(`未知传输协议: ${type}. 支持: mqtt, peer, gun`);
+  }
+}
+
+function getTransportName(type) {
+  const names = {
+    mqtt: 'MQTT',
+    peer: 'PeerJS',
+    peerjs: 'PeerJS',
+    gun: 'GUN'
+  };
+  return names[type.toLowerCase()] || type;
+}
+
 function showWelcome() {
   console.log(`
 ╔════════════════════════════════════════════════════════╗
-║       E2EE MQTT Chat - 端到端加密聊天工具              ║
+║       E2EE Chat - 端到端加密聊天                      ║
 ╠════════════════════════════════════════════════════════╣
-║  支持的 DID 方法：did:key, did:ethr                     ║
-║  加密套件：HPKE (RFC 9180)                              ║
-║  MQTT Broker: ${CONFIG.brokerUrl.padEnd(30)}║
+║  传输协议: ${getTransportName(state.transportType).padEnd(42)}║
+║  主题/房间: ${CONFIG.topic.padEnd(41)}║
+║  支持的 DID: did:key, did:ethr, did:wba              ║
 ╚════════════════════════════════════════════════════════╝
   `);
 }
 
-/**
- * 显示帮助
- */
 function showHelp() {
   console.log(`
-========================================
- MQTT E2EE Chat - 命令帮助
-========================================
+命令:
+  /help                     - 显示帮助
+  /create <type>            - 创建身份 (x25519, p256, ethr, wba)
+  /import <file>            - 导入身份
+  /connect <did>            - 连接伙伴 (DID)
+  /peer <peer-id>           - 连接 PeerJS peer
+  /pubkey <hex>             - 设置伙伴公钥
+  /init                     - 发起 E2EE 会话
+  /sessions                 - 列出所有会话
+  /switch <id>              - 切换到指定会话
+  /send <msg>               - 发送消息
+  /transport [type]         - 切换传输协议 (mqtt|peer|gun)
+  /quit                     - 退出
 
-基本命令:
-  /help                     - 显示此帮助信息
-  /show                     - 显示当前身份信息
-  /export                   - 导出身份到文件
-  /import <file>            - 从文件导入身份
-  /connect <partner-did>    - 连接到伙伴
-  /pubkey <hex>             - 设置伙伴公钥 (X25519 格式)
-  /init                     - 初始化 E2EE 会话
-  /send <message>           - 发送消息 (明文或加密)
-  /session                  - 显示会话状态
-  /quit                     - 退出程序
+快捷键:
+  Tab                       - 切换会话 (Cycle through sessions)
+  Ctrl+C / Ctrl+D           - 退出
 
-========================================
- 身份创建命令 (/create)
-========================================
+传输协议:
+  mqtt                      - MQTT Broker (默认)
+  peer                      - PeerJS (WebRTC/WS) https://peerjs.com
+  gun                       - GUN 去中心化网络
 
-基本格式: /create <类型> [密钥类型]
-
-支持的 DID 方法:
-  /create x25519            - 创建 did:key 身份 (X25519 密钥)
-  /create p256              - 创建 did:key 身份 (P-256 密钥)
-  /create ethr              - 创建 did:ethr 身份 (X25519 密钥)
-  /create wba               - 创建 did:wba 身份 (X25519 密钥)
-
-指定密钥类型:
-  /create ethr x25519       - 创建 did:ethr 身份 (X25519 密钥)
-  /create wba p256          - 创建 did:wba 身份 (P-256 密钥)
-
-========================================
- 使用示例
-========================================
-
-1. 创建身份:
-   /create x25519           # 创建 X25519 密钥的 did:key 身份
-   /create ethr             # 创建以太坊 DID 身份
-   /create wba              # 创建 WBA 跨链 DID 身份
-
-2. 连接到伙伴:
-   /connect did:key:z6Mk... # 连接到 did:key 伙伴
-   /pubkey 03c8ef41...      # 设置伙伴公钥 (32字节X25519或33字节P-256)
-
-3. 初始化会话并发送消息:
-   /init                    # 初始化 E2EE 会话
-   /send Hello!             # 发送加密消息
-
-========================================
- 注意事项
-========================================
-
-• 公钥格式: 支持 32 字节 X25519 公钥或 33 字节 P-256 压缩公钥
-• DID 方法: did:key, did:ethr, did:wba 均支持跨方法通信
-• 加密模式: 默认使用 HPKE Base 模式加密
-  `);
+PeerJS 使用方法:
+  1. 两方都运行: node src/cli.js -t peer
+  2. 各自记下显示的 PeerJS ID
+  3. 一方执行: /peer <对方的ID>
+  4. 连接成功后即可发送消息
+`);
 }
 
-/**
- * 创建新身份
- */
 function createIdentity(method) {
   try {
-    // 解析 DID 方法、域名和密钥类型
     let didMethod = 'key';
-    let domain = null;  // did:wba 需要域名
+    let domain = null;
     let keyType = 'x25519';
 
-    // 支持的格式:
-    // /create x25519                    - did:key
-    // /create ethr                      - did:ethr (主网)
-    // /create wba example.com           - did:wba:example.com
-    // /create wba example.com p256      - did:wba:example.com (P-256 密钥)
     const parts = method.toLowerCase().split(' ');
 
     if (parts.length === 1) {
-      // 简单格式：/create x25519 或 /create ethr 或 /create wba
       const first = parts[0];
       if (['x25519', 'p256'].includes(first)) {
         didMethod = 'key';
         keyType = first;
       } else if (['ethr', 'wba'].includes(first)) {
         didMethod = first;
-      } else {
-        console.log(`\n[错误] 未知的密钥类型：${first}`);
-        console.log('支持的密钥类型：x25519, p256');
-        return null;
       }
     } else if (parts.length >= 2) {
-      // 复杂格式：/create ethr x25519 或 /create wba example.com [p256]
       didMethod = parts[0];
-      
       if (didMethod === 'wba') {
-        // did:wba 需要域名
         domain = parts[1];
         if (parts.length >= 3) {
           keyType = parts[2];
         }
       } else if (didMethod === 'ethr') {
-        // did:ethr 可以有密钥类型
         if (['x25519', 'p256'].includes(parts[1])) {
           keyType = parts[1];
         }
-      } else {
-        console.log(`\n[错误] 未知的方法：${didMethod}`);
-        console.log('支持的方法：key, ethr, wba');
-        return null;
       }
     }
 
-    // 验证密钥类型
-    if (!['x25519', 'p256'].includes(keyType)) {
-      console.log(`\n[错误] 不支持的密钥类型：${keyType}`);
-      console.log('支持的密钥类型：x25519, p256');
-      return null;
-    }
-
-    // 验证 did:wba 的域名
     if (didMethod === 'wba' && !domain) {
-      console.log(`\n[错误] 创建 did:wba 需要指定域名`);
-      console.log(`用法：/create wba example.com [x25519|p256]`);
-      console.log(`示例：/create wba example.com x25519`);
+      console.log('[错误] did:wba 需要域名');
       return null;
     }
 
-    // 生成身份
     let identity;
     if (didMethod === 'wba') {
-      // did:wba 需要域名参数
       identity = didManager.generate(didMethod, { domain, keyType });
     } else {
       identity = didManager.generate(didMethod, { keyType });
@@ -202,77 +271,48 @@ function createIdentity(method) {
     state.myDid = identity.did;
     state.myIdentity = identity;
 
-    // 设置到 MQTT 客户端
-    if (state.client) {
-      state.client.setIdentity(identity.did, identity);
+    if (state.protocol) {
+      state.protocol.setIdentity(identity.did, identity);
+    }
+    
+    if (state.transport) {
+      state.transport.setIdentity(identity.did);
     }
 
     console.log(`\n✓ 身份创建成功!`);
     console.log(`  DID: ${identity.did}`);
     console.log(`  密钥类型：${identity.keyType}`);
 
-    // 导出身份
     const exportData = didManager.export(identity.did);
-    console.log(`\n  请保存以下信息:`);
-    console.log(`  ────────────────────────────────────────`);
-    console.log(`  ${JSON.stringify(exportData, null, 2)}`);
-    console.log(`  ────────────────────────────────────────`);
-
-    // 保存到文件 (替换冒号为下划线，Windows 文件名不能包含冒号)
     const safeDid = identity.did.replace(/:/g, '_');
     const savePath = join(CONFIG.dataDir, `identity-${safeDid.substring(0, 20)}.json`);
     writeFileSync(savePath, JSON.stringify(exportData, null, 2));
-    console.log(`\n  身份已保存到：${savePath}`);
-
-    // 如果是 did:wba，生成 did.json 文件
-    if (didMethod === 'wba') {
-      const didJsonPath = join(CONFIG.dataDir, `did-${safeDid.substring(0, 20)}.json`);
-      const didJson = {
-        '@context': [
-          'https://www.w3.org/ns/did/v1',
-          'https://w3id.org/security/suites/jws-2020/v1',
-          'https://w3id.org/security/suites/x25519-2019/v1'
-        ],
-        id: identity.did,
-        verificationMethod: [{
-          id: `${identity.did}#key-1`,
-          type: 'X25519KeyAgreementKey2019',
-          controller: identity.did,
-          publicKeyMultibase: 'z' + identity.publicKey.toString('hex')
-        }],
-        authentication: [`${identity.did}#key-1`],
-        assertionMethod: [`${identity.did}#key-1`],
-        keyAgreement: [`${identity.did}#key-1`]
-      };
-      writeFileSync(didJsonPath, JSON.stringify(didJson, null, 2));
-      console.log(`\n  did.json 已生成：${didJsonPath}`);
-      console.log(`  💡 提示：将此文件部署到 https://${identity.domain}/.well-known/did.json`);
-    }
+    console.log(`\n  已保存到：${savePath}`);
 
     return identity;
   } catch (err) {
-    console.error(`[错误] 创建身份失败：${err.message}`);
+    console.error(`[错误] ${err.message}`);
     return null;
   }
 }
 
-/**
- * 导入身份
- */
 function importIdentity(filePath) {
   try {
     const data = JSON.parse(readFileSync(filePath, 'utf-8'));
-
     const identity = didManager.import(data.method, Buffer.from(data.privateKey, 'hex'), {
-      keyType: data.keyType
+      keyType: data.keyType,
+      did: data.did
     });
 
     state.myDid = identity.did;
     state.myIdentity = identity;
 
-    // 设置到 MQTT 客户端
-    if (state.client) {
-      state.client.setIdentity(identity.did, identity);
+    if (state.protocol) {
+      state.protocol.setIdentity(identity.did, identity);
+    }
+    
+    if (state.transport) {
+      state.transport.setIdentity(identity.did);
     }
 
     console.log(`\n✓ 身份导入成功!`);
@@ -281,217 +321,340 @@ function importIdentity(filePath) {
 
     return identity;
   } catch (err) {
-    console.error(`[错误] 导入身份失败：${err.message}`);
+    console.error(`[错误] ${err.message}`);
     return null;
   }
 }
 
-/**
- * 显示身份
- */
-function showIdentity() {
-  if (!state.myIdentity) {
-    console.log('\n[身份] 当前没有身份');
-    return;
-  }
-  
-  // 获取原始公钥（X25519 是 32 字节）
-  const rawPublicKey = state.myIdentity.publicKey;
-  
-  console.log(`\n[身份] 当前身份:`);
-  console.log(`  DID: ${state.myIdentity.did}`);
-  console.log(`  密钥类型：${state.myIdentity.keyType}`);
-  console.log(`  公钥 (Hex): ${rawPublicKey.toString('hex')}`);
-  console.log(`  公钥长度：${rawPublicKey.length} 字节`);
-  console.log(`\n💡 提示：将公钥 (Hex) 分享给伙伴，用于建立加密连接`);
-}
-
-/**
- * 连接到伙伴
- */
-function connectToPartner(partnerDid) {
-  if (!state.myIdentity) {
-    console.log('\n[错误] 请先创建或导入身份 (/identity new key)');
-    return false;
-  }
-  
-  state.partnerDid = partnerDid;
-  console.log(`\n[连接] 准备连接到：${partnerDid}`);
-  
-  const parts = partnerDid.split(':');
-  const method = parts[1];
-  
-  if (method === 'key') {
-    console.log('[连接] 检测到 did:key 方法，请使用 /pubkey <hex> 设置公钥');
-  }
-  
-  return true;
-}
-
-/**
- * 设置伙伴公钥
- */
 function setPartnerPublicKey(publicKeyHex) {
   try {
     let publicKey = Buffer.from(publicKeyHex, 'hex');
-    
-    // 验证公钥长度
-    if (publicKey.length === 33) {
-      // 可能是压缩的 P-256 公钥 (0x02 或 0x03 开头)
-      const prefix = publicKey[0];
-      if (prefix === 0x02 || prefix === 0x03) {
-        console.log(`\n[警告] 检测到 P-256 压缩公钥 (33字节)，自动去掉前缀`);
-        publicKey = publicKey.slice(1);
-      }
+    if (publicKey.length === 33 && (publicKey[0] === 0x02 || publicKey[0] === 0x03)) {
+      publicKey = publicKey.slice(1);
     }
-    
     if (publicKey.length !== 32) {
-      throw new Error(`公钥长度应为 32 字节 (X25519)，当前长度: ${publicKey.length}`);
+      throw new Error(`公钥长度应为 32 字节，当前: ${publicKey.length}`);
     }
-    
     state.partnerPublicKey = publicKey;
-    console.log(`\n[连接] 伙伴公钥已设置 (长度: ${publicKey.length} 字节)`);
+    console.log(`\n[连接] 伙伴公钥已设置 (${publicKey.length} 字节)`);
     return true;
   } catch (err) {
-    console.error(`[错误] 无效的公钥格式：${err.message}`);
+    console.error(`[错误] ${err.message}`);
     return false;
   }
 }
 
-/**
- * 初始化 E2EE 会话
- */
-async function initE2EESession() {
-  if (!state.client || !state.partnerDid || !state.partnerPublicKey) {
-    console.log('\n[错误] 请先连接伙伴并设置公钥');
-    return null;
+async function verifyPartnerDid(partnerDid) {
+  console.log(`[DEBUG verifyPartnerDid] 检查: ${partnerDid}`);
+  
+  if (!partnerDid.startsWith('did:wba:')) {
+    console.log(`[DEBUG verifyPartnerDid] 非 wba DID，直接通过`);
+    return true;
   }
+
+  const didParts = partnerDid.split(':');
+  const methodSpecificId = didParts.slice(2).join(':');
+  const firstPart = methodSpecificId.split(':')[0];
+  
+  let domain = firstPart;
+  const pathParts = methodSpecificId.split(':').slice(1);
+  const path = pathParts.length > 0 ? pathParts.join('/') : null;
+  
+  let didJsonUrl = `https://${domain}`;
+  if (path) didJsonUrl += `/${path}`;
+  else didJsonUrl += '/.well-known';
+  didJsonUrl += '/did.json';
+  
+  console.log(`[DEBUG verifyPartnerDid] 尝试访问: ${didJsonUrl}`);
   
   try {
-    console.log(`\n[E2EE] 初始化会话...`);
-    
-    const session = await state.client.sendE2EEInit(
+    const response = await fetch(didJsonUrl);
+    console.log(`[DEBUG verifyPartnerDid] HTTP 状态: ${response.status}`);
+    if (!response.ok) {
+      console.log(`[验证] ❌ 无法访问 ${didJsonUrl}`);
+      return false;
+    }
+    const didJson = await response.json();
+    if (didJson.id !== partnerDid) {
+      console.log(`[验证] ❌ DID 文档 ID 不匹配`);
+      return false;
+    }
+    console.log(`[验证] ✅ ${didJsonUrl}`);
+    return true;
+  } catch (err) {
+    console.log(`[验证] ❌ ${err.message}`);
+    return false;
+  }
+}
+
+async function initSession() {
+  if (!state.partnerDid || !state.partnerPublicKey) {
+    console.log('[错误] 请先 /connect 和 /pubkey');
+    return;
+  }
+
+  if (!state.protocol) {
+    console.log('[错误] 协议未初始化');
+    return;
+  }
+
+  console.log(`\n[E2EE] 初始化会话到 ${state.partnerDid}...`);
+
+  console.log(`[DEBUG initSession] state.myDid = ${state.myDid}`);
+
+  // 验证自己的 DID（如果自己是 did:wba）
+  if (state.myDid && state.myDid.startsWith('did:wba:')) {
+    console.log(`[DEBUG initSession] 验证自己的 DID: ${state.myDid}`);
+    const myVerified = await verifyPartnerDid(state.myDid);
+    console.log(`[DEBUG initSession] 验证结果: ${myVerified}`);
+    if (!myVerified) {
+      console.log('[错误] 您的 did:wba 身份未部署或无效');
+      return;
+    }
+  } else {
+    console.log(`[DEBUG initSession] 不需要验证自己的 DID`);
+  }
+
+  // 验证对方的 DID
+  const verified = await verifyPartnerDid(state.partnerDid);
+  if (!verified) {
+    console.log('[错误] 对方 DID 验证失败');
+    return;
+  }
+
+  try {
+    const { session, sessionId } = await state.protocol.sendInit(
       state.partnerDid,
       state.partnerPublicKey,
       'x25519'
     );
-    
-    state.currentSession = session;
-    console.log(`[E2EE] ✓ 会话已初始化：${session.sessionId}`);
-    
-    return session;
+
+    state.sessions.set(sessionId, {
+      session,
+      partnerDid: state.partnerDid,
+      topic: CONFIG.topic,
+      isPrivate: false
+    });
+    state.currentSessionId = sessionId;
+
+    console.log(`[E2EE] ✓ 会话已发起: ${sessionId.substring(0, 16)}...`);
+    console.log(`[DEBUG] session.isActive: ${session.isActive}`);
   } catch (err) {
-    console.error(`[错误] E2EE 初始化失败：${err.message}`);
-    return null;
+    console.error(`[错误] ${err.message}`);
   }
 }
 
-/**
- * 发送消息
- */
 async function sendMessage(message) {
-  if (!state.client) {
-    console.log('\n[错误] 未连接到 MQTT Broker');
+  const sessionInfo = state.sessions.get(state.currentSessionId);
+  
+  if (sessionInfo?.isPublic || !state.currentSessionId || state.currentSessionId === '__public__') {
+    await state.transport.broadcast({
+      type: 'text',
+      content: { text: message, sender_did: state.myDid }
+    });
+    console.log(`\n📝 [明文] ${message}`);
     return;
   }
 
-  // 如果有 E2EE 会话，发送加密消息；否则发送明文
-  if (state.currentSession && state.currentSession.isActive) {
-    try {
-      await state.client.sendE2EEMsg(state.currentSession.sessionId, message);
-      console.log(`\n🔐 [加密发送] ${message}`);
-    } catch (err) {
-      console.error(`[错误] 加密发送失败：${err.message}`);
-    }
-  } else {
-    // 发送明文消息
-    try {
-      await state.client.sendPlainText(message, state.partnerDid || 'all');
-      console.log(`\n📝 [明文发送] ${message}`);
-    } catch (err) {
-      console.error(`[错误] 明文发送失败：${err.message}`);
-    }
+  try {
+    await state.protocol.sendMessage(state.currentSessionId, message);
+    console.log(`\n🔐 [加密] ${message}`);
+  } catch (err) {
+    console.error(`[错误] ${err.message}`);
   }
 }
 
-/**
- * 显示会话状态
- */
-function showSession() {
-  console.log('\n[会话状态]');
-  console.log(`  我的 DID: ${state.myDid || '未设置'}`);
-  console.log(`  伙伴 DID: ${state.partnerDid || '未设置'}`);
-  console.log(`  会话 ID: ${state.currentSession?.sessionId || '未初始化'}`);
-  console.log(`  会话活跃：${state.currentSession?.isActive ? '是' : '否'}`);
-  console.log(`  发送序列：${state.currentSession?.sendSeq || 0}`);
-  console.log(`  接收序列：${state.currentSession?.recvSeq || 0}`);
-  console.log(`\n💡 提示：使用 /init 初始化 E2EE 会话，然后发送加密消息`);
+function listSessions() {
+  console.log('\n[会话列表]');
+  let idx = 0;
+  for (const [id, info] of state.sessions) {
+    const marker = id === state.currentSessionId ? '>' : ' ';
+    let status = info.isPublic ? '📢' : (info.session?.isActive ? '✓' : '✗');
+    let name = info.isPublic ? '公共 (明文)' : (id.substring(0, 16) + '...');
+    let target = info.isPublic ? '所有人' : info.partnerDid;
+    let seq = info.session ? ` (seq: ${info.session.sendSeq}/${info.session.recvSeq})` : '';
+    console.log(`  ${marker} [${status}] #${idx} ${name}${seq}`);
+    console.log(`       -> ${target}`);
+    idx++;
+  }
 }
 
-/**
- * 启动 CLI
- */
+function cycleSession() {
+  const ids = Array.from(state.sessions.keys());
+  if (ids.length <= 1) return;
+  
+  const currentIdx = ids.indexOf(state.currentSessionId);
+  const nextIdx = (currentIdx + 1) % ids.length;
+  const nextId = ids[nextIdx];
+  
+  const info = state.sessions.get(nextId);
+  state.currentSessionId = nextId;
+  
+  if (info.isPublic) {
+    console.log(`\n切换到: 📢 公共会话 (明文)`);
+  } else {
+    console.log(`\n切换到: 🔐 ${nextId.substring(0, 16)}... -> ${info.partnerDid}`);
+  }
+}
+
+function switchSession(sessionId) {
+  if (state.sessions.has(sessionId)) {
+    state.currentSessionId = sessionId;
+    const info = state.sessions.get(sessionId);
+    console.log(`\n切换到会话: ${sessionId.substring(0, 16)}...`);
+    console.log(`伙伴: ${info.partnerDid}`);
+    console.log(`状态: ${info.session?.isActive ? '活跃' : '非活跃'}`);
+  } else {
+    console.log('[错误] 会话不存在');
+  }
+}
+
+async function switchTransport(newType) {
+  const validTypes = ['mqtt', 'peer', 'gun'];
+  if (!validTypes.includes(newType.toLowerCase())) {
+    console.log(`[错误] 未知传输协议: ${newType}. 支持: ${validTypes.join(', ')}`);
+    return false;
+  }
+
+  console.log(`\n[传输] 切换到 ${getTransportName(newType)}...`);
+
+  try {
+    // 关闭旧传输
+    if (state.transport) {
+      state.transport.close();
+    }
+
+    // 创建新传输
+    state.transport = await createTransport(newType);
+
+    // 重新设置身份
+    if (state.myDid) {
+      state.transport.setIdentity(state.myDid);
+    }
+
+    // 重新设置消息处理
+    state.transport.on('message', async (data) => {
+      await handleIncomingMessage(data);
+    });
+
+    // 连接
+    await state.transport.connect();
+    state.transportType = newType;
+    CONFIG.transportType = newType;
+
+    console.log(`[传输] ✓ 已切换到 ${getTransportName(newType)}`);
+    return true;
+  } catch (err) {
+    console.error(`[错误] 切换传输失败: ${err.message}`);
+    return false;
+  }
+}
+
+async function handleIncomingMessage(data) {
+  const { type, content, sender_did } = data;
+
+  if (sender_did && sender_did === state.myDid) {
+    return;
+  }
+
+  const result = await state.protocol.processIncomingMessage({ type, content, sender_did });
+
+  if (!result) {
+    if (type === 'text' && content?.text) {
+      console.log(`\n[📢 公共] ${sender_did ? sender_did.substring(0, 16) : 'unknown'}: ${content.text}`);
+      process.stdout.write('\n> ');
+    }
+    return;
+  }
+
+  if (result.event === 'session_created') {
+    const sessionId = result.session?.sessionId || result.session_id;
+    state.sessions.set(sessionId, {
+      session: result.session,
+      partnerDid: sender_did,
+      topic: CONFIG.topic,
+      isPrivate: false
+    });
+    state.currentSessionId = sessionId;
+    console.log(`\n[E2EE] 会话已建立: ${sessionId.substring(0, 16)}...`);
+    console.log(`[E2EE] 对方: ${sender_did}`);
+    process.stdout.write('\n> ');
+  } else if (result.event === 'message') {
+    console.log(`\n[🔐 加密] 收到: ${result.plaintext}`);
+    console.log(`    序列号: ${result.seq}`);
+    process.stdout.write('\n> ');
+  } else if (result.event === 'text') {
+    console.log(`\n[📢 公共] ${sender_did ? sender_did.substring(0, 16) : 'unknown'}: ${result.text}`);
+    process.stdout.write('\n> ');
+  }
+}
+
 async function startCLI() {
   showWelcome();
-  showHelp();
-  
+
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout
   });
-  
-  // 创建 MQTT 客户端
-  state.client = new MQTTE2EEClient({
-    brokerUrl: CONFIG.brokerUrl,
-    topic: CONFIG.topic,
-    role: 'delegator'
-  });
-  
-  // 注册消息处理器
-  state.client.on('e2ee_message', (data) => {
-    console.log(`\n[接收] ${data.plaintext}`);
-    console.log(`[E2EE] 序列号：${data.seq}`);
-    process.stdout.write('\n> ');
-  });
 
-  state.client.on('e2ee_session', (data) => {
-    console.log(`\n[E2EE] 会话已建立：${data.session_id}`);
-    console.log(`[E2EE] 对方 DID: ${data.sender_did}`);
-    // 设置当前会话（用于发送加密消息）
-    const session = sessionManager.getPrivateSession(data.session_id);
-    if (session) {
-      state.currentSession = session;
-      console.log(`[E2EE] ✓ 会话已激活，可以发送加密消息`);
-      console.log(`[DEBUG] session.sendChainKey: ${session.sendChainKey ? 'set' : 'null'}`);
-      console.log(`[DEBUG] session.recvChainKey: ${session.recvChainKey ? 'set' : 'null'}`);
-      console.log(`[DEBUG] session.isActive: ${session.isActive}`);
-      console.log(`[DEBUG] session.sendSeq: ${session.sendSeq}`);
-      console.log(`[DEBUG] session.recvSeq: ${session.recvSeq}`);
-    } else {
-      console.log(`[E2EE] ✗ 会话未找到：${data.session_id}`);
-    }
-    process.stdout.write('\n> ');
-  });
-
-  state.client.on('message', (data) => {
-    // 处理明文消息
-    if (data.content && data.content.text) {
-      console.log(`\n[接收] ${data.content.text}`);
-    } else {
-      console.log(`\n[消息] ${JSON.stringify(data.content)}`);
-    }
-    process.stdout.write('\n> ');
-  });
-  
-  // 连接到 MQTT Broker
-  try {
-    await state.client.connect();
-    console.log('\n[系统] 已连接到 MQTT Broker');
-  } catch (err) {
-    console.error(`[错误] 连接失败：${err.message}`);
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
   }
-  
-  // 命令处理
+
+  let inputBuffer = '';
+  let tabPressed = false;
+
+  // 使用传输工厂创建传输层
+  state.transport = await createTransport(state.transportType);
+
+  state.protocol = new E2EEProtocol({
+    sessionManager,
+    onSend: async (msg) => {
+      await state.transport.send(msg);
+    }
+  });
+
+  state.sessions.set('__public__', {
+    session: null,
+    partnerDid: 'all',
+    topic: CONFIG.topic,
+    isPrivate: false,
+    isPublic: true
+  });
+  state.currentSessionId = '__public__';
+
+  // 使用统一的消息处理函数
+  state.transport.on('message', async (data) => {
+    await handleIncomingMessage(data);
+  });
+
+  process.stdin.on('keypress', (str, key) => {
+    if (key.name === 'tab') {
+      cycleSession();
+      process.stdout.write('\n> ');
+    } else if (key.ctrl && key.name === 'c') {
+      console.log('\n[系统] 再见!');
+      state.transport.close();
+      rl.close();
+      process.exit(0);
+    } else if (key.ctrl && key.name === 'd') {
+      console.log('\n[系统] 再见!');
+      state.transport.close();
+      rl.close();
+      process.exit(0);
+    }
+  });
+
+  try {
+    await state.transport.connect();
+    console.log(`\n[系统] 已连接到 ${getTransportName(state.transportType)}`);
+  } catch (err) {
+    console.error(`[错误] ${err.message}`);
+  }
+
+  showHelp();
+
   rl.on('line', async (line) => {
     const input = line.trim();
     
@@ -499,108 +662,107 @@ async function startCLI() {
       process.stdout.write('> ');
       return;
     }
-    
+
     if (input.startsWith('/')) {
       const parts = input.split(' ');
-      const command = parts[0].toLowerCase();
+      const cmd = parts[0].toLowerCase();
       const args = parts.slice(1);
-      
-      switch (command) {
+
+      switch (cmd) {
         case '/help':
           showHelp();
           break;
-
         case '/create':
-          if (args.length > 0) {
+          if (args[0]) {
             createIdentity(args.join(' '));
           } else {
-            console.log('\n用法：/create <method> [domain] [keyType]');
-            console.log('示例：/create wba example.com x25519');
+            console.log('用法: /create <type>');
           }
           break;
-
-        case '/show':
-          showIdentity();
-          break;
-
-        case '/export':
-          if (state.myDid) {
-            const exportData = didManager.export(state.myDid);
-            console.log('\n' + JSON.stringify(exportData, null, 2));
-          } else {
-            console.log('\n[错误] 没有可导出的身份');
-          }
-          break;
-
         case '/import':
           if (args[0]) {
             importIdentity(args[0]);
-          } else {
-            console.log('\n用法：/import <file>');
           }
           break;
-
-        case '/init':
-          await initE2EESession();
-          break;
-
         case '/connect':
           if (args[0]) {
-            connectToPartner(args[0]);
-          } else {
-            console.log('\n用法：/connect <partner-did>');
+            state.partnerDid = args[0];
+            console.log(`\n[连接] 准备连接到: ${state.partnerDid}`);
           }
           break;
-        
+        case '/peer':
+          if (args[0]) {
+            console.log(`\n[PeerJS] 连接到 peer: ${args[0]}`);
+            try {
+              if (state.transport && state.transport.connectToPeer) {
+                await state.transport.connectToPeer(args[0]);
+                console.log(`[PeerJS] ✓ 已发起连接`);
+              } else {
+                console.log('[错误] 当前传输层不支持 peer 连接');
+              }
+            } catch (err) {
+              console.error(`[PeerJS] 连接失败: ${err.message}`);
+            }
+          } else {
+            // 显示当前 PeerJS ID
+            if (state.transport && state.transport.peerId) {
+              console.log(`\n[PeerJS] 我的 ID: ${state.transport.peerId}`);
+              console.log(`[PeerJS] 将此 ID 告诉对方，让对方执行: /peer ${state.transport.peerId}`);
+            } else {
+              console.log('用法: /peer <peer-id>');
+            }
+          }
+          break;
         case '/pubkey':
           if (args[0]) {
             setPartnerPublicKey(args[0]);
-          } else {
-            console.log('\n用法：/pubkey <hex-public-key>');
           }
           break;
-        
+        case '/init':
+          await initSession();
+          break;
+        case '/sessions':
+          listSessions();
+          break;
+        case '/switch':
+          if (args[0]) {
+            switchSession(args[0]);
+          }
+          break;
         case '/send':
           if (args.length > 0) {
             await sendMessage(args.join(' '));
-          } else {
-            console.log('\n用法：/send <message>');
           }
           break;
-        
-        case '/session':
-          showSession();
+        case '/transport':
+          if (args[0]) {
+            await switchTransport(args[0].toLowerCase());
+          } else {
+            console.log(`当前传输: ${getTransportName(state.transportType)}`);
+            console.log(`可用: mqtt, peer, gun`);
+            console.log(`用法: /transport <type>`);
+          }
           break;
-        
         case '/quit':
         case '/exit':
-          console.log('\n[系统] 正在退出...');
-          await state.client.disconnect();
+          console.log('\n[系统] 再见!');
+          state.transport.close();
           rl.close();
           process.exit(0);
           break;
-        
         default:
-          console.log(`\n[错误] 未知命令：${command}`);
-          console.log('输入 /help 查看可用命令');
+          console.log(`[错误] 未知命令: ${cmd}`);
       }
     } else {
       await sendMessage(input);
     }
-    
+
     process.stdout.write('> ');
   });
-  
-  rl.on('close', async () => {
-    console.log('\n[系统] 再见!');
-    await state.client.disconnect();
-    process.exit(0);
-  });
-  
+
   process.stdout.write('> ');
 }
 
-// 启动
 startCLI().catch(err => {
   console.error('[致命错误]', err);
   process.exit(1);

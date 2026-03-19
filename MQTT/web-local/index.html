@@ -321,9 +321,29 @@
 <body>
   <div class="container">
     <header>
-      <h1>🔐 E2EE MQTT Chat</h1>
-      <p>端到端加密聊天 - 支持 X25519 HPKE 加密</p>
+      <h1>🔐 E2EE Chat</h1>
+      <p>端到端加密聊天 - 支持 RFC 9180 HPKE</p>
     </header>
+
+    <!-- 传输协议选择 -->
+    <div class="card">
+      <div class="card-title">🌐 传输协议</div>
+      <div class="form-group">
+        <label>选择传输协议</label>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnMqtt" onclick="app.switchTransport('mqtt')">MQTT</button>
+          <button class="btn btn-secondary" id="btnPeer" onclick="app.switchTransport('peer')">PeerJS (WebRTC)</button>
+          <button class="btn btn-secondary" id="btnGun" onclick="app.switchTransport('gun')">GUN</button>
+        </div>
+        <div id="transportStatus" style="margin-top:10px;font-size:12px;color:var(--text-secondary);">
+          当前: <code id="currentTransport">MQTT</code>
+        </div>
+      </div>
+      <div class="form-group" id="topicGroup">
+        <label>主题/房间</label>
+        <input type="text" id="topicInput" value="psmd/e2ee/chat" placeholder="输入主题或房间名称">
+      </div>
+    </div>
 
     <!-- 连接状态 -->
     <div class="card">
@@ -332,7 +352,7 @@
         连接状态
       </div>
       <div class="status-bar">
-        <span>Broker: <code style="background:#e5e7eb;padding:2px 6px;border-radius:4px;">broker.emqx.io:8083 (WebSocket)</code></span>
+        <span id="brokerInfo">传输: <code style="background:#e5e7eb;padding:2px 6px;border-radius:4px;" id="brokerUrl">MQTT broker.emqx.io:8083</code></span>
         <span id="connectionBadge" class="badge badge-warning">未连接</span>
       </div>
     </div>
@@ -1327,6 +1347,247 @@
       }
     }
 
+    // 传输协议切换
+    let currentTransport = 'mqtt';
+    let transportClient = null;
+
+    async function switchTransport(type) {
+      const validTypes = ['mqtt', 'peer', 'gun'];
+      if (!validTypes.includes(type)) {
+        log('未知传输协议', 'error');
+        return;
+      }
+
+      // 更新按钮状态
+      document.querySelectorAll('#btnMqtt, #btnPeer, #btnGun').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+      });
+      document.getElementById(`btn${type.charAt(0).toUpperCase() + type.slice(1)}`).classList.remove('btn-secondary');
+      document.getElementById(`btn${type.charAt(0).toUpperCase() + type.slice(1)}`).classList.add('btn-primary');
+
+      // 更新显示
+      document.getElementById('currentTransport').textContent = type.toUpperCase();
+
+      const topic = document.getElementById('topicInput').value || 'psmd/e2ee/chat';
+
+      // 关闭旧连接
+      if (transportClient && transportClient.end) {
+        transportClient.end();
+      }
+
+      currentTransport = type;
+
+      switch (type) {
+        case 'mqtt':
+          document.getElementById('brokerUrl').textContent = `MQTT broker.emqx.io:8083`;
+          log('切换到 MQTT 传输', 'info');
+          await connectMQTT(topic);
+          break;
+
+        case 'peer':
+          document.getElementById('brokerUrl').textContent = `PeerJS (WebRTC P2P)`;
+          log('切换到 PeerJS 传输 - 请等待 PeerJS 库加载', 'info');
+          await connectPeerJS(topic);
+          break;
+
+        case 'gun':
+          document.getElementById('brokerUrl').textContent = `GUN (去中心化网络)`;
+          log('切换到 GUN 传输 - 请等待 GUN 库加载', 'info');
+          await connectGun(topic);
+          break;
+      }
+    }
+
+    async function connectMQTT(topic) {
+      try {
+        if (typeof mqtt === 'undefined') {
+          log('MQTT 库未加载', 'error');
+          return;
+        }
+
+        transportClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+          clientId: 'e2ee_' + Math.random().toString(16).substr(2, 8),
+          clean: true,
+          connectTimeout: 5000
+        });
+
+        transportClient.on('connect', () => {
+          log('已连接到 MQTT Broker', 'success');
+          transportClient.subscribe(topic);
+          updateConnectionStatus(true);
+        });
+
+        transportClient.on('message', (t, msg) => {
+          try {
+            const data = JSON.parse(msg.toString());
+            handleTransportMessage(data);
+          } catch (e) {
+            log('消息解析错误', 'error');
+          }
+        });
+
+        transportClient.on('error', (err) => {
+          log(`MQTT 错误：${err.message}`, 'error');
+          updateConnectionStatus(false);
+        });
+      } catch (err) {
+        log(`MQTT 连接失败：${err.message}`, 'error');
+      }
+    }
+
+    async function connectPeerJS(topic) {
+      try {
+        // 动态加载 PeerJS
+        if (typeof Peer === 'undefined') {
+          await loadScript('https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js');
+        }
+
+        const peerId = 'e2ee_' + Math.random().toString(16).substr(2, 8);
+        transportClient = new Peer(peerId);
+
+        transportClient.on('open', (id) => {
+          log(`已连接到 PeerJS，ID: ${id}`, 'success');
+          updateConnectionStatus(true);
+        });
+
+        transportClient.on('connection', (conn) => {
+          conn.on('data', (data) => {
+            handleTransportMessage(data);
+          });
+        });
+
+        transportClient.on('error', (err) => {
+          log(`PeerJS 错误：${err.message}`, 'error');
+          updateConnectionStatus(false);
+        });
+
+        // 存储 peerId 以便连接
+        window.peerId = peerId;
+      } catch (err) {
+        log(`PeerJS 连接失败：${err.message}`, 'error');
+      }
+    }
+
+    async function connectGun(topic) {
+      try {
+        // 动态加载 GUN
+        if (typeof Gun === 'undefined') {
+          await loadScript('https://cdn.jsdelivr.net/npm/gun/gun.js');
+        }
+
+        transportClient = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+        const room = transportClient.get('e2ee').get(topic);
+
+        room.map().on((data, key) => {
+          if (data && data.message) {
+            try {
+              const msg = JSON.parse(data.message);
+              handleTransportMessage(msg);
+            } catch (e) {
+              // 忽略
+            }
+          }
+        });
+
+        log('已连接到 GUN 网络', 'success');
+        updateConnectionStatus(true);
+
+        // 存储 room 以便发送
+        window.gunRoom = room;
+      } catch (err) {
+        log(`GUN 连接失败：${err.message}`, 'error');
+      }
+    }
+
+    function loadScript(url) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    function handleTransportMessage(data) {
+      // 统一消息处理
+      if (data.method === 'send' && data.params) {
+        // 处理 JSON-RPC 格式
+        const { type, content } = data.params;
+        // 调用现有的消息处理逻辑
+        if (typeof processMessage === 'function') {
+          processMessage({ type, content });
+        }
+      } else if (data.type) {
+        // 直接类型
+        if (typeof processMessage === 'function') {
+          processMessage(data);
+        }
+      }
+    }
+
+    function sendTransportMessage(message) {
+      const topic = document.getElementById('topicInput').value || 'psmd/e2ee/chat';
+
+      const request = {
+        jsonrpc: '2.0',
+        method: 'send',
+        params: message,
+        id: Math.random().toString(16).substr(2, 8)
+      };
+
+      switch (currentTransport) {
+        case 'mqtt':
+          if (transportClient && transportClient.connected) {
+            transportClient.publish(topic, JSON.stringify(request));
+          }
+          break;
+
+        case 'peer':
+          // PeerJS - 发送给所有连接的 peers
+          if (transportClient) {
+            // 这里需要维护一个连接列表
+            // 简化实现：通过全局变量
+            if (window.peerConnections) {
+              window.peerConnections.forEach(conn => {
+                if (conn.open) conn.send(request);
+              });
+            }
+          }
+          break;
+
+        case 'gun':
+          if (window.gunRoom) {
+            const key = Date.now() + '_' + Math.random().toString(16).substr(2, 4);
+            window.gunRoom.get(key).put({
+              message: JSON.stringify(request),
+              timestamp: Date.now()
+            });
+          }
+          break;
+      }
+    }
+
+    function updateConnectionStatus(connected) {
+      const indicator = document.getElementById('connectionStatus');
+      const badge = document.getElementById('connectionBadge');
+
+      if (connected) {
+        indicator.classList.add('connected');
+        indicator.classList.remove('disconnected');
+        badge.textContent = '已连接';
+        badge.classList.remove('badge-warning', 'badge-danger');
+        badge.classList.add('badge-success');
+      } else {
+        indicator.classList.remove('connected');
+        indicator.classList.add('disconnected');
+        badge.textContent = '未连接';
+        badge.classList.remove('badge-success');
+        badge.classList.add('badge-danger');
+      }
+    }
+
     // 应用对象 - 暴露到全局
     const app = {
       createIdentity,
@@ -1337,7 +1598,9 @@
       connectToPartner,
       initSession,
       sendMessage,
-      handleKeyPress
+      handleKeyPress,
+      switchTransport,
+      sendTransportMessage
     };
     
     // 暴露到 window，确保在 DOM 加载后可用

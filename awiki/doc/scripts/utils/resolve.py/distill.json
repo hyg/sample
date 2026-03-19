@@ -1,0 +1,32 @@
+[
+  {
+    "test": "DID_passthrough",
+    "input": {
+      "identifier": "did:wba:awiki.ai:user:k1_test"
+    },
+    "output": "did:wba:awiki.ai:user:k1_test",
+    "status": "success"
+  },
+  {
+    "test": "Handle_with_domain",
+    "input": {
+      "identifier": "test.awiki.ai",
+      "config": {
+        "user_service_url": "https://awiki.ai"
+      }
+    },
+    "error": "Handle 'test' not found",
+    "status": "error"
+  },
+  {
+    "test": "Simple_handle",
+    "input": {
+      "identifier": "test",
+      "config": {
+        "user_service_url": "https://awiki.ai"
+      }
+    },
+    "error": "Handle 'test' not found",
+    "status": "error"
+  }
+]

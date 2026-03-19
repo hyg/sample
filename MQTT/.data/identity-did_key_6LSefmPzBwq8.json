@@ -1,7 +1,0 @@
-{
-  "did": "did:key:6LSefmPzBwq8dEatVVemwdyKYuu5AKwag2qaWGo6gMtuYgM",
-  "method": "key",
-  "privateKey": "09e01444b8a941191923816027fdde443dea3540643075f428afad58e5ca9db4",
-  "publicKey": "2c782fb563edef4bc745b7dba634707a87f7c55588ae11aa25c70f2942f8f356",
-  "keyType": "x25519"
-}

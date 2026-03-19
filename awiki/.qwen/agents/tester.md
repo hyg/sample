@@ -2,9 +2,11 @@
 name: tester
 description: Python vs Node.js 输出对比测试。用于测试阶段。
 tools:
-  - read_file
-  - write_file
-  - run_shell_command
+  - ReadFile
+  - WriteFile
+  - Edit
+  - Shell
+  - TodoWrite
 ---
 # Test Agent
 

@@ -1,0 +1,25 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/suites/jws-2020/v1",
+    "https://w3id.org/security/suites/x25519-2019/v1"
+  ],
+  "id": "did:wba:xuemen.com",
+  "verificationMethod": [
+    {
+      "id": "did:wba:xuemen.com#key-1",
+      "type": "X25519KeyAgreementKey2019",
+      "controller": "did:wba:xuemen.com",
+      "publicKeyMultibase": "z7258acb462370af0dd05d7265173cb0a951a0f498d08cd429a0db48e27b3b557"
+    }
+  ],
+  "authentication": [
+    "did:wba:xuemen.com#key-1"
+  ],
+  "assertionMethod": [
+    "did:wba:xuemen.com#key-1"
+  ],
+  "keyAgreement": [
+    "did:wba:xuemen.com#key-1"
+  ]
+}
