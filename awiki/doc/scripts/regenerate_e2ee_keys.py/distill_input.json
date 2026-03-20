@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-03-20T23:39:35.324609",
+  "script": "python/scripts/regenerate_e2ee_keys.py",
+  "parameters": {
+    "credential": "default",
+    "force": false
+  }
+}

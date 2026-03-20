@@ -1,0 +1,280 @@
+============================================================
+E2EE.PY DISTILLATION - GOLDEN STANDARD I/O RECORDS
+============================================================
+
+[1/7] Distilling constants...
+[2/7] Distilling ensure_supported_e2ee_version...
+[3/7] Distilling build_e2ee_error_content...
+[4/7] Distilling build_e2ee_error_message...
+[5/7] Distilling _classify_protocol_error...
+[6/7] Distilling _extract_proof_verification_method...
+[7/7] Distilling E2eeClient...
+
+============================================================
+TOTAL: 26 test cases executed
+============================================================
+
+JSON OUTPUT:
+------------------------------------------------------------
+[
+  {
+    "name": "SUPPORTED_E2EE_VERSION",
+    "inputs": {},
+    "outputs": "1.1",
+    "error": null
+  },
+  {
+    "name": "_STATE_VERSION",
+    "inputs": {},
+    "outputs": "hpke_v1",
+    "error": null
+  },
+  {
+    "name": "ensure_supported_e2ee_version(valid)",
+    "inputs": {
+      "content": {
+        "e2ee_version": "1.1"
+      }
+    },
+    "outputs": "1.1",
+    "error": null
+  },
+  {
+    "name": "ensure_supported_e2ee_version(missing)",
+    "inputs": {
+      "content": {}
+    },
+    "outputs": null,
+    "error": "unsupported_version: missing e2ee_version (required 1.1)"
+  },
+  {
+    "name": "ensure_supported_e2ee_version(unsupported)",
+    "inputs": {
+      "content": {
+        "e2ee_version": "1.0"
+      }
+    },
+    "outputs": null,
+    "error": "unsupported_version: expected 1.1, got 1.0"
+  },
+  {
+    "name": "build_e2ee_error_content(basic)",
+    "inputs": {
+      "error_code": "session_not_found"
+    },
+    "outputs": {
+      "e2ee_version": "1.1",
+      "error_code": "session_not_found"
+    },
+    "error": null
+  },
+  {
+    "name": "build_e2ee_error_content(full)",
+    "inputs": {
+      "error_code": "decryption_failed",
+      "session_id": "sess-123",
+      "failed_msg_id": "msg-456",
+      "failed_server_seq": 10,
+      "retry_hint": "resend",
+      "required_e2ee_version": "1.1",
+      "message": "Test error message"
+    },
+    "outputs": {
+      "e2ee_version": "1.1",
+      "error_code": "decryption_failed",
+      "session_id": "sess-123",
+      "failed_msg_id": "msg-456",
+      "failed_server_seq": 10,
+      "retry_hint": "resend",
+      "required_e2ee_version": "1.1",
+      "message": "Test error message"
+    },
+    "error": null
+  },
+  {
+    "name": "build_e2ee_error_message(basic)",
+    "inputs": {
+      "error_code": "session_not_found"
+    },
+    "outputs": "E2EE session was not found on the receiver. Please rekey or re-initialize before resending.",
+    "error": null
+  },
+  {
+    "name": "build_e2ee_error_message(with_detail)",
+    "inputs": {
+      "error_code": "decryption_failed",
+      "detail": "Additional context"
+    },
+    "outputs": "E2EE decryption failed on the receiver. You may resend the message or rekey and resend. Detail: Additional context",
+    "error": null
+  },
+  {
+    "name": "build_e2ee_error_message(version)",
+    "inputs": {
+      "error_code": "unsupported_version",
+      "required_e2ee_version": "1.1"
+    },
+    "outputs": "Peer E2EE content version is unsupported. Please upgrade to e2ee_version=1.1.",
+    "error": null
+  },
+  {
+    "name": "_classify_protocol_error(unsupported_version)",
+    "inputs": {
+      "exception": "unsupported_version: expected 1.1, got 1.0"
+    },
+    "outputs": [
+      "unsupported_version",
+      "drop"
+    ],
+    "error": null
+  },
+  {
+    "name": "_classify_protocol_error(proof_expired)",
+    "inputs": {
+      "exception": "proof_expired: the proof has expired"
+    },
+    "outputs": [
+      "proof_expired",
+      "resend"
+    ],
+    "error": null
+  },
+  {
+    "name": "_classify_protocol_error(proof_from_future)",
+    "inputs": {
+      "exception": "proof_from_future: timestamp is too far in the future"
+    },
+    "outputs": [
+      "proof_from_future",
+      "drop"
+    ],
+    "error": null
+  },
+  {
+    "name": "_classify_protocol_error(unknown)",
+    "inputs": {
+      "exception": "unknown error occurred"
+    },
+    "outputs": null,
+    "error": null
+  },
+  {
+    "name": "_extract_proof_verification_method(snake_case)",
+    "inputs": {
+      "proof": {
+        "verification_method": "did:wba:awiki.ai:user:k1_abc#key-2"
+      }
+    },
+    "outputs": "did:wba:awiki.ai:user:k1_abc#key-2",
+    "error": null
+  },
+  {
+    "name": "_extract_proof_verification_method(camelCase)",
+    "inputs": {
+      "proof": {
+        "verificationMethod": "did:wba:awiki.ai:user:k1_xyz#key-2"
+      }
+    },
+    "outputs": "did:wba:awiki.ai:user:k1_xyz#key-2",
+    "error": null
+  },
+  {
+    "name": "_extract_proof_verification_method(both)",
+    "inputs": {
+      "proof": {
+        "verification_method": "did:wba:awiki.ai:user:k1_snake#key-2",
+        "verificationMethod": "did:wba:awiki.ai:user:k1_camel#key-2"
+      }
+    },
+    "outputs": "did:wba:awiki.ai:user:k1_snake#key-2",
+    "error": null
+  },
+  {
+    "name": "_extract_proof_verification_method(not_dict)",
+    "inputs": {
+      "proof": "not_a_dict"
+    },
+    "outputs": "",
+    "error": null
+  },
+  {
+    "name": "_extract_proof_verification_method(empty)",
+    "inputs": {
+      "proof": {}
+    },
+    "outputs": "",
+    "error": null
+  },
+  {
+    "name": "E2eeClient(no_keys)",
+    "inputs": {
+      "local_did": "did:wba:awiki.ai:user:k1_test"
+    },
+    "outputs": {
+      "local_did": "did:wba:awiki.ai:user:k1_test",
+      "has_signing_key": false,
+      "has_x25519_key": false
+    },
+    "error": null
+  },
+  {
+    "name": "E2eeClient.has_active_session(no_session)",
+    "inputs": {
+      "peer_did": "did:wba:awiki.ai:user:k1_peer"
+    },
+    "outputs": false,
+    "error": null
+  },
+  {
+    "name": "E2eeClient.has_session_id(None)",
+    "inputs": {
+      "session_id": null
+    },
+    "outputs": false,
+    "error": null
+  },
+  {
+    "name": "E2eeClient.is_session_confirmed(None)",
+    "inputs": {
+      "session_id": null
+    },
+    "outputs": false,
+    "error": null
+  },
+  {
+    "name": "E2eeClient.export_state(empty)",
+    "inputs": {},
+    "outputs": {
+      "version": "hpke_v1",
+      "local_did": "did:wba:awiki.ai:user:k1_test",
+      "has_signing_pem": false,
+      "has_x25519_pem": false,
+      "confirmed_session_ids": [],
+      "sessions_count": 0
+    },
+    "error": null
+  },
+  {
+    "name": "E2eeClient.from_state(basic)",
+    "inputs": {
+      "state_version": "hpke_v1",
+      "local_did": "did:wba:awiki.ai:user:k1_restored"
+    },
+    "outputs": {
+      "local_did": "did:wba:awiki.ai:user:k1_restored",
+      "has_signing_key": false,
+      "has_x25519_key": false
+    },
+    "error": null
+  },
+  {
+    "name": "E2eeClient.cleanup_expired()",
+    "inputs": {},
+    "outputs": "cleanup completed without error",
+    "error": null
+  }
+]
+
+WARNING: 2 test case(s) had errors:
+  - ensure_supported_e2ee_version(missing): unsupported_version: missing e2ee_version (required 1.1)
+  - ensure_supported_e2ee_version(unsupported): unsupported_version: expected 1.1, got 1.0

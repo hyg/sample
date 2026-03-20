@@ -1,0 +1,307 @@
+================================================================================
+蒸馏脚本：test_check_status_inbox.py 黄金标准输出
+================================================================================
+
+执行测试：test_summarize_inbox_hides_protocol_messages_from_user_output
+------------------------------------------------------------
+  ✓ PASSED
+  输出摘要：
+    {
+  "status": "ok",
+  "total": 1,
+  "messages": [
+    {
+      "id": "plain-1",
+      "type": "text",
+      "sender_did": "did:carol",
+      "content": "Hello",
+      "created_at": "2026-03-11T09:05:00Z"
+    }
+  ]
+}...
+
+执行测试：test_check_identity_bootstraps_missing_jwt_via_did_auth
+------------------------------------------------------------
+  ✓ PASSED
+  输出摘要：
+    {
+  "status": "ok",
+  "jwt_valid": true,
+  "jwt_refreshed": true,
+  "final_jwt_token": "jwt-new"
+}...
+
+执行测试：test_auto_e2ee_builds_plaintext_inbox_report
+------------------------------------------------------------
+  ✓ PASSED
+  输出摘要：
+    {
+  "status": "ok",
+  "total": 2,
+  "by_type": {
+    "text": 2
+  },
+  "text_messages": 2,
+  "messages": [
+    {
+      "id": "cipher-1",
+      "type": "text",
+      "sender_did": "did:bob",
+      "content": "Secret hello",
+      "created_at": "2026-03-11T09:02:00Z",
+      "is_e2ee": true,
+      "e2ee_notice": "This is an encrypted message."
+    },
+    {
+      "id": "plain-1",
+      "type": "text",
+      "sender_did": "did:carol",
+      "content": "Hello",
+      "created_at": "2026-03-11T09:01:00Z...
+
+执行测试：test_check_status_uses_auto_e2ee_inbox_report
+------------------------------------------------------------
+  ✓ PASSED
+  输出摘要：
+    {
+  "inbox_messages": [
+    {
+      "id": "cipher-1",
+      "content": "Secret hello",
+      "is_e2ee": true
+    }
+  ],
+  "has_e2ee_auto": false
+}...
+
+================================================================================
+总结
+================================================================================
+总测试数：4
+通过：4
+失败：0
+
+黄金标准数据（JSON）：
+------------------------------------------------------------
+{
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0
+  },
+  "results": [
+    {
+      "test_name": "test_summarize_inbox_hides_protocol_messages_from_user_output",
+      "input": {
+        "inbox_messages": [
+          {
+            "id": "init-1",
+            "type": "e2ee_init",
+            "sender_did": "did:bob",
+            "content": "{\"session_id\": \"sess-1\"}",
+            "created_at": "2026-03-11T09:00:00Z"
+          },
+          {
+            "id": "plain-1",
+            "type": "text",
+            "sender_did": "did:carol",
+            "content": "Hello",
+            "created_at": "2026-03-11T09:05:00Z"
+          }
+        ],
+        "credential_name": "alice"
+      },
+      "output": {
+        "status": "ok",
+        "total": 1,
+        "messages": [
+          {
+            "id": "plain-1",
+            "type": "text",
+            "sender_did": "did:carol",
+            "content": "Hello",
+            "created_at": "2026-03-11T09:05:00Z"
+          }
+        ]
+      },
+      "assertions": {
+        "status_ok": true,
+        "total_count": true,
+        "only_plain_messages": true
+      },
+      "passed": true
+    },
+    {
+      "test_name": "test_check_identity_bootstraps_missing_jwt_via_did_auth",
+      "input": {
+        "initial_credential_data": {
+          "did": "did:alice",
+          "name": "Alice",
+          "jwt_token": "jwt-new"
+        },
+        "credential_name": "alice"
+      },
+      "output": {
+        "status": "ok",
+        "jwt_valid": true,
+        "jwt_refreshed": true,
+        "final_jwt_token": "jwt-new"
+      },
+      "assertions": {
+        "status_ok": true,
+        "jwt_valid": true,
+        "jwt_refreshed": true,
+        "jwt_updated": true
+      },
+      "passed": true
+    },
+    {
+      "test_name": "test_auto_e2ee_builds_plaintext_inbox_report",
+      "input": {
+        "inbox_messages": [
+          {
+            "id": "init-1",
+            "type": "e2ee_init",
+            "sender_did": "did:bob",
+            "content": "{\"session_id\": \"sess-1\", \"sender_did\": \"did:bob\"}",
+            "created_at": "2026-03-11T09:00:00Z"
+          },
+          {
+            "id": "cipher-1",
+            "type": "e2ee_msg",
+            "sender_did": "did:bob",
+            "content": "{\"session_id\": \"sess-1\"}",
+            "created_at": "2026-03-11T09:02:00Z"
+          },
+          {
+            "id": "plain-1",
+            "type": "text",
+            "sender_did": "did:carol",
+            "content": "Hello",
+            "created_at": "2026-03-11T09:01:00Z"
+          }
+        ],
+        "credential_name": "alice",
+        "e2ee_session_id": "sess-1"
+      },
+      "output": {
+        "status": "ok",
+        "total": 2,
+        "by_type": {
+          "text": 2
+        },
+        "text_messages": 2,
+        "messages": [
+          {
+            "id": "cipher-1",
+            "type": "text",
+            "sender_did": "did:bob",
+            "content": "Secret hello",
+            "created_at": "2026-03-11T09:02:00Z",
+            "is_e2ee": true,
+            "e2ee_notice": "This is an encrypted message."
+          },
+          {
+            "id": "plain-1",
+            "type": "text",
+            "sender_did": "did:carol",
+            "content": "Hello",
+            "created_at": "2026-03-11T09:01:00Z"
+          }
+        ],
+        "marked_read": [
+          "init-1",
+          "cipher-1"
+        ],
+        "sent_calls": [
+          [
+            "e2ee_ack",
+            {
+              "session_id": "sess-1"
+            }
+          ]
+        ]
+      },
+      "assertions": {
+        "status_ok": true,
+        "total_count": true,
+        "by_type_correct": true,
+        "text_count": true,
+        "first_message_decrypted": true,
+        "first_message_is_e2ee": true,
+        "first_message_has_notice": true,
+        "second_message_plain": true,
+        "marked_read_correct": true,
+        "sent_e2ee_ack": true
+      },
+      "passed": true
+    },
+    {
+      "test_name": "test_check_status_uses_auto_e2ee_inbox_report",
+      "input": {
+        "upgrade_status": {
+          "status": "ready",
+          "credential_ready": true,
+          "database_ready": true,
+          "performed": [],
+          "credential_layout": {
+            "credential_ready": true,
+            "status": "ready"
+          },
+          "local_database": {
+            "status": "ready"
+          }
+        },
+        "identity_result": {
+          "status": "ok",
+          "did": "did:alice",
+          "name": "Alice",
+          "jwt_valid": true
+        },
+        "inbox_result": {
+          "status": "ok",
+          "total": 1,
+          "by_type": {
+            "text": 1
+          },
+          "text_messages": 1,
+          "text_by_sender": {
+            "did:bob": {
+              "count": 1,
+              "latest": "2026-03-11T09:00:00Z"
+            }
+          },
+          "messages": [
+            {
+              "id": "cipher-1",
+              "content": "Secret hello",
+              "is_e2ee": true
+            }
+          ]
+        },
+        "group_watch_result": {
+          "status": "ok",
+          "active_groups": 0,
+          "groups": []
+        },
+        "credential_name": "alice"
+      },
+      "output": {
+        "inbox_messages": [
+          {
+            "id": "cipher-1",
+            "content": "Secret hello",
+            "is_e2ee": true
+          }
+        ],
+        "has_e2ee_auto": false
+      },
+      "assertions": {
+        "first_message_content": true,
+        "first_message_is_e2ee": true,
+        "no_e2ee_auto_key": true
+      },
+      "passed": true
+    }
+  ]
+}

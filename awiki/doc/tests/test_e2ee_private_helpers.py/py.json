@@ -1,0 +1,66 @@
+============================================================
+test_e2ee_private_helpers.py 蒸馏脚本
+============================================================
+
+--- TestDecryptErrorClassification ---
+[✓ PASS] test_handler_classifies_session_not_found
+       result=('session_not_found', 'rekey_then_resend')
+[✓ PASS] test_cli_classifies_invalid_seq
+       result=('invalid_seq', 'rekey_then_resend')
+[✓ PASS] test_cli_classifies_generic_failure
+       result=('decryption_failed', 'resend')
+[✓ PASS] test_cli_classifies_unsupported_version
+       result=('unsupported_version', 'drop')
+
+--- TestProtocolErrorClassification ---
+[✓ PASS] test_protocol_classifies_proof_expired
+       result=('proof_expired', 'resend')
+[✓ PASS] test_protocol_classifies_proof_from_future
+       result=('proof_from_future', 'drop')
+[✓ PASS] test_protocol_classifies_unsupported_version
+       result=('unsupported_version', 'drop')
+
+--- TestErrorMessageText ---
+[✓ PASS] test_upgrade_message_is_consistent
+       message=Peer E2EE content version is unsupported. Please upgrade to e2ee_version=1.1.
+
+--- TestInboxSortKey ---
+[✓ PASS] test_message_sort_key_prefers_server_seq
+       sorted_seqs=[8, 9]
+[✓ PASS] test_check_inbox_sort_key_tolerates_missing_timestamps
+       sorted_sent_at=[None, '2026-03-07T12:31:00Z']
+[✓ PASS] test_check_status_sort_key_tolerates_missing_timestamps
+       sorted_created_at=[None, '2026-03-07T12:31:00Z']
+[✓ PASS] test_e2ee_messaging_sort_key_tolerates_missing_timestamps
+       sorted_created_at=[None, '2026-03-07T12:31:00Z']
+[✓ PASS] test_check_inbox_sort_key_tolerates_missing_sender_did
+       sorted_sender_dids=[None, 'did:a']
+[✓ PASS] test_check_status_sort_key_tolerates_missing_sender_did
+       sorted_sender_dids=[None, 'did:a']
+[✓ PASS] test_e2ee_messaging_sort_key_tolerates_missing_sender_did
+       sorted_sender_dids=[None, 'did:a']
+[✓ PASS] test_e2ee_messaging_sender_did_value_uses_placeholder_for_none
+       None->'?', did:a->'did:a'
+
+--- TestOutgoingHistoryRender ---
+[✓ PASS] test_render_outgoing_message_without_local_copy_returns_none
+       rendered=None
+
+--- TestUserVisibleE2EEPresentation ---
+[✓ PASS] test_check_inbox_decorates_decrypted_message_with_minimal_notice
+       rendered={'id': 'm1', 'type': 'text', 'content': 'hello', '_e2ee': True, '_e2ee_notice': 'This is an encrypted message.'}
+[✓ PASS] test_cli_renders_minimal_encrypted_message_text
+       rendered='This is an encrypted message.
+secret'
+[✓ PASS] test_cli_renders_send_first_auto_init_notice
+       rendered='No active E2EE session found; sent automatic init before the encrypted payload. Peer: did:wba:example:user:bob'
+[✓ PASS] test_check_status_hides_protocol_only_message_types
+       text=True, e2ee_init=False, e2ee_msg=False
+[✓ PASS] test_check_inbox_strips_hidden_title_field
+       rendered={'id': 'm1', 'content': 'hello'}
+[✓ PASS] test_send_message_result_strips_hidden_title_field
+       rendered={'id': 'm1', 'content': 'hello'}
+
+============================================================
+全部测试通过！✓
+============================================================

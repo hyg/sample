@@ -169,3 +169,42 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# =============================================================================
+# 附录：补充场景测试 - Profile 不存在、更新后获取
+# =============================================================================
+
+def test_get_nonexistent_profile(did='did:wba:awiki.ai:user:k1_nonexistent', credential_name='default'):
+    """测试获取不存在的 Profile"""
+    input_data = {'scenario': 'get_nonexistent_profile', 'did': did, 'credential_name': credential_name}
+    output_data = {'error_caught': False, 'error_code': None, 'error_message': None}
+    try:
+        from get_profile import get_public_profile
+        from utils import JsonRpcError
+        
+        get_public_profile(did=did, credential_name=credential_name)
+        output_data['error_caught'] = False
+        return {'input': input_data, 'output': output_data, 'success': False}
+    except JsonRpcError as e:
+        output_data['error_caught'] = True
+        output_data['error_code'] = e.code if hasattr(e, 'code') else None
+        output_data['error_message'] = str(e)
+        success = output_data['error_code'] == -32001
+        return {'input': input_data, 'output': output_data, 'success': success}
+    except Exception as e:
+        output_data['error_caught'] = True
+        output_data['error_message'] = str(e)
+        return {'input': input_data, 'output': output_data, 'success': False}
+
+def test_get_profile_after_update(did=None, credential_name='default'):
+    """测试 Profile 更新后获取"""
+    input_data = {'scenario': 'get_profile_after_update', 'did': did, 'credential_name': credential_name}
+    output_data = {'profile': None, 'updated_at': None, 'error': None}
+    try:
+        from get_profile import get_public_profile
+        profile = get_public_profile(did=did, credential_name=credential_name) if did else None
+        output_data['profile'] = profile
+        return {'input': input_data, 'output': output_data, 'success': True}
+    except Exception as e:
+        output_data['error'] = str(e)
+        return {'input': input_data, 'output': output_data, 'success': False}

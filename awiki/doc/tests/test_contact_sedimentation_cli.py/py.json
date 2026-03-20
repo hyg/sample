@@ -1,0 +1,85 @@
+============================================================
+蒸馏脚本：test_contact_sedimentation_cli.py
+时间：2026-03-20T18:04:00.729641
+============================================================
+
+[初始化] 创建临时数据库
+
+[执行] TestManageContactsCli::test_record_recommendation_writes_event
+----------------------------------------
+✓ 通过
+
+
+[执行] TestManageContactsCli::test_save_from_group_writes_contact_snapshot
+----------------------------------------
+✓ 通过
+
+
+[执行] TestSocialPersistence::test_follow_updates_contact_and_event
+----------------------------------------
+✓ 通过
+
+
+[执行] TestSocialPersistence::test_send_message_marks_contact_as_messaged
+----------------------------------------
+✓ 通过
+
+============================================================
+摘要
+============================================================
+通过：4/4
+  ✓ TestManageContactsCli::test_record_recommendation_writes_event
+  ✓ TestManageContactsCli::test_save_from_group_writes_contact_snapshot
+  ✓ TestSocialPersistence::test_follow_updates_contact_and_event
+  ✓ TestSocialPersistence::test_send_message_marks_contact_as_messaged
+
+============================================================
+黄金标准输出 (JSON)
+============================================================
+{
+  "timestamp": "2026-03-20T18:04:05.713157",
+  "test_file": "python/tests/test_contact_sedimentation_cli.py",
+  "results": [
+    {
+      "test_name": "TestManageContactsCli::test_record_recommendation_writes_event",
+      "passed": true,
+      "returncode": 0,
+      "db_snapshot": {
+        "contacts": [],
+        "relationship_events": []
+      }
+    },
+    {
+      "test_name": "TestManageContactsCli::test_save_from_group_writes_contact_snapshot",
+      "passed": true,
+      "returncode": 0,
+      "db_snapshot": {
+        "contacts": [],
+        "relationship_events": []
+      }
+    },
+    {
+      "test_name": "TestSocialPersistence::test_follow_updates_contact_and_event",
+      "passed": true,
+      "returncode": 0,
+      "db_snapshot": {
+        "contacts": [],
+        "relationship_events": []
+      }
+    },
+    {
+      "test_name": "TestSocialPersistence::test_send_message_marks_contact_as_messaged",
+      "passed": true,
+      "returncode": 0,
+      "db_snapshot": {
+        "contacts": [],
+        "relationship_events": []
+      }
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 4,
+    "pass_rate": 1.0
+  }
+}

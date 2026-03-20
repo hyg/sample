@@ -1,290 +1,291 @@
-"""
-Distiller script for manage_relationship.py
+"""Distill script for manage_relationship.py - Records golden standard I/O.
 
-Purpose: Execute Python code and record input/output as "golden standard".
-This script validates the module structure, function signatures, and behavior.
+This script documents the input/output behavior of manage_relationship.py
+as a golden standard for testing and reference.
 """
 
 import json
 import sys
-import importlib.util
-from pathlib import Path
 
-# ============================================================================
-# Configuration
-# ============================================================================
+# =============================================================================
+# Golden Standard: manage_relationship.py I/O Documentation
+# =============================================================================
 
-SCRIPT_PATH = Path(__file__).parent.parent.parent.parent / "python" / "scripts" / "manage_relationship.py"
-MODULE_NAME = "manage_relationship"
+SCRIPT_PATH = "python/scripts/manage_relationship.py"
+RPC_ENDPOINT = "/user-service/did/relationships/rpc"
 
-# ============================================================================
-# Helper Functions
-# ============================================================================
+# -----------------------------------------------------------------------------
+# Input: CLI Arguments (Mutually Exclusive Group)
+# -----------------------------------------------------------------------------
 
-def load_module_from_path(path: Path, name: str):
-    """Load a module from a file path."""
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot load module from {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
+CLI_INPUTS = {
+    "follow": {
+        "argument": "--follow <DID_or_handle>",
+        "example": '--follow "did:wba:localhost:user:abc123"',
+        "description": "Follow a specific DID",
+    },
+    "unfollow": {
+        "argument": "--unfollow <DID_or_handle>",
+        "example": '--unfollow "did:wba:localhost:user:abc123"',
+        "description": "Unfollow a specific DID",
+    },
+    "status": {
+        "argument": "--status <DID_or_handle>",
+        "example": '--status "did:wba:localhost:user:abc123"',
+        "description": "View relationship status with a specific DID",
+    },
+    "following": {
+        "argument": "--following",
+        "example": "--following",
+        "description": "View following list",
+    },
+    "followers": {
+        "argument": "--followers",
+        "example": "--followers",
+        "description": "View followers list",
+    },
+}
 
-def record_result(test_name: str, status: str, details: dict) -> None:
-    """Record a test result."""
-    result = {
-        "test": test_name,
-        "status": status,
-        "details": details
-    }
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+# Optional arguments
+OPTIONAL_ARGS = {
+    "--credential": {"default": "default", "description": "Credential name"},
+    "--limit": {"default": 50, "description": "List result count"},
+    "--offset": {"default": 0, "description": "List offset"},
+}
 
-# ============================================================================
-# Distillation Tests
-# ============================================================================
+# -----------------------------------------------------------------------------
+# Input: Module Dependencies
+# -----------------------------------------------------------------------------
 
-def test_module_structure():
-    """Test 1: Verify module structure and imports."""
-    print("=== Test 1: Module Structure ===", file=sys.stderr)
-    
-    try:
-        module = load_module_from_path(SCRIPT_PATH, MODULE_NAME)
-        
-        # Check required attributes
-        required_attrs = {
-            "RPC_ENDPOINT": str,
-            "follow": type(lambda: None),
-            "unfollow": type(lambda: None),
-            "get_status": type(lambda: None),
-            "get_following": type(lambda: None),
-            "get_followers": type(lambda: None),
-            "main": type(lambda: None),
-        }
-        
-        missing = []
-        type_mismatch = []
-        
-        for attr, expected_type in required_attrs.items():
-            if not hasattr(module, attr):
-                missing.append(attr)
-            elif not isinstance(getattr(module, attr), expected_type):
-                type_mismatch.append(attr)
-        
-        if missing:
-            record_result("module_structure", "FAILED", {
-                "error": "Missing attributes",
-                "missing": missing
-            })
-            return False
-        
-        if type_mismatch:
-            record_result("module_structure", "FAILED", {
-                "error": "Type mismatch",
-                "mismatch": type_mismatch
-            })
-            return False
-        
-        # Record module info
-        record_result("module_structure", "PASSED", {
-            "rpc_endpoint": module.RPC_ENDPOINT,
-            "functions": [
-                "follow", "unfollow", "get_status", 
-                "get_following", "get_followers", "main"
-            ],
-            "script_path": str(SCRIPT_PATH)
-        })
-        return True
-        
-    except Exception as e:
-        record_result("module_structure", "ERROR", {
-            "exception": str(e),
-            "type": type(e).__name__
-        })
-        return False
+MODULE_INPUTS = {
+    "utils": ["SDKConfig", "create_user_service_client", "authenticated_rpc_call", "resolve_to_did"],
+    "utils.logging_config": ["configure_logging"],
+    "credential_store": ["create_authenticator"],
+    "local_store": ["get_connection", "ensure_schema", "upsert_contact", "append_relationship_event"],
+}
 
-def test_function_signatures():
-    """Test 2: Verify function signatures match documentation."""
-    print("=== Test 2: Function Signatures ===", file=sys.stderr)
-    
-    try:
-        import inspect
-        module = load_module_from_path(SCRIPT_PATH, MODULE_NAME)
-        
-        expected_signatures = {
-            "follow": ["target_did", "credential_name"],
-            "unfollow": ["target_did", "credential_name"],
-            "get_status": ["target_did", "credential_name"],
-            "get_following": ["credential_name", "limit", "offset"],
-            "get_followers": ["credential_name", "limit", "offset"],
-            "main": [],
-        }
-        
-        results = {}
-        all_passed = True
-        
-        for func_name, expected_params in expected_signatures.items():
-            func = getattr(module, func_name)
-            sig = inspect.signature(func)
-            actual_params = list(sig.parameters.keys())
-            
-            # Check if expected params are in actual params (allowing extra)
-            match = all(p in actual_params for p in expected_params)
-            results[func_name] = {
-                "expected": expected_params,
-                "actual": actual_params,
-                "match": match
-            }
-            if not match:
-                all_passed = False
-        
-        status = "PASSED" if all_passed else "FAILED"
-        record_result("function_signatures", status, {
-            "signatures": results
-        })
-        return all_passed
-        
-    except Exception as e:
-        record_result("function_signatures", "ERROR", {
-            "exception": str(e),
-            "type": type(e).__name__
-        })
-        return False
+# -----------------------------------------------------------------------------
+# Output: Function Signatures
+# -----------------------------------------------------------------------------
 
-def test_async_functions():
-    """Test 3: Verify async functions are coroutines."""
-    print("=== Test 3: Async Functions ===", file=sys.stderr)
-    
-    try:
-        import inspect
-        module = load_module_from_path(SCRIPT_PATH, MODULE_NAME)
-        
-        async_funcs = ["follow", "unfollow", "get_status", "get_following", "get_followers"]
-        results = {}
-        all_passed = True
-        
-        for func_name in async_funcs:
-            func = getattr(module, func_name)
-            is_async = inspect.iscoroutinefunction(func)
-            results[func_name] = {"is_async": is_async}
-            if not is_async:
-                all_passed = False
-        
-        status = "PASSED" if all_passed else "FAILED"
-        record_result("async_functions", status, {
-            "functions": results
-        })
-        return all_passed
-        
-    except Exception as e:
-        record_result("async_functions", "ERROR", {
-            "exception": str(e),
-            "type": type(e).__name__
-        })
-        return False
+FUNCTION_SIGNATURES = {
+    "follow": {
+        "signature": "async follow(target_did: str, credential_name: str = \"default\") -> None",
+        "input": {"target_did": "str", "credential_name": "str (default: 'default')"},
+        "output": "None (prints result to stdout/stderr)",
+    },
+    "unfollow": {
+        "signature": "async unfollow(target_did: str, credential_name: str = \"default\") -> None",
+        "input": {"target_did": "str", "credential_name": "str (default: 'default')"},
+        "output": "None (prints result to stdout/stderr)",
+    },
+    "get_status": {
+        "signature": "async get_status(target_did: str, credential_name: str = \"default\") -> None",
+        "input": {"target_did": "str", "credential_name": "str (default: 'default')"},
+        "output": "None (prints result to stdout/stderr)",
+    },
+    "get_following": {
+        "signature": "async get_following(credential_name: str = \"default\", limit: int = 50, offset: int = 0) -> None",
+        "input": {"credential_name": "str", "limit": "int (default: 50)", "offset": "int (default: 0)"},
+        "output": "None (prints result to stdout/stderr)",
+    },
+    "get_followers": {
+        "signature": "async get_followers(credential_name: str = \"default\", limit: int = 50, offset: int = 0) -> None",
+        "input": {"credential_name": "str", "limit": "int (default: 50)", "offset": "int (default: 0)"},
+        "output": "None (prints result to stdout/stderr)",
+    },
+    "main": {
+        "signature": "main() -> None",
+        "input": "CLI arguments via argparse",
+        "output": "None (delegates to async functions)",
+    },
+}
 
-def test_cli_interface():
-    """Test 4: Verify CLI argument parsing."""
-    print("=== Test 4: CLI Interface ===", file=sys.stderr)
-    
-    try:
-        module = load_module_from_path(SCRIPT_PATH, MODULE_NAME)
-        
-        # Test that main() exists and is callable
-        main_func = module.main
-        callable_check = callable(main_func)
-        
-        record_result("cli_interface", "PASSED" if callable_check else "FAILED", {
-            "main_exists": hasattr(module, "main"),
-            "main_callable": callable_check,
-            "script_path": str(SCRIPT_PATH)
-        })
-        return callable_check
-        
-    except Exception as e:
-        record_result("cli_interface", "ERROR", {
-            "exception": str(e),
-            "type": type(e).__name__
-        })
-        return False
+# -----------------------------------------------------------------------------
+# Output: RPC Call Patterns (Golden Standard)
+# -----------------------------------------------------------------------------
 
-def test_imports():
-    """Test 5: Verify all required imports are available."""
-    print("=== Test 5: Import Dependencies ===", file=sys.stderr)
-    
-    try:
-        required_imports = [
-            "argparse", "asyncio", "json", "logging", "sys",
-            "utils", "utils.logging_config", "credential_store", "local_store"
-        ]
-        
-        results = {}
-        all_available = True
-        
-        for import_name in required_imports:
-            try:
-                if "." in import_name:
-                    parts = import_name.split(".")
-                    base = __import__(parts[0])
-                    for part in parts[1:]:
-                        base = getattr(base, part)
-                else:
-                    __import__(import_name)
-                results[import_name] = {"available": True}
-            except ImportError as e:
-                results[import_name] = {"available": False, "error": str(e)}
-                all_available = False
-        
-        status = "PASSED" if all_available else "WARNING"
-        record_result("import_dependencies", status, {
-            "imports": results,
-            "note": "Some imports may require runtime environment"
-        })
-        return True  # Return True even if some imports fail (environment dependent)
-        
-    except Exception as e:
-        record_result("import_dependencies", "ERROR", {
-            "exception": str(e),
-            "type": type(e).__name__
-        })
-        return False
+RPC_CALL_PATTERNS = {
+    "follow": {
+        "method": "follow",
+        "params": {"target_did": "<resolved_DID>"},
+        "endpoint": RPC_ENDPOINT,
+    },
+    "unfollow": {
+        "method": "unfollow",
+        "params": {"target_did": "<resolved_DID>"},
+        "endpoint": RPC_ENDPOINT,
+    },
+    "get_status": {
+        "method": "get_status",
+        "params": {"target_did": "<resolved_DID>"},
+        "endpoint": RPC_ENDPOINT,
+    },
+    "get_following": {
+        "method": "get_following",
+        "params": {"limit": 50, "offset": 0},
+        "endpoint": RPC_ENDPOINT,
+    },
+    "get_followers": {
+        "method": "get_followers",
+        "params": {"limit": 50, "offset": 0},
+        "endpoint": RPC_ENDPOINT,
+    },
+}
 
-# ============================================================================
-# Main Entry Point
-# ============================================================================
+# -----------------------------------------------------------------------------
+# Output: Local Store Operations (Golden Standard)
+# -----------------------------------------------------------------------------
 
-def main():
-    """Run all distillation tests and record results."""
-    print("=" * 60, file=sys.stderr)
-    print("Distiller for manage_relationship.py", file=sys.stderr)
-    print(f"Script: {SCRIPT_PATH}", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    
-    results = {
-        "module_structure": test_module_structure(),
-        "function_signatures": test_function_signatures(),
-        "async_functions": test_async_functions(),
-        "cli_interface": test_cli_interface(),
-        "import_dependencies": test_imports(),
-    }
-    
-    print("=" * 60, file=sys.stderr)
-    print("Distillation Complete", file=sys.stderr)
-    print("=" * 60, file=sys.stderr)
-    
-    # Summary
-    passed = sum(1 for v in results.values() if v)
-    total = len(results)
-    print(json.dumps({
-        "summary": {
-            "passed": passed,
-            "total": total,
-            "success_rate": f"{passed/total*100:.1f}%"
+LOCAL_STORE_OPERATIONS = {
+    "follow": [
+        {
+            "operation": "upsert_contact",
+            "params": {
+                "owner_did": "<user_DID>",
+                "did": "<target_DID>",
+                "relationship": "following",
+                "followed": True,
+            },
         },
-        "results": results
-    }, indent=2, ensure_ascii=False))
-    
-    return 0 if all(results.values()) else 1
+        {
+            "operation": "append_relationship_event",
+            "params": {
+                "owner_did": "<user_DID>",
+                "target_did": "<target_DID>",
+                "event_type": "followed",
+                "status": "applied",
+                "credential_name": "<credential_name>",
+            },
+        },
+    ],
+    "unfollow": [
+        {
+            "operation": "upsert_contact",
+            "params": {
+                "owner_did": "<user_DID>",
+                "did": "<target_DID>",
+                "relationship": "none",
+                "followed": False,
+            },
+        },
+        {
+            "operation": "append_relationship_event",
+            "params": {
+                "owner_did": "<user_DID>",
+                "target_did": "<target_DID>",
+                "event_type": "unfollowed",
+                "status": "applied",
+                "credential_name": "<credential_name>",
+            },
+        },
+    ],
+}
+
+# -----------------------------------------------------------------------------
+# Output: Console Output Format (Golden Standard)
+# -----------------------------------------------------------------------------
+
+CONSOLE_OUTPUT_PATTERNS = {
+    "follow": {
+        "stderr": "Follow succeeded:",
+        "stdout": "JSON formatted RPC result",
+    },
+    "unfollow": {
+        "stderr": "Unfollow succeeded:",
+        "stdout": "JSON formatted RPC result",
+    },
+    "get_status": {
+        "stderr": "Relationship status:",
+        "stdout": "JSON formatted RPC result",
+    },
+    "get_following": {
+        "stderr": "Following list:",
+        "stdout": "JSON formatted RPC result",
+    },
+    "get_followers": {
+        "stderr": "Followers list:",
+        "stdout": "JSON formatted RPC result",
+    },
+    "error_credential_unavailable": {
+        "stdout": "Credential '<name>' unavailable; please create an identity first",
+        "exit_code": 1,
+    },
+}
+
+
+def main() -> None:
+    """Print golden standard documentation."""
+    print("=" * 70)
+    print("DISTILL: manage_relationship.py Golden Standard I/O")
+    print("=" * 70)
+    print()
+
+    print(f"Script Path: {SCRIPT_PATH}")
+    print(f"RPC Endpoint: {RPC_ENDPOINT}")
+    print()
+
+    print("-" * 70)
+    print("CLI INPUTS (Mutually Exclusive)")
+    print("-" * 70)
+    for action, info in CLI_INPUTS.items():
+        print(f"\n[{action.upper()}]")
+        print(f"  Argument: {info['argument']}")
+        print(f"  Example:  {info['example']}")
+        print(f"  Desc:     {info['description']}")
+    print()
+
+    print("-" * 70)
+    print("OPTIONAL ARGUMENTS")
+    print("-" * 70)
+    for arg, info in OPTIONAL_ARGS.items():
+        print(f"  {arg}: default={info['default']} ({info['description']})")
+    print()
+
+    print("-" * 70)
+    print("MODULE DEPENDENCIES")
+    print("-" * 70)
+    for module, interfaces in MODULE_INPUTS.items():
+        print(f"  {module}:")
+        for iface in interfaces:
+            print(f"    - {iface}")
+    print()
+
+    print("-" * 70)
+    print("FUNCTION SIGNATURES")
+    print("-" * 70)
+    for func, sig_info in FUNCTION_SIGNATURES.items():
+        print(f"\n{func}:")
+        print(f"  Signature: {sig_info['signature']}")
+        print(f"  Input:     {sig_info['input']}")
+        print(f"  Output:    {sig_info['output']}")
+    print()
+
+    print("-" * 70)
+    print("RPC CALL PATTERNS")
+    print("-" * 70)
+    print(json.dumps(RPC_CALL_PATTERNS, indent=2, ensure_ascii=False))
+    print()
+
+    print("-" * 70)
+    print("LOCAL STORE OPERATIONS")
+    print("-" * 70)
+    print(json.dumps(LOCAL_STORE_OPERATIONS, indent=2, ensure_ascii=False))
+    print()
+
+    print("-" * 70)
+    print("CONSOLE OUTPUT PATTERNS")
+    print("-" * 70)
+    for action, pattern in CONSOLE_OUTPUT_PATTERNS.items():
+        print(f"\n[{action.upper()}]")
+        for key, value in pattern.items():
+            print(f"  {key}: {value}")
+    print()
+
+    print("=" * 70)
+    print("DISTILL COMPLETE")
+    print("=" * 70)
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

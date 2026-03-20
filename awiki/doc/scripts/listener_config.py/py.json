@@ -1,0 +1,132 @@
+
+============================================================
+DISTILLER: listener_config.py
+Golden Standard Input/Output Recording
+============================================================
+
+============================================================
+TEST 1: Default Configuration
+============================================================
+[INPUT] {
+  "config_path": null,
+  "mode_override": null
+}
+[OUTPUT] {
+  "mode": "smart",
+  "agent_webhook_url": "http://127.0.0.1:18789/hooks/agent",
+  "wake_webhook_url": "http://127.0.0.1:18789/hooks/wake",
+  "webhook_token": "",
+  "agent_hook_name": "IM",
+  "routing": {
+    "whitelist_dids": [],
+    "private_always_agent": true,
+    "command_prefix": "/",
+    "keywords": [
+      "urgent",
+      "approval",
+      "payment",
+      "alert"
+    ],
+    "bot_names": [],
+    "blacklist_dids": []
+  },
+  "ignore_types": [
+    "e2ee_msg",
+    "e2ee_init",
+    "e2ee_rekey",
+    "e2ee_ack",
+    "e2ee_error"
+  ],
+  "e2ee_save_interval": 30.0,
+  "e2ee_decrypt_fail_action": "drop",
+  "reconnect_base_delay": 1.0,
+  "reconnect_max_delay": 60.0,
+  "heartbeat_interval": 120.0
+}
+[PASS] Default configuration test passed
+
+============================================================
+TEST 2: Mode Override
+============================================================
+[INPUT] {
+  "config_path": null,
+  "mode_override": "agent-all"
+}
+[OUTPUT] {
+  "mode": "agent-all"
+}
+[PASS] Mode override test passed
+
+============================================================
+TEST 3: RoutingRules
+============================================================
+[INPUT] {
+  "whitelist_dids": [
+    "did:example:123"
+  ],
+  "private_always_agent": false,
+  "command_prefix": "!",
+  "keywords": [
+    "important",
+    "priority"
+  ],
+  "bot_names": [
+    "Bot1",
+    "Bot2"
+  ]
+}
+[OUTPUT] {
+  "whitelist_dids": [
+    "did:example:123"
+  ],
+  "private_always_agent": false,
+  "command_prefix": "!",
+  "keywords": [
+    "important",
+    "priority"
+  ],
+  "bot_names": [
+    "Bot1",
+    "Bot2"
+  ],
+  "blacklist_dids": []
+}
+[PASS] RoutingRules test passed
+
+============================================================
+TEST 4: Invalid Mode Validation
+============================================================
+[INPUT] {
+  "mode": "invalid-mode"
+}
+[OUTPUT] {
+  "exception": "ValueError",
+  "message": "mode must be one of ('agent-all', 'smart', 'wake-all'), got: 'invalid-mode'"
+}
+[PASS] Invalid mode validation test passed
+
+============================================================
+TEST 5: ROUTING_MODES Constant
+============================================================
+[INPUT] {}
+[OUTPUT] {
+  "ROUTING_MODES": [
+    "agent-all",
+    "smart",
+    "wake-all"
+  ]
+}
+[PASS] ROUTING_MODES test passed
+
+============================================================
+SUMMARY
+============================================================
+  Default Config: PASS
+  Mode Override: PASS
+  RoutingRules: PASS
+  Invalid Mode Validation: PASS
+  ROUTING_MODES: PASS
+
+Total: 5/5 tests passed
+
+[DISTILL COMPLETE] All tests passed - golden standard recorded

@@ -1,0 +1,139 @@
+============================================================
+{
+  "source_file": "python/scripts/manage_group.py",
+  "analysis_file": "doc/scripts/manage_group.py/py.md",
+  "distillation_results": [
+    {
+      "type": "signature_analysis",
+      "functions": {
+        "_get_identity_data_or_exit": "(credential_name: str, config: SDKConfig) -> dict[str, Any]",
+        "_persist_group_snapshot": "(*, credential_name: str, identity_data: dict[str, Any], group_payload: dict[str, Any], my_role: str | None = None, membership_status: str | None = None, last_synced_seq: int | None = None, last_message_at: str | None = None) -> None",
+        "_persist_group_member_snapshot": "(*, credential_name: str, identity_data: dict[str, Any], group_id: str, members: list[dict[str, Any]]) -> None",
+        "_persist_group_messages": "(*, credential_name: str, identity_data: dict[str, Any], group_id: str, payload: dict[str, Any]) -> None",
+        "_persist_outgoing_group_message": "(*, credential_name: str, identity_data: dict[str, Any], group_id: str, content: str, client_msg_id: str | None, payload: dict[str, Any]) -> None",
+        "_parse_bool": "(value: str) -> bool",
+        "_get_authenticator_or_exit": "(credential_name: str, config: SDKConfig)",
+        "_authenticated_group_call": "(credential_name: str, method: str, params: dict | None = None) -> dict",
+        "_build_parser": "() -> argparse.ArgumentParser",
+        "create_group": "(*, name: str, slug: str, description: str, goal: str, rules: str, message_prompt: str, join_enabled: bool, credential_name: str) -> None",
+        "get_group": "(*, group_id: str, credential_name: str) -> None",
+        "update_group": "(*, group_id: str, name: str | None, description: str | None, goal: str | None, rules: str | None, message_prompt: str | None, credential_name: str) -> None",
+        "refresh_join_code": "(*, group_id: str, credential_name: str) -> None",
+        "get_join_code": "(*, group_id: str, credential_name: str) -> None",
+        "set_join_enabled": "(*, group_id: str, join_enabled: bool, credential_name: str) -> None",
+        "join_group": "(*, join_code: str, credential_name: str) -> None",
+        "leave_group": "(*, group_id: str, credential_name: str) -> None",
+        "kick_member": "(*, group_id: str, target_did: str | None, target_user_id: str | None, credential_name: str) -> None",
+        "get_group_members": "(*, group_id: str, credential_name: str) -> None",
+        "post_message": "(*, group_id: str, content: str, client_msg_id: str | None, credential_name: str) -> None",
+        "list_messages": "(*, group_id: str, since_seq: int | None, limit: int, credential_name: str) -> None",
+        "fetch_doc": "(*, doc_url: str) -> None",
+        "main": "() -> None"
+      },
+      "count": 23
+    },
+    {
+      "type": "import_analysis",
+      "imports": "from __future__ import annotations\n\nimport argparse\nimport asyncio\nimport json\nimport logging\nimport sys\nfrom typing import Any\nfrom urllib.parse import urlparse\n\nimport httpx\nimport local_store\nfrom utils import (\n    SDKConfig,\n    JsonRpcError,\n    authenticated_rpc_call,\n    create_user_service_client,\n)\nfrom utils.logging_config import configure_logging\nfrom credential_store import create_authenticator",
+      "dependencies": {
+        "local_store": [
+          "get_connection",
+          "ensure_schema",
+          "upsert_group",
+          "replace_group_members",
+          "store_messages_batch",
+          "sync_group_member_from_system_event",
+          "store_message",
+          "delete_group_members",
+          "upsert_group_member",
+          "make_thread_id"
+        ],
+        "credential_store": [
+          "create_authenticator"
+        ],
+        "utils": [
+          "SDKConfig",
+          "JsonRpcError",
+          "authenticated_rpc_call",
+          "create_user_service_client"
+        ],
+        "utils.logging_config": [
+          "configure_logging"
+        ],
+        "httpx": [
+          "AsyncClient",
+          "RequestError"
+        ]
+      }
+    },
+    {
+      "type": "cli_analysis",
+      "actions": [
+        "--create",
+        "--get",
+        "--update",
+        "--refresh-join-code",
+        "--get-join-code",
+        "--set-join-enabled",
+        "--join",
+        "--leave",
+        "--kick-member",
+        "--members",
+        "--post-message",
+        "--list-messages",
+        "--fetch-doc"
+      ],
+      "options": {
+        "--name": "Group name",
+        "--slug": "Group slug",
+        "--description": "Group description",
+        "--goal": "Group goal",
+        "--rules": "Group rules",
+        "--message-prompt": "Message prompt for members",
+        "--join-enabled": "true or false",
+        "--group-id": "Group ID",
+        "--join-code": "6-digit group join-code",
+        "--target-did": "Target DID",
+        "--target-user-id": "Target user ID",
+        "--content": "Message content",
+        "--client-msg-id": "Client idempotency message ID",
+        "--since-seq": "Incremental message cursor",
+        "--limit": "Message list limit (default: 50)",
+        "--doc-url": "Public group markdown URL",
+        "--credential": "Credential name (default: 'default')"
+      }
+    },
+    {
+      "type": "rpc_analysis",
+      "methods": [
+        "create",
+        "get",
+        "update",
+        "refresh_join_code",
+        "get_join_code",
+        "set_join_enabled",
+        "join",
+        "leave",
+        "kick_member",
+        "list_members",
+        "post_message",
+        "list_messages"
+      ],
+      "endpoint": "/group/rpc"
+    },
+    {
+      "type": "constants",
+      "values": {
+        "GROUP_RPC_ENDPOINT": "/group/rpc",
+        "JOIN_GUIDANCE": "Discovery groups can only be joined with the global 6-digit join-code. Use --join --join-code <code>."
+      }
+    }
+  ],
+  "summary": {
+    "total_functions": 23,
+    "total_dependencies": 5,
+    "total_cli_actions": 13,
+    "total_rpc_methods": 12,
+    "status": "completed"
+  }
+}

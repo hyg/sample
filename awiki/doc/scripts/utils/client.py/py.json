@@ -1,0 +1,52 @@
+============================================================
+client.py 蒸馏脚本 - 黄金标准记录
+============================================================
+
+[1] 测试 _resolve_verify 函数...
+  - _resolve_verify: base_url='https://awiki.ai'
+  - _resolve_verify: base_url='http://localhost:8080'
+  - _resolve_verify: base_url='https://api.test'
+
+[2] 测试客户端创建函数...
+  - create_user_service_client: config.user_service_url='https://awiki.ai'
+  - create_molt_message_client: config.molt_message_url='https://awiki.ai'
+
+============================================================
+黄金标准输出 (JSON)
+============================================================
+[
+  {
+    "category": "_resolve_verify",
+    "function": "_resolve_verify",
+    "input": "base_url='https://awiki.ai'",
+    "output": "type=bool, value=True"
+  },
+  {
+    "category": "_resolve_verify",
+    "function": "_resolve_verify",
+    "input": "base_url='http://localhost:8080'",
+    "output": "type=bool, value=True"
+  },
+  {
+    "category": "_resolve_verify",
+    "function": "_resolve_verify",
+    "input": "base_url='https://api.test'",
+    "output": "type=bool, value=True"
+  },
+  {
+    "category": "client_factory",
+    "function": "create_user_service_client",
+    "input": "config.user_service_url='https://awiki.ai'",
+    "output": "httpx.AsyncClient(base_url='https://awiki.ai', timeout=Timeout(timeout=30.0))"
+  },
+  {
+    "category": "client_factory",
+    "function": "create_molt_message_client",
+    "input": "config.molt_message_url='https://awiki.ai'",
+    "output": "httpx.AsyncClient(base_url='https://awiki.ai', timeout=Timeout(timeout=30.0))"
+  }
+]
+
+============================================================
+蒸馏完成
+============================================================

@@ -1,0 +1,19 @@
+============================================================
+Distiller: test_database_migration.py
+============================================================
+
+[INPUT] Collecting input information...
+  Test file: D:\huangyg\git\sample\awiki\python\tests\test_database_migration.py
+  File exists: True
+
+[EXECUTE] Running pytest...
+  Return code: 0
+  Success: True
+  Tests passed: 3
+
+[VERIFY] Verifying schema behavior...
+  ensure_local_database_ready: ready
+  detect_local_database_layout: ready
+
+[OUTPUT] Golden standard saved to: D:\huangyg\git\sample\awiki\doc\tests\test_database_migration.py\distill.json
+============================================================

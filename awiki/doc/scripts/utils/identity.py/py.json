@@ -1,0 +1,65 @@
+============================================================
+DISTILLATION SCRIPT: python/scripts/utils/identity.py
+============================================================
+
+============================================================
+TEST: DIDIdentity - Creation
+============================================================
+STATUS: PASS
+OUTPUT: {'did': 'did:wba:awiki.ai:user:k1_test123', 'unique_id': 'k1_test123', 'has_did_document': True, 'private_key_type': 'bytes'}
+
+============================================================
+TEST: DIDIdentity - unique_id property
+============================================================
+STATUS: PASS
+OUTPUT: [{'did': 'did:wba:awiki.ai:user:k1_abc123', 'extracted': 'k1_abc123', 'expected': 'k1_abc123', 'match': True}, {'did': 'did:wba:localhost:agent:k1_xyz789', 'extracted': 'k1_xyz789', 'expected': 'k1_xyz789', 'match': True}, {'did': 'did:wba:example.com:user:test_user', 'extracted': 'test_user', 'expected': 'test_user', 'match': True}]
+
+============================================================
+TEST: DIDIdentity - Optional fields
+============================================================
+STATUS: PASS
+OUTPUT: {'did': 'did:wba:awiki.ai:user:k1_test', 'user_id': 'user-123', 'jwt_token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test', 'has_e2ee_signing': True, 'has_e2ee_agreement': True}
+
+============================================================
+TEST: create_identity - Basic
+============================================================
+STATUS: PASS
+OUTPUT: {'did': 'did:wba:awiki.ai:user:k1__Goit6t6N0wmeYv06Ja_mkGOyRzm4t7jUZiLKZ7kyO0', 'did_starts_with': True, 'has_did_document': True, 'has_private_key': True, 'has_public_key': True, 'private_key_starts_with': True, 'public_key_starts_with': True}
+
+============================================================
+TEST: create_identity - Agent prefix
+============================================================
+STATUS: PASS
+OUTPUT: {'did': 'did:wba:awiki.ai:agent:k1_yEhqZRdIYU-6Fo3BOlThB8rFD0QYCEunKoGNBtQWEXI', 'did_starts_with': True, 'unique_id': 'k1_yEhqZRdIYU-6Fo3BOlThB8rFD0QYCEunKoGNBtQWEXI'}
+
+============================================================
+TEST: create_identity - With services
+============================================================
+STATUS: PASS
+OUTPUT: {'did': 'did:wba:awiki.ai:user:k1_0njF4X75PtwQhfWmWZn5Ay8tr3lVK5jPV2wvCjaOUFk', 'has_services': True}
+
+============================================================
+TEST: load_private_key - Valid key
+============================================================
+STATUS: PASS
+OUTPUT: {'key_type': 'ECPrivateKey', 'key_module': 'cryptography.hazmat.bindings._rust.openssl.ec', 'is_valid': True}
+
+============================================================
+TEST: load_private_key - Invalid input
+============================================================
+STATUS: PASS
+OUTPUT: {'exception_type': 'ValueError', 'expected_error': True}
+
+============================================================
+SUMMARY
+============================================================
+  [PASS] DIDIdentity - Creation
+  [PASS] DIDIdentity - unique_id property
+  [PASS] DIDIdentity - Optional fields
+  [PASS] create_identity - Basic
+  [PASS] create_identity - Agent prefix
+  [PASS] create_identity - With services
+  [PASS] load_private_key - Valid key
+  [PASS] load_private_key - Invalid input
+
+Total: 8/8 tests passed

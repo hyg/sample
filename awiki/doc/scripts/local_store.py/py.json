@@ -1,0 +1,17 @@
+
+============================================================
+蒸馏完成!
+============================================================
+总记录数：34
+输出文件：C:\Users\hyg\AppData\Local\Temp\tmpe9l8bhy0\distill_output.json
+
+记录分类统计:
+  - contact: 2
+  - e2ee_outbox: 4
+  - group: 3
+  - message: 4
+  - normalization: 15
+  - relationship_event: 1
+  - schema: 3
+  - thread_id: 2
+============================================================

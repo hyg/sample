@@ -1,0 +1,53 @@
+Distiller for query_db.py
+Script path: D:\huangyg\git\sample\awiki\python\scripts\query_db.py
+Time: 2026-03-20T23:39:29.747175
+============================================================
+
+[1/5] 查询线程列表
+Input: SELECT * FROM threads LIMIT 10
+Status: OK (returncode=0)
+Stdout preview:
+[
+  {
+    "owner_did": "did:wba:awiki.ai:huangyg:k1_ir_NnIXt_PzUumzegAFGttD1Ny3KubcQM3yHG2Q7efs",
+    "thread_id": "dm:did:wba:awiki.ai:huangyg:k1_ir_NnIXt_PzUumzegAFGttD1Ny3KubcQM3yHG2Q7efs:did:wba:awiki.ai:huangyg:k1_ir_NnIXt_PzUumzegAFGttD1Ny3KubcQM3yHG2Q7efs",
+    "message_count": 3,
+    "unread_count": 1,
+    "last_message_at": "2026-03-15T15:32:26",
+    "last_content": "test"
+  },
+  {
+    "owner_did": "did:wba:awiki.ai:user:k1_3jWobJrUk4mqnWAgKRt_QN1vFivx1PNG06qlVX_G1Eo",
+    "thread_id": 
+... (truncated)
+
+[2/5] 查询消息
+Input: SELECT * FROM messages WHERE credential_name='alice' LIMIT 10
+Status: OK (returncode=0)
+Stdout preview:
+[]
+
+
+[3/5] 查询群组
+Input: SELECT * FROM groups ORDER BY last_message_at DESC LIMIT 10
+Status: OK (returncode=0)
+Stdout preview:
+[]
+
+
+[4/5] 查询群组成员
+Input: SELECT * FROM group_members WHERE group_id='grp_xxx' LIMIT 20
+Status: OK (returncode=0)
+Stdout preview:
+[]
+
+
+[5/5] 查询关系事件
+Input: SELECT * FROM relationship_events WHERE status='pending' ORDER BY created_at DESC LIMIT 20
+Status: OK (returncode=0)
+Stdout preview:
+[]
+
+
+============================================================
+Results saved to: D:\huangyg\git\sample\awiki\doc\scripts\query_db.py\distill_output.json

@@ -1,0 +1,96 @@
+{
+  "source_file": "python/scripts/check_inbox.py",
+  "documentation": "doc/scripts/check_inbox.py/py.md",
+  "constants": {
+    "MESSAGE_RPC": "/message/rpc",
+    "GROUP_RPC": "/group/rpc",
+    "_E2EE_MSG_TYPES": [
+      "e2ee_ack",
+      "e2ee_error",
+      "e2ee_init",
+      "e2ee_msg",
+      "e2ee_rekey"
+    ],
+    "_E2EE_SESSION_SETUP_TYPES": [
+      "e2ee_init",
+      "e2ee_rekey"
+    ],
+    "_E2EE_TYPE_ORDER": {
+      "e2ee_init": 0,
+      "e2ee_ack": 1,
+      "e2ee_rekey": 2,
+      "e2ee_msg": 3,
+      "e2ee_error": 4
+    },
+    "_MESSAGE_SCOPES": [
+      "all",
+      "direct",
+      "group"
+    ]
+  },
+  "helper_functions": [
+    "_message_time_value",
+    "_message_sort_key",
+    "_decorate_user_visible_e2ee_message",
+    "_strip_hidden_user_fields",
+    "_filter_messages_by_scope",
+    "_parse_group_history_target",
+    "_classify_decrypt_error"
+  ],
+  "main_interfaces": [
+    "check_inbox",
+    "get_history",
+    "get_group_history",
+    "mark_read"
+  ],
+  "dependencies": {
+    "utils": [
+      "SDKConfig",
+      "E2eeClient",
+      "create_molt_message_client",
+      "create_user_service_client",
+      "authenticated_rpc_call",
+      "resolve_to_did"
+    ],
+    "utils.logging_config": [
+      "configure_logging"
+    ],
+    "credential_store": [
+      "create_authenticator",
+      "load_identity"
+    ],
+    "e2ee_outbox": [
+      "record_remote_failure"
+    ],
+    "e2ee_store": [
+      "load_e2ee_state",
+      "save_e2ee_state"
+    ],
+    "utils.e2ee": [
+      "SUPPORTED_E2EE_VERSION",
+      "build_e2ee_error_content",
+      "build_e2ee_error_message"
+    ],
+    "local_store": [
+      "get_connection",
+      "ensure_schema",
+      "store_messages_batch",
+      "upsert_group",
+      "sync_group_member_from_system_event",
+      "upsert_contact",
+      "make_thread_id",
+      "get_message_by_id"
+    ],
+    "manage_group": [
+      "_persist_group_messages"
+    ]
+  },
+  "usage_examples": [
+    "uv run python scripts/check_inbox.py",
+    "uv run python scripts/check_inbox.py --limit 5",
+    "uv run python scripts/check_inbox.py --history \"did:wba:localhost:user:abc123\"",
+    "uv run python scripts/check_inbox.py --scope group",
+    "uv run python scripts/check_inbox.py --group-id grp_123 --limit 50",
+    "uv run python scripts/check_inbox.py --mark-read msg_id_1 msg_id_2"
+  ]
+}

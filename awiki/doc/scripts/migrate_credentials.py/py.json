@@ -1,0 +1,22 @@
+============================================================
+DISTILLER: migrate_credentials.py
+============================================================
+INPUT: credential=None
+------------------------------------------------------------
+OUTPUT: JSON migration summary
+------------------------------------------------------------
+{
+  "status": "not_needed",
+  "legacy_credentials": [],
+  "unique_dids": [],
+  "unique_did_count": 0,
+  "migrated": [],
+  "skipped": [],
+  "conflicts": [],
+  "errors": [],
+  "invalid_json_files": [],
+  "orphan_e2ee_files": []
+}
+============================================================
+DISTILLER: Complete
+============================================================

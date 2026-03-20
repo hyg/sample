@@ -31,43 +31,43 @@
   },
   {
     "name": "ensure_credentials_root",
-    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\"\n}",
-    "output": "{\n  \"root\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\",\n  \"exists\": true\n}",
+    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\"\n}",
+    "output": "{\n  \"root\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\",\n  \"exists\": true\n}",
     "status": "PASS"
   },
   {
     "name": "index_path",
-    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\"\n}",
-    "output": "{\n  \"index_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\index.json\"\n}",
+    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\"\n}",
+    "output": "{\n  \"index_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\index.json\"\n}",
     "status": "PASS"
   },
   {
     "name": "legacy_backup_root",
-    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\"\n}",
-    "output": "{\n  \"backup_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\.legacy-backup\"\n}",
+    "input": "{\n  \"credentials_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\"\n}",
+    "output": "{\n  \"backup_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\.legacy-backup\"\n}",
     "status": "PASS"
   },
   {
     "name": "build_credential_paths",
     "input": "{\n  \"dir_name\": \"test_dir_name\"\n}",
-    "output": "{\n  \"root_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\",\n  \"dir_name\": \"test_dir_name\",\n  \"credential_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\",\n  \"identity_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\identity.json\",\n  \"auth_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\auth.json\",\n  \"did_document_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\did_document.json\",\n  \"key1_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\key-1-private.pem\",\n  \"key1_public_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\key-1-public.pem\",\n  \"e2ee_signing_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\e2ee-signing-private.pem\",\n  \"e2ee_agreement_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\e2ee-agreement-private.pem\",\n  \"e2ee_state_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\\\\e2ee-state.json\"\n}",
+    "output": "{\n  \"root_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\",\n  \"dir_name\": \"test_dir_name\",\n  \"credential_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\",\n  \"identity_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\identity.json\",\n  \"auth_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\auth.json\",\n  \"did_document_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\did_document.json\",\n  \"key1_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\key-1-private.pem\",\n  \"key1_public_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\key-1-public.pem\",\n  \"e2ee_signing_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\e2ee-signing-private.pem\",\n  \"e2ee_agreement_private_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\e2ee-agreement-private.pem\",\n  \"e2ee_state_path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\\\\e2ee-state.json\"\n}",
     "status": "PASS"
   },
   {
     "name": "write_secure_text",
-    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_text.txt\",\n  \"content\": \"test content\"\n}",
+    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_text.txt\",\n  \"content\": \"test content\"\n}",
     "output": "{\n  \"written\": true,\n  \"content\": \"test content\"\n}",
     "status": "PASS"
   },
   {
     "name": "write_secure_json",
-    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_json.json\",\n  \"payload\": {\n    \"key\": \"value\",\n    \"number\": 42\n  }\n}",
+    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_json.json\",\n  \"payload\": {\n    \"key\": \"value\",\n    \"number\": 42\n  }\n}",
     "output": "{\n  \"written\": true,\n  \"content\": {\n    \"key\": \"value\",\n    \"number\": 42\n  }\n}",
     "status": "PASS"
   },
   {
     "name": "write_secure_bytes",
-    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_bytes.bin\",\n  \"content\": \"b'binary content'\"\n}",
+    "input": "{\n  \"path\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_bytes.bin\",\n  \"content\": \"b'binary content'\"\n}",
     "output": "{\n  \"written\": true,\n  \"content\": \"b'binary content'\"\n}",
     "status": "PASS"
   },
@@ -86,7 +86,7 @@
   {
     "name": "CredentialPaths",
     "input": "{\n  \"dir_name\": \"test_dir_name\"\n}",
-    "output": "{\n  \"type\": \"CredentialPaths\",\n  \"dir_name\": \"test_dir_name\",\n  \"credential_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpi61vgcrx\\\\test_dir_name\"\n}",
+    "output": "{\n  \"type\": \"CredentialPaths\",\n  \"dir_name\": \"test_dir_name\",\n  \"credential_dir\": \"C:\\\\Users\\\\hyg\\\\AppData\\\\Local\\\\Temp\\\\tmpvvlhon6t\\\\test_dir_name\"\n}",
     "status": "PASS"
   }
 ]

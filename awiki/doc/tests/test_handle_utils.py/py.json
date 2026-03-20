@@ -1,0 +1,75 @@
+============================================================
+test_handle_utils.py 蒸馏脚本 - 黄金标准记录
+============================================================
+
+【中国本地号码测试】
+[PASS] test_chinese_local_numbers
+  Input:    '13800138000'
+  Output:   '+8613800138000'
+
+[PASS] test_chinese_local_numbers
+  Input:    '15912345678'
+  Output:   '+8615912345678'
+
+[PASS] test_chinese_local_numbers
+  Input:    '19999999999'
+  Output:   '+8619999999999'
+
+【国际格式号码测试】
+[PASS] test_international_format_unchanged
+  Input:    '+8613800138000'
+  Output:   '+8613800138000'
+
+[PASS] test_international_format_unchanged
+  Input:    '+14155552671'
+  Output:   '+14155552671'
+
+[PASS] test_international_format_unchanged
+  Input:    '+447911123456'
+  Output:   '+447911123456'
+
+[PASS] test_international_format_unchanged
+  Input:    '+81312345678'
+  Output:   '+81312345678'
+
+[PASS] test_international_format_unchanged
+  Input:    '+85212345678'
+  Output:   '+85212345678'
+
+【空格处理测试】
+[PASS] test_strips_whitespace
+  Input:    '  13800138000  '
+  Output:   '+8613800138000'
+
+[PASS] test_strips_whitespace
+  Input:    ' +14155552671 '
+  Output:   '+14155552671'
+
+【无效号码测试】
+[PASS] test_invalid_phone_raises
+  Input:    '12345'
+  Output:   'ValueError(Invalid phone number: 12345. Use international format with country code: +<country_code><number> (e.g., +8613800138000 for China, +14155552671 for US). China local numbers (11 digits starting with 1) are auto-prefixed with +86.)'
+
+[PASS] test_invalid_phone_raises
+  Input:    'abc'
+  Output:   'ValueError(Invalid phone number: abc. Use international format with country code: +<country_code><number> (e.g., +8613800138000 for China, +14155552671 for US). China local numbers (11 digits starting with 1) are auto-prefixed with +86.)'
+
+[PASS] test_invalid_phone_raises
+  Input:    '+abc'
+  Output:   'ValueError(Invalid international phone number: +abc. Expected format: +<country_code><number> (e.g., +8613800138000, +14155552671). Please check the country code.)'
+
+[PASS] test_invalid_phone_raises
+  Input:    ''
+  Output:   'ValueError(Invalid phone number: . Use international format with country code: +<country_code><number> (e.g., +8613800138000 for China, +14155552671 for US). China local numbers (11 digits starting with 1) are auto-prefixed with +86.)'
+
+[PASS] test_invalid_phone_raises
+  Input:    '+1234'
+  Output:   'ValueError(Invalid international phone number: +1234. Expected format: +<country_code><number> (e.g., +8613800138000, +14155552671). Please check the country code.)'
+
+[PASS] test_invalid_phone_raises
+  Input:    '99999999999'
+  Output:   'ValueError(Invalid phone number: 99999999999. Use international format with country code: +<country_code><number> (e.g., +8613800138000 for China, +14155552671 for US). China local numbers (11 digits starting with 1) are auto-prefixed with +86.)'
+
+============================================================
+测试汇总：16 通过，0 失败
+============================================================

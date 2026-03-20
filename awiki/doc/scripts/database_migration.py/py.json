@@ -1,0 +1,43 @@
+数据库迁移模块蒸馏测试
+============================================================
+
+[测试 1] 检测数据库布局...
+
+============================================================
+函数：detect_local_database_layout
+============================================================
+{
+  "status": "ready",
+  "db_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\database\\awiki.db",
+  "before_version": 9
+}
+
+[测试 2] 确保数据库就绪...
+
+============================================================
+函数：ensure_local_database_ready
+============================================================
+{
+  "status": "ready",
+  "db_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\database\\awiki.db",
+  "before_version": 9,
+  "after_version": 9,
+  "backup_path": null
+}
+
+[测试 3] 迁移数据库...
+
+============================================================
+函数：migrate_local_database
+============================================================
+{
+  "status": "ready",
+  "db_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\database\\awiki.db",
+  "before_version": 9,
+  "after_version": 9,
+  "backup_path": null
+}
+
+============================================================
+蒸馏测试完成
+============================================================

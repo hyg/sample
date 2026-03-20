@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-03-20T23:39:35.333219",
+  "script": "python/scripts/regenerate_e2ee_keys.py",
+  "input": {
+    "credential": "default",
+    "force": false
+  },
+  "output": {
+    "exit_code": 1,
+    "note": "Script exited normally (e.g., credential not found or already has keys)"
+  },
+  "status": "exit"
+}

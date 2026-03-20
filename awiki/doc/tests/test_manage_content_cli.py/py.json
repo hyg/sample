@@ -1,0 +1,106 @@
+============================================================
+test_manage_content_cli.py 蒸馏脚本
+记录输入输出作为黄金标准
+============================================================
+
+============================================================
+测试 1: JsonRpcError 错误渲染
+============================================================
+
+【输入】:
+{
+  "test_name": "test_main_renders_jsonrpc_error_as_structured_json",
+  "description": "模拟 create_page 抛出 JsonRpcError",
+  "argv": [
+    "manage_content.py",
+    "--create",
+    "--slug",
+    "dup",
+    "--title",
+    "Title"
+  ],
+  "mocked_function": "create_page",
+  "raised_exception": {
+    "type": "JsonRpcError",
+    "code": -32001,
+    "message": "Slug already exists",
+    "data": {
+      "slug": "dup"
+    }
+  }
+}
+
+【输出】:
+{
+  "exit_code": 1,
+  "stdout": {
+    "status": "error",
+    "error_type": "jsonrpc",
+    "code": -32001,
+    "message": "Slug already exists",
+    "data": {
+      "slug": "dup"
+    }
+  }
+}
+
+【验证】: ✓ 通过
+
+============================================================
+测试 2: 通用错误渲染
+============================================================
+
+【输入】:
+{
+  "test_name": "test_main_renders_generic_error_as_structured_json",
+  "description": "模拟 list_pages 抛出 RuntimeError",
+  "argv": [
+    "manage_content.py",
+    "--list"
+  ],
+  "mocked_function": "list_pages",
+  "raised_exception": {
+    "type": "RuntimeError",
+    "message": "boom"
+  }
+}
+
+【输出】:
+{
+  "exit_code": 1,
+  "stdout": {
+    "status": "error",
+    "error_type": "RuntimeError",
+    "message": "boom"
+  }
+}
+
+【验证】: ✓ 通过
+
+============================================================
+蒸馏完成 - 黄金标准总结
+============================================================
+{
+  "test_jsonrpc_error": {
+    "exit_code": 1,
+    "stdout": {
+      "status": "error",
+      "error_type": "jsonrpc",
+      "code": -32001,
+      "message": "Slug already exists",
+      "data": {
+        "slug": "dup"
+      }
+    }
+  },
+  "test_generic_error": {
+    "exit_code": 1,
+    "stdout": {
+      "status": "error",
+      "error_type": "RuntimeError",
+      "message": "boom"
+    }
+  }
+}
+
+✓ 所有测试通过

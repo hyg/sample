@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-03-20T23:39:06.257044",
+  "script": "setup_identity.py",
+  "description": "DID 身份管理脚本的输入输出黄金标准",
+  "test_results": [
+    {
+      "timestamp": "2026-03-20T23:39:06.252731",
+      "action": "config",
+      "input": {
+        "action": "config"
+      },
+      "output": {
+        "user_service_url": "https://awiki.ai",
+        "did_domain": "awiki.ai",
+        "molt_message_url": "https://awiki.ai",
+        "molt_message_ws_url": null
+      },
+      "success": true,
+      "error": null
+    },
+    {
+      "timestamp": "2026-03-20T23:39:06.254746",
+      "action": "list",
+      "input": {
+        "action": "list"
+      },
+      "output": {
+        "identities": [
+          {
+            "credential_name": "default",
+            "did": "did:wba:awiki.ai:user:k1_test",
+            "name": "Test User",
+            "has_jwt": true,
+            "created_at": "2026-03-20T10:04:20.354790+00:00"
+          },
+          {
+            "credential_name": "test_delete_cred",
+            "did": "",
+            "name": "",
+            "has_jwt": false,
+            "created_at": ""
+          }
+        ],
+        "count": 2
+      },
+      "success": true,
+      "error": null
+    },
+    {
+      "timestamp": "2026-03-20T23:39:06.256812",
+      "action": "load",
+      "input": {
+        "action": "load",
+        "credential_name": "default"
+      },
+      "output": {
+        "loaded": true,
+        "credential_name": "default",
+        "did": "did:wba:awiki.ai:user:k1_test",
+        "unique_id": "k1_test",
+        "user_id": "user-1",
+        "has_jwt": true,
+        "created_at": "2026-03-20T10:04:20.354790+00:00",
+        "name": "Test User"
+      },
+      "success": true,
+      "error": null
+    }
+  ],
+  "summary": {
+    "total_tests": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}

@@ -1,0 +1,217 @@
+======================================================================
+DISTILL: manage_relationship.py Golden Standard I/O
+======================================================================
+
+Script Path: python/scripts/manage_relationship.py
+RPC Endpoint: /user-service/did/relationships/rpc
+
+----------------------------------------------------------------------
+CLI INPUTS (Mutually Exclusive)
+----------------------------------------------------------------------
+
+[FOLLOW]
+  Argument: --follow <DID_or_handle>
+  Example:  --follow "did:wba:localhost:user:abc123"
+  Desc:     Follow a specific DID
+
+[UNFOLLOW]
+  Argument: --unfollow <DID_or_handle>
+  Example:  --unfollow "did:wba:localhost:user:abc123"
+  Desc:     Unfollow a specific DID
+
+[STATUS]
+  Argument: --status <DID_or_handle>
+  Example:  --status "did:wba:localhost:user:abc123"
+  Desc:     View relationship status with a specific DID
+
+[FOLLOWING]
+  Argument: --following
+  Example:  --following
+  Desc:     View following list
+
+[FOLLOWERS]
+  Argument: --followers
+  Example:  --followers
+  Desc:     View followers list
+
+----------------------------------------------------------------------
+OPTIONAL ARGUMENTS
+----------------------------------------------------------------------
+  --credential: default=default (Credential name)
+  --limit: default=50 (List result count)
+  --offset: default=0 (List offset)
+
+----------------------------------------------------------------------
+MODULE DEPENDENCIES
+----------------------------------------------------------------------
+  utils:
+    - SDKConfig
+    - create_user_service_client
+    - authenticated_rpc_call
+    - resolve_to_did
+  utils.logging_config:
+    - configure_logging
+  credential_store:
+    - create_authenticator
+  local_store:
+    - get_connection
+    - ensure_schema
+    - upsert_contact
+    - append_relationship_event
+
+----------------------------------------------------------------------
+FUNCTION SIGNATURES
+----------------------------------------------------------------------
+
+follow:
+  Signature: async follow(target_did: str, credential_name: str = "default") -> None
+  Input:     {'target_did': 'str', 'credential_name': "str (default: 'default')"}
+  Output:    None (prints result to stdout/stderr)
+
+unfollow:
+  Signature: async unfollow(target_did: str, credential_name: str = "default") -> None
+  Input:     {'target_did': 'str', 'credential_name': "str (default: 'default')"}
+  Output:    None (prints result to stdout/stderr)
+
+get_status:
+  Signature: async get_status(target_did: str, credential_name: str = "default") -> None
+  Input:     {'target_did': 'str', 'credential_name': "str (default: 'default')"}
+  Output:    None (prints result to stdout/stderr)
+
+get_following:
+  Signature: async get_following(credential_name: str = "default", limit: int = 50, offset: int = 0) -> None
+  Input:     {'credential_name': 'str', 'limit': 'int (default: 50)', 'offset': 'int (default: 0)'}
+  Output:    None (prints result to stdout/stderr)
+
+get_followers:
+  Signature: async get_followers(credential_name: str = "default", limit: int = 50, offset: int = 0) -> None
+  Input:     {'credential_name': 'str', 'limit': 'int (default: 50)', 'offset': 'int (default: 0)'}
+  Output:    None (prints result to stdout/stderr)
+
+main:
+  Signature: main() -> None
+  Input:     CLI arguments via argparse
+  Output:    None (delegates to async functions)
+
+----------------------------------------------------------------------
+RPC CALL PATTERNS
+----------------------------------------------------------------------
+{
+  "follow": {
+    "method": "follow",
+    "params": {
+      "target_did": "<resolved_DID>"
+    },
+    "endpoint": "/user-service/did/relationships/rpc"
+  },
+  "unfollow": {
+    "method": "unfollow",
+    "params": {
+      "target_did": "<resolved_DID>"
+    },
+    "endpoint": "/user-service/did/relationships/rpc"
+  },
+  "get_status": {
+    "method": "get_status",
+    "params": {
+      "target_did": "<resolved_DID>"
+    },
+    "endpoint": "/user-service/did/relationships/rpc"
+  },
+  "get_following": {
+    "method": "get_following",
+    "params": {
+      "limit": 50,
+      "offset": 0
+    },
+    "endpoint": "/user-service/did/relationships/rpc"
+  },
+  "get_followers": {
+    "method": "get_followers",
+    "params": {
+      "limit": 50,
+      "offset": 0
+    },
+    "endpoint": "/user-service/did/relationships/rpc"
+  }
+}
+
+----------------------------------------------------------------------
+LOCAL STORE OPERATIONS
+----------------------------------------------------------------------
+{
+  "follow": [
+    {
+      "operation": "upsert_contact",
+      "params": {
+        "owner_did": "<user_DID>",
+        "did": "<target_DID>",
+        "relationship": "following",
+        "followed": true
+      }
+    },
+    {
+      "operation": "append_relationship_event",
+      "params": {
+        "owner_did": "<user_DID>",
+        "target_did": "<target_DID>",
+        "event_type": "followed",
+        "status": "applied",
+        "credential_name": "<credential_name>"
+      }
+    }
+  ],
+  "unfollow": [
+    {
+      "operation": "upsert_contact",
+      "params": {
+        "owner_did": "<user_DID>",
+        "did": "<target_DID>",
+        "relationship": "none",
+        "followed": false
+      }
+    },
+    {
+      "operation": "append_relationship_event",
+      "params": {
+        "owner_did": "<user_DID>",
+        "target_did": "<target_DID>",
+        "event_type": "unfollowed",
+        "status": "applied",
+        "credential_name": "<credential_name>"
+      }
+    }
+  ]
+}
+
+----------------------------------------------------------------------
+CONSOLE OUTPUT PATTERNS
+----------------------------------------------------------------------
+
+[FOLLOW]
+  stderr: Follow succeeded:
+  stdout: JSON formatted RPC result
+
+[UNFOLLOW]
+  stderr: Unfollow succeeded:
+  stdout: JSON formatted RPC result
+
+[GET_STATUS]
+  stderr: Relationship status:
+  stdout: JSON formatted RPC result
+
+[GET_FOLLOWING]
+  stderr: Following list:
+  stdout: JSON formatted RPC result
+
+[GET_FOLLOWERS]
+  stderr: Followers list:
+  stdout: JSON formatted RPC result
+
+[ERROR_CREDENTIAL_UNAVAILABLE]
+  stdout: Credential '<name>' unavailable; please create an identity first
+  exit_code: 1
+
+======================================================================
+DISTILL COMPLETE
+======================================================================

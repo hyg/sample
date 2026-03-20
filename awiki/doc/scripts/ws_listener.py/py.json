@@ -1,0 +1,112 @@
+============================================================
+WS_LISTENER.PY DISTILLATION SCRIPT
+============================================================
+============================================================
+FUNCTION: _truncate_did
+INPUT: {"did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g"}
+OUTPUT: "did:wba:...eP3P8O1g"
+============================================================
+============================================================
+FUNCTION: _truncate_did
+INPUT: {"did": "short"}
+OUTPUT: "short"
+============================================================
+============================================================
+FUNCTION: _truncate_did
+INPUT: {"did": "did:wba:awiki.ai:user:k1_mSDgXJ_LIWEJ_jWrxVCqdWPNuMr1EIVYV7o8yg_zp5w"}
+OUTPUT: "did:wba:...8yg_zp5w"
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "e2ee"}
+OUTPUT: true
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "e2ee_msg"}
+OUTPUT: true
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "e2ee_request"}
+OUTPUT: true
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "group_e2ee_msg"}
+OUTPUT: true
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "group_e2ee_request"}
+OUTPUT: true
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "group_epoch_advance"}
+OUTPUT: true
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "text"}
+OUTPUT: false
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "image"}
+OUTPUT: false
+============================================================
+============================================================
+FUNCTION: _is_reserved_e2ee_type
+INPUT: {"msg_type": "file"}
+OUTPUT: false
+============================================================
+============================================================
+FUNCTION: classify_message (Self message (should drop))
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "content": "Hello", "type": "text"}, "my_did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "cfg.mode": "smart"}
+OUTPUT: null
+============================================================
+============================================================
+FUNCTION: classify_message (Normal message (wake mode))
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_other", "content": "Hello there", "type": "text"}, "my_did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "cfg.mode": "smart"}
+OUTPUT: "wake"
+============================================================
+============================================================
+FUNCTION: classify_message (Command message (agent mode))
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_other", "content": "/help", "type": "text"}, "my_did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "cfg.mode": "smart"}
+OUTPUT: "agent"
+============================================================
+============================================================
+FUNCTION: classify_message (E2EE message (should drop))
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_other", "content": "encrypted", "type": "e2ee_msg"}, "my_did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "cfg.mode": "smart"}
+OUTPUT: null
+============================================================
+============================================================
+FUNCTION: classify_message (Blacklisted sender (should drop))
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_bad", "content": "Hello", "type": "text"}, "my_did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "cfg.mode": "smart"}
+OUTPUT: null
+============================================================
+============================================================
+FUNCTION: classify_message (Keyword message (agent mode))
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_other", "content": "This is urgent!", "type": "text"}, "my_did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "cfg.mode": "smart"}
+OUTPUT: "agent"
+============================================================
+============================================================
+FUNCTION: classify_message (agent-all mode)
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_other", "content": "Hello"}, "cfg.mode": "agent-all"}
+OUTPUT: "agent"
+============================================================
+============================================================
+FUNCTION: classify_message (wake-all mode)
+INPUT: {"params": {"sender_did": "did:wba:awiki.ai:user:k1_other", "content": "Hello"}, "cfg.mode": "wake-all"}
+OUTPUT: "wake"
+============================================================
+============================================================
+FUNCTION: _build_identity
+INPUT: {"did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "user_id": "77ec3f44-f94f-4c19-b315-49c0f0bf4a37"}
+OUTPUT: {"did": "did:wba:awiki.ai:user:k1_AB8G0We3oboQNZldVTWdfTyqSrwQPV7QSCSeP3P8O1g", "user_id": "77ec3f44-f94f-4c19-b315-49c0f0bf4a37", "has_jwt": true, "has_private_key": true}
+============================================================
+
+============================================================
+DISTILLATION COMPLETE - ALL TESTS PASSED
+============================================================

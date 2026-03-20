@@ -1,0 +1,52 @@
+============================================================
+test_handle_recovery.py 蒸馏脚本
+============================================================
+
+【输入】
+{
+  "config": {
+    "did_domain": "awiki.ai"
+  },
+  "phone": "+8613800138000",
+  "otp_code": "123456",
+  "handle": "alice"
+}
+
+【输出】
+{
+  "recorded_rpc_call": {
+    "endpoint": "/user-service/did-auth/rpc",
+    "method": "recover_handle",
+    "payload": {
+      "did_document": {
+        "id": "did:wba:awiki.ai:alice:k1_new",
+        "proof": {
+          "challenge": "nonce"
+        }
+      },
+      "handle": "alice",
+      "phone": "+8613800138000",
+      "otp_code": "123456"
+    }
+  },
+  "identity": {
+    "did": "did:wba:awiki.ai:alice:k1_new",
+    "jwt_token": "jwt-token"
+  },
+  "result": {
+    "full_handle": "alice.awiki.ai"
+  }
+}
+
+【验证点】
+  ✓ PASS: endpoint == /user-service/did-auth/rpc
+  ✓ PASS: method == recover_handle
+  ✓ PASS: payload.handle == alice
+  ✓ PASS: payload.otp_code == 123456
+  ✓ PASS: identity.did == did:wba:awiki.ai:alice:k1_new
+  ✓ PASS: identity.jwt_token == jwt-token
+  ✓ PASS: result.full_handle == alice.awiki.ai
+
+============================================================
+所有验证点通过 ✓
+============================================================

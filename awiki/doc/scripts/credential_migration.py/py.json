@@ -1,0 +1,44 @@
+============================================================
+执行：detect_legacy_layout()
+============================================================
+输入：无参数
+输出：{
+  "status": "new",
+  "legacy_credentials": [],
+  "unique_dids": [],
+  "unique_did_count": 0,
+  "invalid_json_files": [],
+  "orphan_e2ee_files": []
+}
+
+============================================================
+执行：migrate_legacy_credentials()
+============================================================
+输入：credential_name=None
+输出：{
+  "status": "not_needed",
+  "legacy_credentials": [],
+  "unique_dids": [],
+  "unique_did_count": 0,
+  "migrated": [],
+  "skipped": [],
+  "conflicts": [],
+  "errors": [],
+  "invalid_json_files": [],
+  "orphan_e2ee_files": []
+}
+
+============================================================
+执行：ensure_credential_storage_ready()
+============================================================
+输入：credential_name=None
+输出：{
+  "status": "ready",
+  "layout": "new",
+  "credential_ready": true,
+  "migration": null
+}
+
+============================================================
+蒸馏完成 - 所有函数执行成功
+============================================================

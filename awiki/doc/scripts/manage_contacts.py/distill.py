@@ -329,3 +329,46 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# =============================================================================
+# 附录：补充场景测试 - Profile 联动、群组批量保存、去重逻辑
+# =============================================================================
+
+def test_profile_update_triggers_search_visibility(credential_name='default'):
+    """测试 Profile 更新后搜索可见性变化"""
+    input_data = {'scenario': 'profile_update_triggers_search_visibility', 'credential_name': credential_name}
+    output_data = {'search_before': 0, 'search_after': 0, 'visibility_changed': False, 'error': None}
+    try:
+        from search_users import search_users
+        from update_profile import update_profile
+        
+        # 步骤 1: 搜索前
+        before = search_users(query='AI 专家', credential_name=credential_name)
+        output_data['search_before'] = len(before) if before else 0
+        
+        # 步骤 2: 更新 Profile
+        update_profile(nick_name='AI 专家', tags='AI,ML', credential_name=credential_name)
+        
+        # 步骤 3: 搜索后
+        after = search_users(query='AI 专家', credential_name=credential_name)
+        output_data['search_after'] = len(after) if after else 0
+        output_data['visibility_changed'] = output_data['search_after'] > output_data['search_before']
+        
+        return {'input': input_data, 'output': output_data, 'success': output_data['visibility_changed']}
+    except Exception as e:
+        output_data['error'] = str(e)
+        return {'input': input_data, 'output': output_data, 'success': False}
+
+def test_save_from_group_duplicate_contact(group_id='test_group', credential_name='default'):
+    """测试联系人去重场景"""
+    input_data = {'scenario': 'save_from_group_duplicate_contact', 'group_id': group_id, 'credential_name': credential_name}
+    output_data = {'contact_count_before': 0, 'contact_count_after': 0, 'deduplicated': False, 'error': None}
+    try:
+        from manage_contacts import save_from_group
+        save_from_group(group_id=group_id, credential_name=credential_name)
+        save_from_group(group_id=group_id, credential_name=credential_name)  # 第二次应去重
+        output_data['deduplicated'] = True
+        return {'input': input_data, 'output': output_data, 'success': True}
+    except Exception as e:
+        output_data['error'] = str(e)
+        return {'input': input_data, 'output': output_data, 'success': False}

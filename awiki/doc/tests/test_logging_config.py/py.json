@@ -1,0 +1,157 @@
+============================================================
+蒸馏脚本：test_logging_config.py
+============================================================
+
+执行：distill_get_log_dir_uses_data_dir
+  ✓ PASS - 断言：2/2
+
+执行：distill_cleanup_log_files_removes_expired_days
+  ✓ PASS - 断言：4/4
+
+执行：distill_cleanup_log_files_enforces_total_size_limit
+  ✓ PASS - 断言：2/2
+
+执行：distill_daily_retention_file_handler_writes_one_file_per_day
+  ✓ PASS - 断言：4/4
+
+执行：distill_configure_logging_mirrors_print_to_daily_log
+  ✓ PASS - 断言：3/3
+
+============================================================
+黄金标准输出 (JSON)
+============================================================
+[
+  {
+    "test_name": "test_get_log_dir_uses_data_dir",
+    "input": {
+      "tmp_path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpe2_ntvwn"
+    },
+    "output": {
+      "log_dir": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpe2_ntvwn\\logs",
+      "expected": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpe2_ntvwn\\logs",
+      "exists": true
+    },
+    "assertions": {
+      "log_dir_equals_expected": true,
+      "log_dir_exists": true
+    }
+  },
+  {
+    "test_name": "test_cleanup_log_files_removes_expired_days",
+    "input": {
+      "tmp_path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmp9s9bxk9n",
+      "now": "2026-03-17T08:00:00+00:00",
+      "max_retention_days": 15,
+      "files_created": 17
+    },
+    "output": {
+      "deleted_files": [
+        "awiki-agent-2026-03-01.log",
+        "awiki-agent-2026-03-02.log"
+      ],
+      "remaining_files": [
+        "awiki-agent-2026-03-03.log",
+        "awiki-agent-2026-03-04.log",
+        "awiki-agent-2026-03-05.log",
+        "awiki-agent-2026-03-06.log",
+        "awiki-agent-2026-03-07.log",
+        "awiki-agent-2026-03-08.log",
+        "awiki-agent-2026-03-09.log",
+        "awiki-agent-2026-03-10.log",
+        "awiki-agent-2026-03-11.log",
+        "awiki-agent-2026-03-12.log",
+        "awiki-agent-2026-03-13.log",
+        "awiki-agent-2026-03-14.log",
+        "awiki-agent-2026-03-15.log",
+        "awiki-agent-2026-03-16.log",
+        "awiki-agent-2026-03-17.log"
+      ],
+      "deleted_count": 2,
+      "remaining_count": 15
+    },
+    "assertions": {
+      "deleted_correct": true,
+      "first_remaining": true,
+      "last_remaining": true,
+      "remaining_count_correct": true
+    }
+  },
+  {
+    "test_name": "test_cleanup_log_files_enforces_total_size_limit",
+    "input": {
+      "tmp_path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmp785so8uy",
+      "now": "2026-03-03T08:00:00+00:00",
+      "max_retention_days": 15,
+      "max_total_size_bytes": 10,
+      "files_created": [
+        {
+          "name": "awiki-agent-2026-03-01.log",
+          "size": 5
+        },
+        {
+          "name": "awiki-agent-2026-03-02.log",
+          "size": 5
+        },
+        {
+          "name": "awiki-agent-2026-03-03.log",
+          "size": 5
+        }
+      ]
+    },
+    "output": {
+      "deleted_files": [
+        "awiki-agent-2026-03-01.log"
+      ],
+      "remaining_files": [
+        "awiki-agent-2026-03-02.log",
+        "awiki-agent-2026-03-03.log"
+      ]
+    },
+    "assertions": {
+      "deleted_correct": true,
+      "remaining_correct": true
+    }
+  },
+  {
+    "test_name": "test_daily_retention_file_handler_writes_one_file_per_day",
+    "input": {
+      "tmp_path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpnr0d6u8o",
+      "first_day": "2026-03-08",
+      "second_day": "2026-03-09"
+    },
+    "output": {
+      "first_file_exists": true,
+      "second_file_exists": true,
+      "first_file_content": "first-day",
+      "second_file_content": "second-day"
+    },
+    "assertions": {
+      "first_file_exists": true,
+      "second_file_exists": true,
+      "first_contains_first_day": true,
+      "second_contains_second_day": true
+    }
+  },
+  {
+    "test_name": "test_configure_logging_mirrors_print_to_daily_log",
+    "input": {
+      "tmp_path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpwsi1zx9h",
+      "script": "from utils.logging_config import configure_logging\nconfigure_logging(console_level=None, mirror_stdio=True)\nprint(\"print-to-log\")"
+    },
+    "output": {
+      "stdout": "print-to-log",
+      "stderr": "",
+      "log_files_count": 1,
+      "log_content": "2026-03-20 18:04:45 [INFO] awiki_stdio: print-to-log"
+    },
+    "assertions": {
+      "stdout_contains_print": true,
+      "one_log_file_created": true,
+      "log_contains_print": true
+    }
+  }
+]
+
+============================================================
+所有测试通过 ✓
+============================================================

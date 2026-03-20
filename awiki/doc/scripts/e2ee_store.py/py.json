@@ -1,0 +1,132 @@
+============================================================
+ E2EE Store 蒸馏脚本 - 黄金标准记录
+============================================================
+
+凭证目录：C:\Users\hyg\AppData\Local\Temp\tmp5fnudmvz
+Scripts 目录：D:\huangyg\git\sample\awiki\python\scripts
+
+============================================================
+ 测试 1: save_e2ee_state
+============================================================
+
+输入:
+  credential_name: 'test_cred'
+  state: {
+    "version": "hpke_v1",
+    "local_did": "did:wba:awiki.ai:user:k1_test123",
+    "sessions": [
+        {
+            "session_id": "sess_001",
+            "remote_did": "did:wba:awiki.ai:user:k1_remote456",
+            "sender_context": {
+                "key": "sender_key_data"
+            },
+            "receiver_context": {
+                "key": "receiver_key_data"
+            }
+        }
+    ]
+}
+
+输出:
+  返回路径: C:\Users\hyg\.openclaw\credentials\awiki-agent-id-message\cred_test_cred\e2ee-state.json
+  文件存在: True
+  文件内容验证: True
+
+============================================================
+ 测试 2: load_e2ee_state
+============================================================
+
+输入:
+  credential_name: 'test_load_cred'
+
+输出:
+  返回状态: {
+    "version": "hpke_v1",
+    "local_did": "did:wba:awiki.ai:user:k1_load_test",
+    "sessions": []
+}
+  状态匹配: True
+
+测试加载不存在的凭证:
+  返回: None
+
+============================================================
+ 测试 3: delete_e2ee_state
+============================================================
+
+输入:
+  credential_name: 'test_delete_cred'
+  删除前文件存在: True
+
+输出:
+  删除成功: True
+  删除后文件存在: False
+
+测试删除不存在的凭证:
+  返回: False
+
+============================================================
+ 黄金标准摘要
+============================================================
+
+[
+  {
+    "test": "save_e2ee_state",
+    "input": {
+      "credential_name": "test_cred",
+      "state": {
+        "version": "hpke_v1",
+        "local_did": "did:wba:awiki.ai:user:k1_test123",
+        "sessions": [
+          {
+            "session_id": "sess_001",
+            "remote_did": "did:wba:awiki.ai:user:k1_remote456",
+            "sender_context": {
+              "key": "sender_key_data"
+            },
+            "receiver_context": {
+              "key": "receiver_key_data"
+            }
+          }
+        ]
+      }
+    },
+    "output": {
+      "path": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\cred_test_cred\\e2ee-state.json",
+      "exists": true,
+      "content_match": true
+    }
+  },
+  {
+    "test": "load_e2ee_state",
+    "input": {
+      "credential_name": "test_load_cred"
+    },
+    "output": {
+      "loaded_state": {
+        "version": "hpke_v1",
+        "local_did": "did:wba:awiki.ai:user:k1_load_test",
+        "sessions": []
+      },
+      "state_match": true,
+      "nonexistent_result": null
+    }
+  },
+  {
+    "test": "delete_e2ee_state",
+    "input": {
+      "credential_name": "test_delete_cred"
+    },
+    "output": {
+      "delete_success": true,
+      "file_after_delete": true,
+      "nonexistent_delete_result": false
+    }
+  }
+]
+
+============================================================
+ 所有测试通过
+============================================================
+

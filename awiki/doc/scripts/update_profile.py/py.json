@@ -1,0 +1,240 @@
+============================================================
+Distillation Report: update_profile.py
+============================================================
+
+--- test_cli_parsing ---
+{
+  "test_name": "cli_parsing",
+  "timestamp": "2026-03-20T23:39:23.289429",
+  "inputs": {
+    "description": "Test CLI argument parsing for update_profile.py",
+    "script_path": "python/scripts/update_profile.py",
+    "test_args": [
+      "--nick-name",
+      "Test User",
+      "--bio",
+      "Test bio",
+      "--tags",
+      "tag1,tag2,tag3",
+      "--credential",
+      "test_cred"
+    ]
+  },
+  "outputs": {
+    "parsed_args": {
+      "nick_name": "Test User",
+      "bio": "Test bio",
+      "tags": [
+        "tag1",
+        "tag2",
+        "tag3"
+      ],
+      "credential": "test_cred"
+    },
+    "expected_behavior": "Arguments parsed correctly, async update_profile called"
+  },
+  "errors": null
+}
+
+--- test_empty_args ---
+{
+  "test_name": "empty_args",
+  "timestamp": "2026-03-20T23:39:23.289478",
+  "inputs": {
+    "description": "Test with no update fields specified",
+    "script_path": "python/scripts/update_profile.py",
+    "test_args": [
+      "--credential",
+      "test_cred"
+    ]
+  },
+  "outputs": {
+    "stdout": "Please specify at least one field to update\nAvailable fields: --nick-name, --bio, --tags, --profile-md",
+    "exit_code": 1,
+    "expected_behavior": "Script exits with error message when no fields provided"
+  },
+  "errors": null
+}
+
+--- test_update_nickname ---
+{
+  "test_name": "update_nickname",
+  "timestamp": "2026-03-20T23:39:23.289498",
+  "inputs": {
+    "description": "Update only nickname field",
+    "script_path": "python/scripts/update_profile.py",
+    "test_args": [
+      "--nick-name",
+      "DID Pro",
+      "--credential",
+      "default"
+    ],
+    "update_profile_params": {
+      "credential_name": "default",
+      "nick_name": "DID Pro",
+      "bio": null,
+      "tags": null,
+      "profile_md": null
+    }
+  },
+  "outputs": {
+    "rpc_call": {
+      "endpoint": "/user-service/did/profile/rpc",
+      "method": "update_me",
+      "params": {
+        "nick_name": "DID Pro"
+      }
+    },
+    "expected_behavior": "Profile nickname updated via RPC"
+  },
+  "errors": null
+}
+
+--- test_update_multiple_fields ---
+{
+  "test_name": "update_multiple_fields",
+  "timestamp": "2026-03-20T23:39:23.289516",
+  "inputs": {
+    "description": "Update nickname, bio, and tags simultaneously",
+    "script_path": "python/scripts/update_profile.py",
+    "test_args": [
+      "--nick-name",
+      "DID Pro",
+      "--bio",
+      "Decentralized identity enthusiast",
+      "--tags",
+      "developer,did,agent",
+      "--credential",
+      "default"
+    ],
+    "update_profile_params": {
+      "credential_name": "default",
+      "nick_name": "DID Pro",
+      "bio": "Decentralized identity enthusiast",
+      "tags": [
+        "developer",
+        "did",
+        "agent"
+      ],
+      "profile_md": null
+    }
+  },
+  "outputs": {
+    "rpc_call": {
+      "endpoint": "/user-service/did/profile/rpc",
+      "method": "update_me",
+      "params": {
+        "nick_name": "DID Pro",
+        "bio": "Decentralized identity enthusiast",
+        "tags": [
+          "developer",
+          "did",
+          "agent"
+        ]
+      }
+    },
+    "expected_behavior": "All specified fields updated via single RPC call"
+  },
+  "errors": null
+}
+
+--- test_update_profile_md ---
+{
+  "test_name": "update_profile_md",
+  "timestamp": "2026-03-20T23:39:23.289535",
+  "inputs": {
+    "description": "Update profile with Markdown content",
+    "script_path": "python/scripts/update_profile.py",
+    "test_args": [
+      "--profile-md",
+      "# About Me\n\nI am an agent.",
+      "--credential",
+      "default"
+    ],
+    "update_profile_params": {
+      "credential_name": "default",
+      "nick_name": null,
+      "bio": null,
+      "tags": null,
+      "profile_md": "# About Me\n\nI am an agent."
+    }
+  },
+  "outputs": {
+    "rpc_call": {
+      "endpoint": "/user-service/did/profile/rpc",
+      "method": "update_me",
+      "params": {
+        "profile_md": "# About Me\n\nI am an agent."
+      }
+    },
+    "expected_behavior": "Profile markdown content updated via RPC"
+  },
+  "errors": null
+}
+
+--- test_credential_unavailable ---
+{
+  "test_name": "credential_unavailable",
+  "timestamp": "2026-03-20T23:39:23.289549",
+  "inputs": {
+    "description": "Test when credential does not exist",
+    "script_path": "python/scripts/update_profile.py",
+    "test_args": [
+      "--nick-name",
+      "Test",
+      "--credential",
+      "nonexistent"
+    ],
+    "update_profile_params": {
+      "credential_name": "nonexistent",
+      "nick_name": "Test"
+    }
+  },
+  "outputs": {
+    "stdout": "Credential 'nonexistent' unavailable; please create an identity first",
+    "exit_code": 1,
+    "expected_behavior": "Script exits with error when credential not found"
+  },
+  "errors": null
+}
+
+--- test_module_structure ---
+{
+  "test_name": "module_structure",
+  "timestamp": "2026-03-20T23:39:23.289561",
+  "inputs": {
+    "description": "Module imports and structure analysis",
+    "script_path": "python/scripts/update_profile.py"
+  },
+  "outputs": {
+    "imports": [
+      "argparse",
+      "asyncio",
+      "json",
+      "logging",
+      "sys",
+      "pathlib.Path",
+      "utils.SDKConfig",
+      "utils.create_user_service_client",
+      "utils.authenticated_rpc_call",
+      "utils.logging_config.configure_logging",
+      "credential_store.create_authenticator"
+    ],
+    "constants": {
+      "PROFILE_RPC": "/user-service/did/profile/rpc"
+    },
+    "functions": {
+      "async update_profile()": "Main async function to update profile",
+      "main()": "CLI entry point"
+    },
+    "dependencies": [
+      "utils",
+      "credential_store"
+    ]
+  },
+  "errors": null
+}
+
+============================================================
+Distillation complete. Golden standards recorded above.
+============================================================

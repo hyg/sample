@@ -1,0 +1,19 @@
+============================================================
+蒸馏脚本：test_auth_update.py
+============================================================
+
+[测试 1] Body access_token 返回
+输入：body access_token scenario
+输出：{'did': 'did:wba:test.example.com:user:alice', 'user_id': 'user-1', 'message': 'DID document updated', 'access_token': 'body-token'}
+
+[测试 2] Authorization 头回退
+输入：authorization header fallback scenario
+输出：{'did': 'did:wba:test.example.com:user:alice', 'user_id': 'user-1', 'message': 'DID document updated', 'access_token': 'header-token'}
+
+[测试 3] JSON-RPC 错误抛出
+输入：json rpc error scenario
+输出：{'error': 'JSON-RPC error -32003: DID already registered'}
+
+============================================================
+所有测试通过！黄金标准已记录。
+============================================================

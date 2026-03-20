@@ -1,0 +1,22 @@
+======================================================================
+蒸馏脚本：test_check_status_upgrade.py
+======================================================================
+
+[测试 1] test_ensure_local_upgrade_ready_reports_performed_migrations
+----------------------------------------------------------------------
+状态：PASS
+输出摘要：status=ready, performed=['credential_layout', 'local_database']
+
+[测试 2] test_check_status_stops_when_upgrade_cannot_prepare_credentials
+----------------------------------------------------------------------
+状态：PASS
+输出摘要：local_upgrade.status=error, identity.status=storage_migration_required
+
+======================================================================
+黄金标准记录汇总
+======================================================================
+通过：2/2
+
+- test_ensure_local_upgrade_ready_reports_performed_migrations: PASS
+
+- test_check_status_stops_when_upgrade_cannot_prepare_credentials: PASS

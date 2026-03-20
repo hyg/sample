@@ -218,3 +218,37 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# =============================================================================
+# 附录：补充场景测试 - 空收件箱、分页测试
+# =============================================================================
+
+def test_check_inbox_empty(credential_name='default', limit=20):
+    """测试空收件箱场景"""
+    input_data = {'scenario': 'check_inbox_empty', 'credential_name': credential_name, 'limit': limit}
+    output_data = {'messages': None, 'total': None, 'is_empty': False, 'error': None}
+    try:
+        from check_inbox import check_inbox
+        result = check_inbox(credential_name=credential_name, limit=limit)
+        output_data['messages'] = result if result else []
+        output_data['total'] = len(result) if result else 0
+        output_data['is_empty'] = output_data['total'] == 0
+        return {'input': input_data, 'output': output_data, 'success': True}
+    except Exception as e:
+        output_data['error'] = str(e)
+        return {'input': input_data, 'output': output_data, 'success': False}
+
+def test_check_inbox_pagination(credential_name='default', limit=10):
+    """测试大量消息分页"""
+    input_data = {'scenario': 'check_inbox_pagination', 'credential_name': credential_name, 'limit': limit}
+    output_data = {'messages': None, 'total': None, 'has_more': False, 'error': None}
+    try:
+        from check_inbox import check_inbox
+        result = check_inbox(credential_name=credential_name, limit=limit)
+        output_data['messages'] = result if result else []
+        output_data['total'] = len(result) if result else 0
+        output_data['has_more'] = output_data['total'] == limit
+        return {'input': input_data, 'output': output_data, 'success': True}
+    except Exception as e:
+        output_data['error'] = str(e)
+        return {'input': input_data, 'output': output_data, 'success': False}

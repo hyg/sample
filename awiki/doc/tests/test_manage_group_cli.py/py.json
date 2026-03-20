@@ -1,0 +1,154 @@
+============================================================
+蒸馏脚本：test_manage_group_cli.py
+黄金标准：Discovery-group CLI 单元测试
+============================================================
+
+============================================================
+测试：test_join_rejects_group_id_with_guidance
+============================================================
+✓ 通过：test_join_rejects_group_id_with_guidance
+
+============================================================
+测试：test_create_dispatches_with_group_name_alias
+============================================================
+✓ 通过：test_create_dispatches_with_group_name_alias
+
+============================================================
+测试：test_join_dispatches_with_join_code_only
+============================================================
+✓ 通过：test_join_dispatches_with_join_code_only
+
+============================================================
+测试：test_join_accepts_legacy_passcode_alias
+============================================================
+✓ 通过：test_join_accepts_legacy_passcode_alias
+
+============================================================
+测试：test_jsonrpc_error_is_rendered_as_json
+============================================================
+✓ 通过：test_jsonrpc_error_is_rendered_as_json
+
+============================================================
+测试：test_fetch_doc_retries_with_x_handle_after_connect_error
+============================================================
+✓ 通过：test_fetch_doc_retries_with_x_handle_after_connect_error
+
+============================================================
+测试：test_create_group_persists_local_snapshot
+============================================================
+{
+  "group_id": "grp_1",
+  "name": "OpenClaw Meetup",
+  "slug": "openclaw-meetup",
+  "description": "desc",
+  "goal": "goal",
+  "rules": "rules",
+  "message_prompt": "prompt",
+  "doc_url": "https://alice.awiki.ai/group/openclaw-meetup.md",
+  "join_enabled": true,
+  "owner_did": "did:alice",
+  "owner_handle": "alice.awiki.ai",
+  "member_count": 1,
+  "join_code": "314159",
+  "join_code_expires_at": "2026-03-10T12:00:00+00:00",
+  "created_at": "2026-03-10T00:00:00+00:00",
+  "updated_at": "2026-03-10T00:00:00+00:00"
+}
+✓ 通过：test_create_group_persists_local_snapshot
+
+============================================================
+测试：test_post_message_persists_outgoing_local_message
+============================================================
+{
+  "message_id": "msg_1",
+  "server_seq": 12,
+  "created_at": "2026-03-10T01:00:00+00:00"
+}
+✓ 通过：test_post_message_persists_outgoing_local_message
+
+============================================================
+测试：test_list_messages_backfills_local_history
+============================================================
+{
+  "messages": [
+    {
+      "id": "msg_in",
+      "sender_did": "did:bob",
+      "sender_name": "bob.awiki.ai",
+      "group_id": "grp_1",
+      "content": "hi",
+      "type": "group_user",
+      "created_at": "2026-03-10T02:00:00+00:00",
+      "server_seq": 20
+    },
+    {
+      "id": "msg_out",
+      "sender_did": "did:alice",
+      "sender_name": "alice.awiki.ai",
+      "group_id": "grp_1",
+      "content": "hello",
+      "type": "group_user",
+      "created_at": "2026-03-10T02:01:00+00:00",
+      "server_seq": 21
+    },
+    {
+      "id": "msg_sys",
+      "sender_did": null,
+      "sender_name": "System",
+      "group_id": "grp_1",
+      "content": "bob.awiki.ai joined the group.",
+      "type": "group_system_member_joined",
+      "created_at": "2026-03-10T02:02:00+00:00",
+      "server_seq": 22,
+      "system_event": {
+        "kind": "member_joined",
+        "subject": {
+          "id": "user_bob",
+          "did": "did:bob",
+          "handle": "bob.awiki.ai",
+          "profile_url": "https://awiki.ai/profiles/user_bob"
+        },
+        "actor": {
+          "id": "user_bob",
+          "did": "did:bob",
+          "handle": "bob.awiki.ai",
+          "profile_url": "https://awiki.ai/profiles/user_bob"
+        }
+      }
+    }
+  ],
+  "total": 3,
+  "next_since_seq": 22
+}
+✓ 通过：test_list_messages_backfills_local_history
+
+============================================================
+测试：test_list_members_replaces_local_member_snapshot
+============================================================
+{
+  "members": [
+    {
+      "user_id": "user_1",
+      "did": "did:alice",
+      "handle": "alice.awiki.ai",
+      "profile_url": "https://awiki.ai/profiles/user_1",
+      "role": "owner",
+      "joined_at": "2026-03-10T00:00:00+00:00",
+      "sent_message_count": 2
+    },
+    {
+      "user_id": "user_2",
+      "did": "did:bob",
+      "handle": "bob.awiki.ai",
+      "profile_url": "https://awiki.ai/profiles/user_2",
+      "role": "member",
+      "joined_at": "2026-03-10T00:01:00+00:00",
+      "sent_message_count": 1
+    }
+  ]
+}
+✓ 通过：test_list_members_replaces_local_member_snapshot
+
+============================================================
+总结：10 通过，0 失败，共 10 个测试
+============================================================

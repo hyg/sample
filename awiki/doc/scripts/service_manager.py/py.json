@@ -1,0 +1,75 @@
+============================================================
+DISTILLER: service_manager.py
+============================================================
+
+[INPUT] Platform: win32
+[INPUT] Manager class: WindowsServiceManager
+
+[OUTPUT] Manager info recorded
+[OUTPUT] Status: installed=False, running=False
+
+[TEST] _build_run_args: 7 args built
+
+============================================================
+GOLDEN STANDARD SUMMARY
+============================================================
+Platform: win32
+Service Manager: WindowsServiceManager
+Installed: False
+Running: False
+Log Dir: C:\Users\hyg\AppData\Local\awiki-ws-listener\logs
+
+============================================================
+JSON OUTPUT (for verification)
+============================================================
+{
+  "input": {
+    "platform": "win32",
+    "python_version": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "python_executable": "C:\\Users\\hyg\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+    "project_root": "D:\\huangyg\\git\\sample\\awiki",
+    "environment": {
+      "LOCALAPPDATA": "C:\\Users\\hyg\\AppData\\Local",
+      "XDG_CONFIG_HOME": null,
+      "XDG_STATE_HOME": null,
+      "HOME": "C:\\Users\\hyg"
+    }
+  },
+  "output": {
+    "manager_info": {
+      "class_name": "WindowsServiceManager",
+      "type": "WindowsServiceManager",
+      "is_installed": false,
+      "log_dir": "C:\\Users\\hyg\\AppData\\Local\\awiki-ws-listener\\logs",
+      "python_path": "C:\\Users\\hyg\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+      "task_name": "awiki-ws-listener",
+      "bat_path": "C:\\Users\\hyg\\AppData\\Local\\awiki-ws-listener\\run-listener.bat",
+      "app_dir": "C:\\Users\\hyg\\AppData\\Local\\awiki-ws-listener"
+    },
+    "status": {
+      "platform": "Windows (Task Scheduler)",
+      "installed": false,
+      "task_name": "awiki-ws-listener",
+      "application_log_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\logs",
+      "application_log_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\logs\\awiki-agent-2026-03-20.log",
+      "running": false
+    }
+  },
+  "tests": {
+    "build_run_args": {
+      "credential": "test_cred",
+      "config_path": null,
+      "mode": "smart",
+      "built_args": [
+        "C:\\Users\\hyg\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+        "D:\\huangyg\\git\\sample\\awiki\\python\\scripts\\ws_listener.py",
+        "run",
+        "--credential",
+        "test_cred",
+        "--mode",
+        "smart"
+      ]
+    }
+  },
+  "success": true
+}

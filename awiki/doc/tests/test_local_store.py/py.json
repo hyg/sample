@@ -1,0 +1,180 @@
+============================================================
+蒸馏脚本：test_local_store.py
+============================================================
+
+[1] TestSchema
+----------------------------------------
+Tables: ['contacts', 'e2ee_outbox', 'group_members', 'groups', 'messages', 'relationship_events']
+Views: ['inbox', 'outbox', 'threads']
+Indexes count: 26
+Schema version: 9
+Journal mode: wal
+
+[2] TestThreadId
+----------------------------------------
+DM thread ID (a,b): dm:did:a:did:b
+DM thread ID (b,a): dm:did:a:did:b
+Equal: True
+Group thread ID: group:g1
+
+[3] TestStoreMessage
+----------------------------------------
+Stored message: hello
+Dedup count (expected 2): 2
+
+[4] TestStoreMessagesBatch
+----------------------------------------
+Batch owners: ['did:alice']
+
+[5] TestUpsertContact
+----------------------------------------
+Contact: Alice (alice)
+
+[6] TestRelationshipEvents
+----------------------------------------
+Event: ai_recommended for did:bob
+
+[7] TestGroups
+----------------------------------------
+Group: OpenClaw Meetup (role: owner)
+
+[8] TestE2eeOutbox
+----------------------------------------
+E2EE outbox: peer=did:b
+
+[9] TestViews
+----------------------------------------
+Threads view count: 5
+
+[10] TestExecuteSql
+----------------------------------------
+SQL SELECT count: 8
+DROP rejected: True
+
+============================================================
+黄金标准输出
+============================================================
+{
+  "schema_tables": [
+    "contacts",
+    "e2ee_outbox",
+    "group_members",
+    "groups",
+    "messages",
+    "relationship_events"
+  ],
+  "schema_views": [
+    "inbox",
+    "outbox",
+    "threads"
+  ],
+  "schema_indexes": [
+    "idx_contacts_owner",
+    "idx_contacts_owner_source_group",
+    "idx_e2ee_outbox_credential",
+    "idx_e2ee_outbox_owner_sent_msg",
+    "idx_e2ee_outbox_owner_sent_seq",
+    "idx_e2ee_outbox_owner_status",
+    "idx_group_members_owner_group_role",
+    "idx_group_members_owner_group_status",
+    "idx_groups_owner_slug",
+    "idx_groups_owner_status_last_message",
+    "idx_groups_owner_updated",
+    "idx_messages_credential",
+    "idx_messages_owner",
+    "idx_messages_owner_direction",
+    "idx_messages_owner_sender",
+    "idx_messages_owner_thread",
+    "idx_messages_owner_thread_seq",
+    "idx_relationship_events_owner_group",
+    "idx_relationship_events_owner_status_time",
+    "idx_relationship_events_owner_target_time",
+    "sqlite_autoindex_contacts_1",
+    "sqlite_autoindex_e2ee_outbox_1",
+    "sqlite_autoindex_group_members_1",
+    "sqlite_autoindex_groups_1",
+    "sqlite_autoindex_messages_1",
+    "sqlite_autoindex_relationship_events_1"
+  ],
+  "schema_version": 9,
+  "journal_mode": "wal",
+  "thread_id_dm": {
+    "tid1": "dm:did:a:did:b",
+    "tid2": "dm:did:a:did:b",
+    "equal": true
+  },
+  "thread_id_group": "group:g1",
+  "store_message": {
+    "msg_id": "m1",
+    "owner_did": "did:self",
+    "thread_id": "dm:a:b",
+    "direction": 0,
+    "sender_did": "did:a",
+    "receiver_did": null,
+    "group_id": null,
+    "group_did": null,
+    "content_type": "text",
+    "content": "hello",
+    "title": null,
+    "server_seq": null,
+    "sent_at": null,
+    "stored_at": "2026-03-20T10:04:32.039167+00:00",
+    "is_e2ee": 0,
+    "is_read": 0,
+    "sender_name": null,
+    "metadata": null,
+    "credential_name": ""
+  },
+  "dedup_count": 2,
+  "batch_owners": [
+    "did:alice"
+  ],
+  "contact": {
+    "name": "Alice",
+    "handle": "alice"
+  },
+  "relationship_event": {
+    "event_type": "ai_recommended",
+    "target_did": "did:bob",
+    "score": 0.91,
+    "status": "pending"
+  },
+  "group": {
+    "name": "OpenClaw Meetup",
+    "my_role": "owner",
+    "join_code": "314159"
+  },
+  "e2ee_outbox": {
+    "peer_did": "did:b",
+    "owner_did": "did:alice"
+  },
+  "threads_view": [
+    {
+      "owner_did": "did:alice",
+      "thread_id": "dm:a:b",
+      "message_count": 4
+    },
+    {
+      "owner_did": "did:alice",
+      "thread_id": "group:g1",
+      "message_count": 1
+    },
+    {
+      "owner_did": "did:bob",
+      "thread_id": "dm:a:b",
+      "message_count": 1
+    },
+    {
+      "owner_did": "did:bob",
+      "thread_id": "group:g1",
+      "message_count": 1
+    },
+    {
+      "owner_did": "did:self",
+      "thread_id": "dm:a:b",
+      "message_count": 1
+    }
+  ],
+  "sql_select_count": 8,
+  "sql_drop_rejected": true
+}

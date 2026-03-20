@@ -1,0 +1,56 @@
+{
+  "script": "python/scripts/query_db.py",
+  "timestamp": "2026-03-20T23:39:32.581774",
+  "results": [
+    {
+      "name": "查询线程列表",
+      "input": "SELECT * FROM threads LIMIT 10",
+      "output": {
+        "success": true,
+        "stdout": "[\n  {\n    \"owner_did\": \"did:wba:awiki.ai:huangyg:k1_ir_NnIXt_PzUumzegAFGttD1Ny3KubcQM3yHG2Q7efs\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:huangyg:k1_ir_NnIXt_PzUumzegAFGttD1Ny3KubcQM3yHG2Q7efs:did:wba:awiki.ai:huangyg:k1_ir_NnIXt_PzUumzegAFGttD1Ny3KubcQM3yHG2Q7efs\",\n    \"message_count\": 3,\n    \"unread_count\": 1,\n    \"last_message_at\": \"2026-03-15T15:32:26\",\n    \"last_content\": \"test\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_3jWobJrUk4mqnWAgKRt_QN1vFivx1PNG06qlVX_G1Eo\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_3jWobJrUk4mqnWAgKRt_QN1vFivx1PNG06qlVX_G1Eo:did:wba:awiki.ai:user:k1_RxJfM781K_KUAx-qoWPq-01PYJcHp5o_7ww9N6ho464\",\n    \"message_count\": 1,\n    \"unread_count\": 0,\n    \"last_message_at\": \"2026-03-09T04:35:06.277239+00:00\",\n    \"last_content\": \"Python 测试消息 1\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_Af7TjKU3zuB2qKI4TGM53oIFq8qlUVqOIwvlVU4ZeHM\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_Af7TjKU3zuB2qKI4TGM53oIFq8qlUVqOIwvlVU4ZeHM:did:wba:awiki.ai:user:k1_mSDgXJ_LIWEJ_jWrxVCqdWPNuMr1EIVYV7o8yg_zp5w\",\n    \"message_count\": 1,\n    \"unread_count\": 0,\n    \"last_message_at\": \"2026-03-08T08:04:55.053679+00:00\",\n    \"last_content\": \"Hello from Python! 这是测试消息。\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_Jn5uCR8GkwZPMxKhmZhJhtq5MRsSem4jJrMZEDTYrwI\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_6TZhdiTDtSwgJSPeaegqX73mQ22xhpVwmZXwpX0QAak:did:wba:awiki.ai:user:k1_Jn5uCR8GkwZPMxKhmZhJhtq5MRsSem4jJrMZEDTYrwI\",\n    \"message_count\": 1,\n    \"unread_count\": 0,\n    \"last_message_at\": \"2026-03-09T13:59:17.140069+00:00\",\n    \"last_content\": \"Python 测试消息\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_NjK1F__F74pxwlpUgEHJp9LCjupd4qGgUTgiZRxb2Qo:did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw\",\n    \"message_count\": 3,\n    \"unread_count\": 3,\n    \"last_message_at\": \"2026-03-12T04:46:13\",\n    \"last_content\": \"node-awiki Test Report v0.1.2 | Installation: SUCCESS (77 pkgs) | Identity: PASS | Handle Resolution: PASS | Issues: JWT refresh bug, missing CLI commands, no tests | Status: FUNCTIONAL | Full report: /home/huangyg/.openclaw/workspace/node-awiki-test-report.md\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw:did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw\",\n    \"message_count\": 1,\n    \"unread_count\": 1,\n    \"last_message_at\": \"2026-03-09T17:01:20\",\n    \"last_content\": \"Test @ 2026-03-09T17:01:21.726457\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw:did:wba:awiki.ai:user:k1_bUdQ5wfUtI58T5b9mMbs5U9DktqRhuU-3_LV6mnOYfY\",\n    \"message_count\": 5,\n    \"unread_count\": 2,\n    \"last_message_at\": \"2026-03-15T06:34:07.471269+00:00\",\n    \"last_content\": \"test message from python\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw:did:wba:awiki.ai:user:k1_h0MSe1gi2PDdhTWVIqraR6Vu3Kn62mtZbXhilDa5LQc\",\n    \"message_count\": 2,\n    \"unread_count\": 2,\n    \"last_message_at\": \"2026-03-09T19:55:21\",\n    \"last_content\": \"【测试消息 2】devclaw 发送的测试消息，请确认是否收到。如果收到请回复。时间：2026-03-09 19:55\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw:did:wba:awiki.ai:user:k1_mxJfaeNstoDQ82kZOVN-k36Gs6Wwja1IEU590iGk-ww\",\n    \"message_count\": 5,\n    \"unread_count\": 5,\n    \"last_message_at\": \"2026-03-10T00:49:40\",\n    \"last_content\": \"hyg4awiki 您好：node-awiki v0.1.0 测试报告。测试者 devclaw，日期 2026-03-09。新 DID：did:wba:awiki.ai:user:k1_mxJfaeNstoDQ82kZOVN-k36Gs6Wwja1IEU590iGk-ww。通过功能：身份管理、消息发送。问题：服务器方法缺失、认证失败 401、E2EE 代码错误。完整报告：/home/huangyg/.openclaw/workspace/node-awiki-test-report.md\"\n  },\n  {\n    \"owner_did\": \"did:wba:awiki.ai:user:k1_WZjQTg9ctRvfJNrDxbPvy0XsKlyEtgq-aHBhv6pR9B4\",\n    \"thread_id\": \"dm:did:wba:awiki.ai:user:k1_RliDno6Bx0iRdkhDbd-lvVQgXh9ZeewHWqLFf2i_viw:did:wba:awiki.ai:user:k1_WZjQTg9ctRvfJNrDxbPvy0XsKlyEtgq-aHBhv6pR9B4\",\n    \"message_count\": 1,\n    \"unread_count\": 0,\n    \"last_message_at\": \"2026-03-08T10:59:07.274011+00:00\",\n    \"last_content\": \"Python test message\"\n  }\n]\n",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "name": "查询消息",
+      "input": "SELECT * FROM messages WHERE credential_name='alice' LIMIT 10",
+      "output": {
+        "success": true,
+        "stdout": "[]\n",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "name": "查询群组",
+      "input": "SELECT * FROM groups ORDER BY last_message_at DESC LIMIT 10",
+      "output": {
+        "success": true,
+        "stdout": "[]\n",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "name": "查询群组成员",
+      "input": "SELECT * FROM group_members WHERE group_id='grp_xxx' LIMIT 20",
+      "output": {
+        "success": true,
+        "stdout": "[]\n",
+        "stderr": "",
+        "returncode": 0
+      }
+    },
+    {
+      "name": "查询关系事件",
+      "input": "SELECT * FROM relationship_events WHERE status='pending' ORDER BY created_at DESC LIMIT 20",
+      "output": {
+        "success": true,
+        "stdout": "[]\n",
+        "stderr": "",
+        "returncode": 0
+      }
+    }
+  ]
+}

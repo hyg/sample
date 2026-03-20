@@ -1,0 +1,73 @@
+======================================================================
+test_recover_handle_cli.py 蒸馏报告
+======================================================================
+
+运行测试：test_resolve_recovery_target_auto_selects_non_destructive_alias
+  ✓ 通过
+
+运行测试：test_resolve_recovery_target_rejects_implicit_overwrite
+  ✓ 通过
+
+运行测试：test_do_recover_preserves_existing_default_when_no_credential_is_requested
+{
+  "did": "did:wba:awiki.ai:alice:k1_new",
+  "user_id": "user-1",
+  "handle": "alice",
+  "full_handle": "alice.awiki.ai",
+  "requested_credential_name": null,
+  "credential_name": "alice",
+  "replaced_existing_credential": false,
+  "message": "recovered",
+  "local_backup_path": null,
+  "local_cache_migration": null
+}
+  ✓ 通过
+
+运行测试：test_do_recover_replaces_existing_credential_only_when_requested
+Existing credential backed up to: \tmp\default-backup
+{
+  "did": "did:wba:awiki.ai:alice:k1_new",
+  "user_id": "user-1",
+  "handle": "alice",
+  "full_handle": "alice.awiki.ai",
+  "requested_credential_name": "default",
+  "credential_name": "default",
+  "replaced_existing_credential": true,
+  "message": "recovered",
+  "local_backup_path": "\\tmp\\default-backup",
+  "local_cache_migration": {
+    "credential_name": "default",
+    "old_did": "did:wba:awiki.ai:alice:k1_old",
+    "new_did": "did:wba:awiki.ai:alice:k1_new"
+  }
+}
+  ✓ 通过
+
+======================================================================
+黄金标准汇总
+======================================================================
+总计：4 | 通过：4 | 失败：0
+
+测试：test_resolve_recovery_target_auto_selects_non_destructive_alias
+  状态：passed
+  输入：{'existing_credentials': {'alice': {'did': 'did:wba:awiki.ai:alice:k1_old'}, 'alice_recovered': {'did': 'did:wba:awiki.ai:alice:k1_other'}}, 'handle': 'alice', 'requested_credential_name': None, 'replace_existing': False}
+  输出：{'credential_name': 'alice_recovered_2', 'existing_credential': None}
+
+测试：test_resolve_recovery_target_rejects_implicit_overwrite
+  状态：passed
+  输入：{'default_credential': {'did': 'did:wba:awiki.ai:user:k1_existing'}, 'handle': 'alice', 'requested_credential_name': 'default', 'replace_existing': False}
+  输出：{'error_raised': True, 'error_message': "Credential 'default' already exists for DID did:wba:awiki.ai:user:k1_existing; use a different --credential value or pass --replace-existing to overwrite it intentionally."}
+
+测试：test_do_recover_preserves_existing_default_when_no_credential_is_requested
+  状态：passed
+  输入：{'existing_credentials': {'default': {'did': 'did:wba:awiki.ai:user:k1_default', 'unique_id': 'k1_default', 'name': 'Default User'}}, 'handle': 'alice', 'phone': '+8613800138000', 'otp_code': '123456', 'requested_credential_name': None, 'replace_existing': False}
+  输出：{'saved_payload': {'did': 'did:wba:awiki.ai:alice:k1_new', 'unique_id': 'k1_new', 'user_id': 'user-1', 'private_key_pem': b'private-key', 'public_key_pem': b'public-key', 'jwt_token': 'jwt-token', 'display_name': 'alice', 'handle': 'alice', 'name': 'alice', 'did_document': {'id': 'did:wba:awiki.ai:alice:k1_new', 'proof': {'challenge': 'nonce'}}, 'e2ee_signing_private_pem': b'e2ee-signing-key', 'e2ee_agreement_private_pem': b'e2ee-agreement-key', 'replace_existing': False}, 'backup_called': False, 'migrate_called': False, 'prune_called': False}
+
+测试：test_do_recover_replaces_existing_credential_only_when_requested
+  状态：passed
+  输入：{'existing_credential': {'did': 'did:wba:awiki.ai:alice:k1_old', 'unique_id': 'k1_old', 'name': 'Recovered User'}, 'handle': 'alice', 'phone': '+8613800138000', 'otp_code': '123456', 'requested_credential_name': 'default', 'replace_existing': True}
+  输出：{'events': {'save_identity': {'did': 'did:wba:awiki.ai:alice:k1_new', 'unique_id': 'k1_new', 'user_id': 'user-1', 'private_key_pem': b'private-key', 'public_key_pem': b'public-key', 'jwt_token': 'jwt-token', 'display_name': 'Recovered User', 'handle': 'alice', 'name': 'default', 'did_document': {'id': 'did:wba:awiki.ai:alice:k1_new', 'proof': {'challenge': 'nonce'}}, 'e2ee_signing_private_pem': b'e2ee-signing-key', 'e2ee_agreement_private_pem': b'e2ee-agreement-key', 'replace_existing': True}, 'cache_migration': {'credential_name': 'default', 'old_did': 'did:wba:awiki.ai:alice:k1_old', 'new_did': 'did:wba:awiki.ai:alice:k1_new'}, 'pruned_unique_id': 'k1_old'}, 'save_call': {'did': 'did:wba:awiki.ai:alice:k1_new', 'unique_id': 'k1_new', 'user_id': 'user-1', 'private_key_pem': b'private-key', 'public_key_pem': b'public-key', 'jwt_token': 'jwt-token', 'display_name': 'Recovered User', 'handle': 'alice', 'name': 'default', 'did_document': {'id': 'did:wba:awiki.ai:alice:k1_new', 'proof': {'challenge': 'nonce'}}, 'e2ee_signing_private_pem': b'e2ee-signing-key', 'e2ee_agreement_private_pem': b'e2ee-agreement-key', 'replace_existing': True}, 'migration_call': {'credential_name': 'default', 'old_did': 'did:wba:awiki.ai:alice:k1_old', 'new_did': 'did:wba:awiki.ai:alice:k1_new'}}
+
+======================================================================
+所有测试通过 ✓
+======================================================================

@@ -1,0 +1,9 @@
+[INPUT] get_my_profile(credential_name='default')
+[OUTPUT] {
+  "did": "did:wba:awiki.ai:user:k1_test123",
+  "handle": "test_user",
+  "displayName": "Test User",
+  "bio": "This is a test profile",
+  "avatar": "https://example.com/avatar.png",
+  "createdAt": "2026-03-20T00:00:00Z"
+}

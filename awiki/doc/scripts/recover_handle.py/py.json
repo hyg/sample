@@ -1,0 +1,65 @@
+recover_handle.py 蒸馏脚本 - 黄金标准记录
+============================================================
+============================================================
+测试：_allocate_recovery_credential_name
+============================================================
+
+输入：handle='test_user'
+输出：'test_user'
+
+输入：handle='alice'
+输出：'alice'
+
+输入：handle='bob'
+输出：'bob'
+
+============================================================
+测试：_resolve_recovery_target
+============================================================
+
+场景：无请求凭证名称 - 自动分配
+输入：handle='alice', requested_credential_name=None, replace_existing=False
+输出：credential_name='alice', old_credential=None
+
+场景：请求新凭证名称
+输入：handle='bob', requested_credential_name='bob_new', replace_existing=False
+输出：credential_name='bob_new', old_credential=None
+
+场景：请求现有凭证但不替换
+输入：handle='charlie', requested_credential_name='existing_cred', replace_existing=False
+输出：预期错误但未发生
+
+场景：请求现有凭证并替换
+输入：handle='david', requested_credential_name='replace_cred', replace_existing=True
+输出：credential_name='replace_cred', old_credential=None
+
+============================================================
+测试：_migrate_local_cache 签名
+============================================================
+
+函数签名：_migrate_local_cache(*, credential_name: 'str', old_did: 'str', new_did: 'str') -> 'dict[str, Any]'
+参数：['credential_name', 'old_did', 'new_did']
+
+============================================================
+测试：do_recover 签名
+============================================================
+
+函数签名：do_recover(*, handle: 'str', phone: 'str', otp_code: 'str | None', requested_credential_name: 'str | None', replace_existing: 'bool') -> 'None'
+参数：['handle', 'phone', 'otp_code', 'requested_credential_name', 'replace_existing']
+
+============================================================
+测试：CLI 参数解析
+============================================================
+
+输入：['--handle', 'alice', '--phone', '+8613800138000']
+输出：handle='alice', phone='+8613800138000', otp_code=None, credential=None, replace_existing=False
+
+输入：['--handle', 'bob', '--phone', '+14155552671', '--credential', 'bob_cred']
+输出：handle='bob', phone='+14155552671', otp_code=None, credential='bob_cred', replace_existing=False
+
+输入：['--handle', 'charlie', '--phone', '+8613900139000', '--otp-code', '123456', '--replace-existing']
+输出：handle='charlie', phone='+8613900139000', otp_code='123456', credential=None, replace_existing=True
+
+============================================================
+蒸馏完成
+============================================================

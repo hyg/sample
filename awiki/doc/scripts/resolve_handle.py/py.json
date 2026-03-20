@@ -1,0 +1,26 @@
+============================================================
+DISTILL: resolve_handle.py - Golden Standard I/O
+============================================================
+
+--- Test Case 1: Resolve handle to DID ---
+[INPUT] Resolving handle: alice
+[OUTPUT] {
+  "handle": "alice",
+  "did": "did:wba:awiki.ai:alice:k1_dFaMB8gpbXHfGqXMJuTWr6JlrEY-dHswr0EEFWTrq08",
+  "domain": "awiki.ai",
+  "status": "active",
+  "full_handle": "alice.awiki.ai"
+}
+[STATUS] Success
+[GOLDEN] Input: handle=alice, did=None
+[GOLDEN] Output: {"handle": "alice", "did": "did:wba:awiki.ai:alice:k1_dFaMB8gpbXHfGqXMJuTWr6JlrEY-dHswr0EEFWTrq08", "domain": "awiki.ai", "status": "active", "full_handle": "alice.awiki.ai"}
+
+--- Test Case 2: Lookup handle by DID ---
+[INPUT] Looking up handle for DID: did:wba:awiki.ai:user:k1_test
+[STATUS] Error: JSON-RPC error -32002: Handle 不存在
+[GOLDEN] Input: handle=None, did=did:wba:awiki.ai:user:k1_test
+[GOLDEN] Output: {"error": "JSON-RPC error -32002: Handle 不存在"}
+
+============================================================
+DISTILL COMPLETE
+============================================================

@@ -1,0 +1,23 @@
+============================================================
+蒸馏脚本：test_credential_store.py
+============================================================
+
+[输入] 测试文件：D:\huangyg\git\sample\awiki\python\tests\test_credential_store.py
+[输入] 分析文件：D:\huangyg\git\sample\awiki\doc\tests\test_credential_store.py\py.md
+
+[执行] 运行 pytest 测试...
+[完成] 耗时：1.67秒
+[结果] 返回码：1
+[结果] 成功：False
+
+[输出] 结果已保存至：D:\huangyg\git\sample\awiki\doc\tests\test_credential_store.py\distill-output.json
+
+============================================================
+测试摘要
+============================================================
+总测试数：15
+通过：0
+失败：0
+跳过：0
+执行完成：True
+在时限内：True

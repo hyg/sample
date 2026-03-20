@@ -1,0 +1,66 @@
+
+============================================================
+ E2EE Handler 蒸馏测试
+============================================================
+
+============================================================
+ 1. 创建 E2eeHandler 实例
+============================================================
+输入：credential_name='test_credential', save_interval=30.0, decrypt_fail_action='drop'
+输出：E2eeHandler 实例已创建
+is_ready: False
+
+============================================================
+ 2. 测试消息类型检查
+============================================================
+  e2ee_init: is_e2ee=True, is_protocol=True
+  e2ee_msg: is_e2ee=True, is_protocol=False
+  e2ee_ack: is_e2ee=True, is_protocol=True
+  e2ee_rekey: is_e2ee=True, is_protocol=True
+  e2ee_error: is_e2ee=True, is_protocol=True
+  normal_msg: is_e2ee=False, is_protocol=False
+
+============================================================
+ 3. 测试协议消息处理（未初始化）
+============================================================
+输入：{'type': 'e2ee_init', 'sender_did': 'did:wba:awiki.ai:user:test', 'content': '{"version": "1.0"}'}
+输出：[]
+
+============================================================
+ 4. 测试消息解密（未初始化）
+============================================================
+输入：{'id': 'msg_001', 'type': 'e2ee_msg', 'sender_did': 'did:wba:awiki.ai:user:sender', 'content': '{"encrypted": "data"}'}
+输出：DecryptResult(params=None, error_responses=[])
+
+============================================================
+ 5. 测试状态保存（未初始化）
+============================================================
+输入：调用 maybe_save_state() 和 force_save_state()
+输出：无操作（客户端未初始化）
+
+============================================================
+ 6. 测试错误分类
+============================================================
+  异常：unsupported_version -> error_code=unsupported_version, retry_hint=drop
+  异常：session not found -> error_code=session_not_found, retry_hint=rekey_then_resend
+  异常：session expired -> error_code=session_expired, retry_hint=rekey_then_resend
+  异常：invalid sequence -> error_code=invalid_seq, retry_hint=rekey_then_resend
+  异常：unknown error -> error_code=decryption_failed, retry_hint=resend
+
+============================================================
+ 7. 测试解密失败策略
+============================================================
+  decrypt_fail_action=drop -> fallback=None
+  decrypt_fail_action=forward_raw -> fallback={'type': 'test', 'content': 'data'}
+
+============================================================
+ 8. 测试 DecryptResult 命名元组
+============================================================
+创建：DecryptResult(params={'type': 'message', 'content': 'plaintext'}, error_responses=[])
+params: {'type': 'message', 'content': 'plaintext'}
+error_responses: []
+
+============================================================
+ 蒸馏测试完成
+============================================================
+所有测试通过 - 黄金标准已记录

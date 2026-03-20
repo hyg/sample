@@ -308,3 +308,269 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# =============================================================================
+# 附录：补充场景测试 - leave_group, kick_member, update_group, 权限测试
+# =============================================================================
+
+def test_leave_group(
+    group_id: str,
+    credential_name: str = "default",
+    output_file: str | None = None,
+) -> dict:
+    """测试离开群组场景。
+    
+    数据准备:
+    1. 已加入的群组
+    2. 有效的凭证
+    
+    预期结果:
+    1. 成功离开群组
+    2. 本地状态更新
+    """
+    input_data = {
+        "scenario": "leave_group",
+        "group_id": group_id,
+        "credential_name": credential_name,
+    }
+    
+    output_data = {
+        "left": False,
+        "membership_status": None,
+        "error": None,
+    }
+    
+    try:
+        # 步骤 1: 调用 leave_group
+        from manage_group import leave_group
+        leave_group(group_id=group_id, credential_name=credential_name)
+        
+        output_data["left"] = True
+        output_data["membership_status"] = "left"
+        
+        return _record_manage_group_test("leave_group", input_data, output_data, True, output_file)
+        
+    except Exception as e:
+        output_data["error"] = str(e)
+        return _record_manage_group_test("leave_group", input_data, output_data, False, output_file, str(e))
+
+
+def test_kick_member_permission_denied(
+    group_id: str,
+    target_did: str,
+    credential_name: str = "member_cred",
+    output_file: str | None = None,
+) -> dict:
+    """测试无权限踢人场景。
+    
+    数据准备:
+    1. 普通成员身份（非群主）
+    2. 尝试踢其他成员
+    
+    预期结果:
+    1. 权限不足错误
+    2. 错误码 -32003
+    """
+    input_data = {
+        "scenario": "kick_member_permission_denied",
+        "group_id": group_id,
+        "target_did": target_did,
+        "credential_name": credential_name,
+    }
+    
+    output_data = {
+        "error_caught": False,
+        "error_code": None,
+        "error_message": None,
+    }
+    
+    try:
+        from manage_group import kick_member
+        from utils import JsonRpcError
+        
+        kick_member(
+            group_id=group_id,
+            target_did=target_did,
+            credential_name=credential_name,
+        )
+        
+        output_data["error_caught"] = False
+        output_data["error_message"] = "Expected permission error but succeeded"
+        
+        return _record_manage_group_test("kick_member_permission_denied", input_data, output_data, False, output_file)
+        
+    except JsonRpcError as e:
+        output_data["error_caught"] = True
+        output_data["error_code"] = e.code if hasattr(e, 'code') else None
+        output_data["error_message"] = str(e)
+        
+        success = output_data["error_code"] == -32003  # Permission denied
+        return _record_manage_group_test("kick_member_permission_denied", input_data, output_data, success, output_file)
+        
+    except Exception as e:
+        output_data["error_caught"] = True
+        output_data["error_message"] = str(e)
+        return _record_manage_group_test("kick_member_permission_denied", input_data, output_data, False, output_file, str(e))
+
+
+def test_update_group(
+    group_id: str,
+    new_name: str,
+    new_description: str,
+    credential_name: str = "default",
+    output_file: str | None = None,
+) -> dict:
+    """测试群组更新场景。
+    
+    数据准备:
+    1. 已存在的群组
+    2. 群主身份
+    
+    预期结果:
+    1. 群组信息更新成功
+    2. 本地快照更新
+    """
+    input_data = {
+        "scenario": "update_group",
+        "group_id": group_id,
+        "new_name": new_name,
+        "new_description": new_description,
+        "credential_name": credential_name,
+    }
+    
+    output_data = {
+        "updated": False,
+        "group": None,
+        "error": None,
+    }
+    
+    try:
+        from manage_group import update_group
+        update_group(
+            group_id=group_id,
+            name=new_name,
+            description=new_description,
+            credential_name=credential_name,
+        )
+        
+        output_data["updated"] = True
+        
+        return _record_manage_group_test("update_group", input_data, output_data, True, output_file)
+        
+    except Exception as e:
+        output_data["error"] = str(e)
+        return _record_manage_group_test("update_group", input_data, output_data, False, output_file, str(e))
+
+
+def test_refresh_join_code(
+    group_id: str,
+    credential_name: str = "default",
+    output_file: str | None = None,
+) -> dict:
+    """测试刷新加入码场景。
+    
+    数据准备:
+    1. 已存在的群组
+    2. 群主身份
+    
+    预期结果:
+    1. 加入码刷新成功
+    2. 旧加入码失效
+    """
+    input_data = {
+        "scenario": "refresh_join_code",
+        "group_id": group_id,
+        "credential_name": credential_name,
+    }
+    
+    output_data = {
+        "refreshed": False,
+        "new_join_code": None,
+        "error": None,
+    }
+    
+    try:
+        from manage_group import refresh_join_code
+        refresh_join_code(group_id=group_id, credential_name=credential_name)
+        
+        output_data["refreshed"] = True
+        
+        return _record_manage_group_test("refresh_join_code", input_data, output_data, True, output_file)
+        
+    except Exception as e:
+        output_data["error"] = str(e)
+        return _record_manage_group_test("refresh_join_code", input_data, output_data, False, output_file, str(e))
+
+
+def test_set_join_enabled(
+    group_id: str,
+    join_enabled: bool,
+    credential_name: str = "default",
+    output_file: str | None = None,
+) -> dict:
+    """测试设置群组加入开关场景。
+    
+    数据准备:
+    1. 已存在的群组
+    2. 群主身份
+    
+    预期结果:
+    1. 加入开关设置成功
+    2. 群组状态更新
+    """
+    input_data = {
+        "scenario": "set_join_enabled",
+        "group_id": group_id,
+        "join_enabled": join_enabled,
+        "credential_name": credential_name,
+    }
+    
+    output_data = {
+        "set": False,
+        "join_enabled": join_enabled,
+        "error": None,
+    }
+    
+    try:
+        from manage_group import set_join_enabled
+        set_join_enabled(group_id=group_id, join_enabled=join_enabled, credential_name=credential_name)
+        
+        output_data["set"] = True
+        
+        return _record_manage_group_test("set_join_enabled", input_data, output_data, True, output_file)
+        
+    except Exception as e:
+        output_data["error"] = str(e)
+        return _record_manage_group_test("set_join_enabled", input_data, output_data, False, output_file, str(e))
+
+
+def _record_manage_group_test(
+    scenario: str,
+    input_data: dict,
+    output_data: dict,
+    success: bool,
+    output_file: str | None = None,
+    error: str | None = None,
+) -> dict:
+    """记录 manage_group 测试结果。"""
+    golden_record = {
+        "timestamp": Path(__file__).stat().st_mtime,
+        "script": "manage_group.py",
+        "scenario": scenario,
+        "input": input_data,
+        "output": output_data,
+        "success": success,
+        "error": error,
+    }
+    
+    if output_file:
+        output_path = Path(output_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(golden_record, f, indent=2, ensure_ascii=False, default=str)
+        print(f"黄金标准已保存到：{output_file}", file=sys.stderr)
+    else:
+        print(json.dumps(golden_record, indent=2, ensure_ascii=False, default=str))
+    
+    return golden_record

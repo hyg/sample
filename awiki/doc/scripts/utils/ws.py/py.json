@@ -1,0 +1,181 @@
+============================================================
+DISTILL: python/scripts/utils/ws.py
+============================================================
+
+[1] URL Building Logic
+----------------------------------------
+{
+  "url_building": [
+    {
+      "input": "https://awiki.ai/message",
+      "output": "wss://awiki.ai/message/message/ws?token=mock_jwt_token"
+    },
+    {
+      "input": "http://localhost:8080/message",
+      "output": "ws://localhost:8080/message/message/ws?token=mock_jwt_token"
+    },
+    {
+      "input": "wss://awiki.ai/message",
+      "output": "wss://awiki.ai/message/message/ws?token=mock_jwt_token"
+    },
+    {
+      "input": "ws://localhost:8080/message",
+      "output": "ws://localhost:8080/message/message/ws?token=mock_jwt_token"
+    }
+  ]
+}
+
+[2] JSON-RPC Message Formats
+----------------------------------------
+{
+  "json_rpc_formats": {
+    "request": {
+      "jsonrpc": "2.0",
+      "method": "send",
+      "params": {
+        "content": "Hello!",
+        "type": "text",
+        "receiver_did": "did:wba:awiki.ai:user:k1_test",
+        "client_msg_id": "cd93fede-818c-4027-9285-966a20984aff"
+      },
+      "id": 1
+    },
+    "response": {
+      "jsonrpc": "2.0",
+      "result": {
+        "id": "msg_123",
+        "server_seq": 42,
+        "sent_at": "2026-03-19T10:00:00Z"
+      },
+      "id": 1
+    },
+    "notification": {
+      "method": "new_message",
+      "params": {
+        "id": "msg_456",
+        "sender_did": "did:wba:awiki.ai:user:k1_sender",
+        "content": "Hello back!",
+        "type": "text",
+        "server_seq": 43,
+        "sent_at": "2026-03-19T10:01:00Z"
+      }
+    }
+  }
+}
+
+[3] send_message Parameters
+----------------------------------------
+{
+  "send_message_params": {
+    "content": "Hello!",
+    "type": "text",
+    "client_msg_id": "5612bf53-d094-42c5-963f-73202970e480",
+    "receiver_did": "did:wba:awiki.ai:user:k1_test",
+    "title": "Test Message"
+  },
+  "auto_generated_client_msg_id": "5612bf53-d094-42c5-963f-73202970e480"
+}
+
+[4] Notification Detection
+----------------------------------------
+{
+  "notification_detection": [
+    {
+      "message": {
+        "jsonrpc": "2.0",
+        "result": {},
+        "id": 1
+      },
+      "is_notification": false
+    },
+    {
+      "message": {
+        "jsonrpc": "2.0",
+        "error": {
+          "code": -32000,
+          "message": "Error"
+        },
+        "id": 2
+      },
+      "is_notification": false
+    },
+    {
+      "message": {
+        "method": "new_message",
+        "params": {}
+      },
+      "is_notification": true
+    },
+    {
+      "message": {
+        "method": "pong"
+      },
+      "is_notification": true
+    }
+  ]
+}
+
+[5] WsClient Class Interface
+----------------------------------------
+{
+  "class_interface": {
+    "class_name": "WsClient",
+    "description": "molt-message WebSocket client wrapper",
+    "methods": [
+      {
+        "name": "__init__",
+        "signature": "(config: SDKConfig, identity: DIDIdentity) -> None",
+        "description": "Initialize WebSocket client"
+      },
+      {
+        "name": "connect",
+        "signature": "() -> None",
+        "description": "Establish WebSocket connection"
+      },
+      {
+        "name": "close",
+        "signature": "() -> None",
+        "description": "Close the connection"
+      },
+      {
+        "name": "__aenter__",
+        "signature": "() -> WsClient",
+        "description": "Async context manager entry"
+      },
+      {
+        "name": "__aexit__",
+        "signature": "(*args: Any) -> None",
+        "description": "Async context manager exit"
+      },
+      {
+        "name": "send_rpc",
+        "signature": "(method: str, params: dict | None) -> dict",
+        "description": "Send JSON-RPC request and wait for response"
+      },
+      {
+        "name": "send_message",
+        "signature": "(content, receiver_did, receiver_id, group_did, group_id, msg_type, client_msg_id, title) -> dict",
+        "description": "Convenience method for sending messages"
+      },
+      {
+        "name": "ping",
+        "signature": "() -> bool",
+        "description": "Send application-layer heartbeat"
+      },
+      {
+        "name": "receive",
+        "signature": "(timeout: float) -> dict | None",
+        "description": "Receive a single message"
+      },
+      {
+        "name": "receive_notification",
+        "signature": "(timeout: float) -> dict | None",
+        "description": "Receive a single push notification"
+      }
+    ]
+  }
+}
+
+============================================================
+DISTILL COMPLETE
+============================================================

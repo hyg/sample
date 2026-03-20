@@ -1,0 +1,168 @@
+============================================================
+check_status.py Distill Script
+============================================================
+Timestamp: 2026-03-20T15:39:24.866324+00:00
+Source: D:\huangyg\git\sample\awiki\python\scripts\check_status.py
+
+Running: ensure_local_upgrade_ready...
+  Status: ready
+Running: summarize_group_watch...
+  Status: no_identity
+Running: check_identity...
+  Status: jwt_refresh_failed
+Running: summarize_inbox...
+  Status: error
+Running: check_status...
+  Status: unknown
+
+============================================================
+DISTILL RESULTS (JSON)
+============================================================
+{
+  "timestamp": "2026-03-20T15:39:24.954330+00:00",
+  "source_file": "D:\\huangyg\\git\\sample\\awiki\\python\\scripts\\check_status.py",
+  "distill_file": "D:\\huangyg\\git\\sample\\awiki\\doc\\scripts\\check_status.py\\distill.py",
+  "tests": [
+    {
+      "function": "ensure_local_upgrade_ready",
+      "input": {
+        "credential_name": "default"
+      },
+      "output": {
+        "status": "ready",
+        "credential_ready": true,
+        "database_ready": true,
+        "performed": [],
+        "credential_layout": {
+          "status": "ready",
+          "layout": "new",
+          "credential_ready": true,
+          "migration": null
+        },
+        "local_database": {
+          "status": "ready",
+          "db_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\database\\awiki.db",
+          "before_version": 9,
+          "after_version": 9,
+          "backup_path": null
+        }
+      }
+    },
+    {
+      "function": "summarize_group_watch",
+      "inputs": [
+        {
+          "owner_did": null
+        }
+      ],
+      "outputs": [
+        {
+          "status": "no_identity",
+          "active_groups": 0,
+          "groups": []
+        }
+      ]
+    },
+    {
+      "function": "check_identity",
+      "input": {
+        "credential_name": "default"
+      },
+      "output": {
+        "status": "jwt_refresh_failed",
+        "did": "did:wba:awiki.ai:user:k1_test",
+        "name": "Test User",
+        "jwt_valid": false,
+        "error": "DID document is missing authentication methods."
+      }
+    },
+    {
+      "function": "summarize_inbox",
+      "input": {
+        "credential_name": "default"
+      },
+      "output": {
+        "status": "error",
+        "error": "DID document is missing authentication methods.",
+        "total": 0,
+        "by_type": {},
+        "text_messages": 0,
+        "text_by_sender": {},
+        "messages": []
+      }
+    },
+    {
+      "function": "check_status",
+      "input": {
+        "credential_name": "default"
+      },
+      "output": {
+        "timestamp": "2026-03-20T15:39:27.532858+00:00",
+        "local_upgrade": {
+          "status": "ready",
+          "credential_ready": true,
+          "database_ready": true,
+          "performed": [],
+          "credential_layout": {
+            "status": "ready",
+            "layout": "new",
+            "credential_ready": true,
+            "migration": null
+          },
+          "local_database": {
+            "status": "ready",
+            "db_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\database\\awiki.db",
+            "before_version": 9,
+            "after_version": 9,
+            "backup_path": null
+          }
+        },
+        "credential_layout": {
+          "status": "ready",
+          "layout": "new",
+          "credential_ready": true,
+          "migration": null
+        },
+        "local_database": {
+          "status": "ready",
+          "db_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\database\\awiki.db",
+          "before_version": 9,
+          "after_version": 9,
+          "backup_path": null
+        },
+        "identity": {
+          "status": "jwt_refresh_failed",
+          "did": "did:wba:awiki.ai:user:k1_test",
+          "name": "Test User",
+          "jwt_valid": false,
+          "error": "DID document is missing authentication methods."
+        },
+        "group_watch": {
+          "status": "ok",
+          "active_groups": 0,
+          "groups_with_pending_recommendations": 0,
+          "groups": []
+        },
+        "inbox": {
+          "status": "error",
+          "error": "DID document is missing authentication methods.",
+          "total": 0,
+          "by_type": {},
+          "text_messages": 0,
+          "text_by_sender": {},
+          "messages": []
+        },
+        "e2ee_sessions": {
+          "active": 0
+        }
+      }
+    }
+  ]
+}
+
+============================================================
+SUMMARY
+============================================================
+Total tests: 5
+Errors: 0
+Success: 5

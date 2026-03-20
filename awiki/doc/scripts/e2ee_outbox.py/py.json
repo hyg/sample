@@ -1,0 +1,9 @@
+============================================================
+E2EE Outbox 蒸馏脚本 - 黄金标准记录
+============================================================
+
+[模块] e2ee_outbox.py
+[用途] E2EE 发件箱助手，用于可重发的私有加密消息
+[位置] Persistence helper layer between E2EE messaging scripts/listener and SQLite outbox state
+
+[导入验证]

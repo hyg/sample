@@ -1,0 +1,337 @@
+manage_content.py 蒸馏脚本 - 黄金标准记录
+开始时间：2026-03-20T23:39:23.463672
+
+============================================================
+测试用例：创建内容页面 (create)
+时间：2026-03-20T23:39:23.463697
+============================================================
+
+[INPUT]:
+{
+  "action": "--create",
+  "credential": "default",
+  "slug": "jd",
+  "title": "Job Description",
+  "body": "# We are hiring\n\nJoin our team!",
+  "visibility": "public"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "created",
+  "page": {
+    "slug": "jd",
+    "title": "Job Description",
+    "visibility": "public",
+    "created_at": "<timestamp>",
+    "updated_at": "<timestamp>"
+  }
+}
+
+============================================================
+测试用例：创建草稿页面 (create draft)
+时间：2026-03-20T23:39:23.463731
+============================================================
+
+[INPUT]:
+{
+  "action": "--create",
+  "credential": "default",
+  "slug": "draft-post",
+  "title": "Draft",
+  "body": "WIP",
+  "visibility": "draft"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "created",
+  "page": {
+    "slug": "draft-post",
+    "title": "Draft",
+    "visibility": "draft",
+    "created_at": "<timestamp>",
+    "updated_at": "<timestamp>"
+  }
+}
+
+============================================================
+测试用例：列出内容页面 (list)
+时间：2026-03-20T23:39:23.463750
+============================================================
+
+[INPUT]:
+{
+  "action": "--list",
+  "credential": "default"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "list",
+  "pages": [
+    {
+      "slug": "jd",
+      "title": "Job Description",
+      "visibility": "public"
+    },
+    {
+      "slug": "draft-post",
+      "title": "Draft",
+      "visibility": "draft"
+    }
+  ],
+  "count": 2
+}
+
+============================================================
+测试用例：获取内容页面 (get)
+时间：2026-03-20T23:39:23.463771
+============================================================
+
+[INPUT]:
+{
+  "action": "--get",
+  "credential": "default",
+  "slug": "jd"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "get",
+  "page": {
+    "slug": "jd",
+    "title": "Job Description",
+    "body": "# We are hiring\n\nJoin our team!",
+    "visibility": "public",
+    "created_at": "<timestamp>",
+    "updated_at": "<timestamp>"
+  }
+}
+
+============================================================
+测试用例：更新内容页面 (update)
+时间：2026-03-20T23:39:23.463786
+============================================================
+
+[INPUT]:
+{
+  "action": "--update",
+  "credential": "default",
+  "slug": "jd",
+  "title": "Updated Title",
+  "body": "New content",
+  "visibility": null
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "updated",
+  "page": {
+    "slug": "jd",
+    "title": "Updated Title",
+    "body": "New content",
+    "visibility": "public",
+    "updated_at": "<timestamp>"
+  }
+}
+
+============================================================
+测试用例：更改可见性 (update visibility)
+时间：2026-03-20T23:39:23.463800
+============================================================
+
+[INPUT]:
+{
+  "action": "--update",
+  "credential": "default",
+  "slug": "jd",
+  "title": null,
+  "body": null,
+  "visibility": "unlisted"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "updated",
+  "page": {
+    "slug": "jd",
+    "visibility": "unlisted",
+    "updated_at": "<timestamp>"
+  }
+}
+
+============================================================
+测试用例：重命名 slug (rename)
+时间：2026-03-20T23:39:23.463814
+============================================================
+
+[INPUT]:
+{
+  "action": "--rename",
+  "credential": "default",
+  "slug": "jd",
+  "new_slug": "hiring"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "renamed",
+  "page": {
+    "old_slug": "jd",
+    "new_slug": "hiring",
+    "updated_at": "<timestamp>"
+  }
+}
+
+============================================================
+测试用例：删除内容页面 (delete)
+时间：2026-03-20T23:39:23.463827
+============================================================
+
+[INPUT]:
+{
+  "action": "--delete",
+  "credential": "default",
+  "slug": "hiring"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "deleted",
+  "result": {
+    "success": true
+  }
+}
+
+============================================================
+测试用例：从文件读取正文 (create with body-file)
+时间：2026-03-20T23:39:23.463840
+============================================================
+
+[INPUT]:
+{
+  "action": "--create",
+  "credential": "default",
+  "slug": "event",
+  "title": "Event",
+  "body_file": "./event.md",
+  "visibility": "public"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "ok",
+  "action": "created",
+  "page": {
+    "slug": "event",
+    "title": "Event",
+    "visibility": "public",
+    "created_at": "<timestamp>",
+    "updated_at": "<timestamp>"
+  }
+}
+
+============================================================
+测试用例：错误场景 - 凭证不可用
+时间：2026-03-20T23:39:23.463854
+============================================================
+
+[INPUT]:
+{
+  "action": "--list",
+  "credential": "nonexistent"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "error",
+  "error": "Credential 'nonexistent' unavailable",
+  "hint": "Create an identity first with setup_identity.py or register_handle.py"
+}
+
+============================================================
+测试用例：错误场景 - 更新时无字段
+时间：2026-03-20T23:39:23.463866
+============================================================
+
+[INPUT]:
+{
+  "action": "--update",
+  "credential": "default",
+  "slug": "jd",
+  "title": null,
+  "body": null,
+  "visibility": null,
+  "body_file": null
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "error",
+  "error": "No fields to update",
+  "hint": "Specify --title, --body, --visibility, or --body-file"
+}
+
+============================================================
+测试用例：错误场景 - 文件未找到
+时间：2026-03-20T23:39:23.463878
+============================================================
+
+[INPUT]:
+{
+  "action": "--create",
+  "credential": "default",
+  "slug": "test",
+  "title": "Test",
+  "body_file": "./nonexistent.md"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "error",
+  "error": "File not found: ./nonexistent.md",
+  "hint": "Check the file path"
+}
+
+============================================================
+测试用例：错误场景 - JSON-RPC 错误
+时间：2026-03-20T23:39:23.463890
+============================================================
+
+[INPUT]:
+{
+  "action": "--create",
+  "credential": "default",
+  "slug": "duplicate",
+  "title": "Duplicate",
+  "body": "Content"
+}
+
+[EXPECTED OUTPUT]:
+{
+  "status": "error",
+  "error_type": "jsonrpc",
+  "code": -32000,
+  "message": "Slug already exists",
+  "data": null
+}
+
+============================================================
+蒸馏完成
+结束时间：2026-03-20T23:39:23.463902
+============================================================
+
+黄金标准记录完毕。
+实际执行时需要：
+  1. 配置凭证 (credential_store)
+  2. 网络连接 (awiki.ai 服务)
+  3. 有效的身份认证

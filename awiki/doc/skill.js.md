@@ -412,9 +412,1102 @@ npm test
 | Handle 注册（验证 OTP） | {handle, otp_code} | {did, handle} | 1. 输入 OTP 2. 验证完成 |
 | Handle 恢复 | {handle, phone} | {success: true} | 1. 输入手机号 2. 接收短信 3. 输入 OTP |
 
-## 6. Python vs Node.js 交叉测试方案
+---
 
-### 6.1 交叉测试矩阵
+## 6. 集成测试业务场景（CLI 命令行）
+
+**核心原则**:
+1. **JWT 过期测试前移**: 每个脚本的蒸馏/单元测试都要测试 JWT 过期自动刷新，不积累到集成测试
+2. **CLI 优先**: 所有测试使用 CLI 命令行执行
+3. **多用户泳道图**: 自己创建 3 个测试用户（Alice-Python, Bob-Node.js, Charlie-Python）
+4. **依赖链**: 前一步的蒸馏/测试结果作为下一步输入
+5. **跨平台**: Python ↔ Node.js 双向通信
+6. **E2EE 三轮+**: 密文通信至少 3 轮完整交流
+
+### 6.1 测试用户配置
+
+| 用户 | 平台 | 凭证名 | 用途 |
+|------|------|--------|------|
+| Alice | Python | `distill_alice_py` | 主测试用户，JWT 过期场景 |
+| Bob | Node.js | `distill_bob_js` | 跨平台通信测试 |
+| Charlie | Python | `distill_charlie_py` | 群组测试、E2EE 三轮 |
+
+### 6.2 JWT 过期测试前移策略
+
+**问题**: 不应该把 JWT 过期测试积累到集成测试才爆发
+
+**解决方案**: 每个脚本的蒸馏和单元测试都要覆盖 JWT 过期场景
+
+#### 蒸馏阶段（以 setup_identity.py 为例）
+
+```python
+# doc/scripts/setup_identity.py/distill.py
+
+def test_load_identity_jwt_expired(credential_name: str = "distill_alice_py") -> dict:
+    """测试加载身份时 JWT 过期自动刷新"""
+    input_args = {"action": "load", "credential_name": credential_name, "jwt_expired": True}
+    output_data = {"loaded": False, "jwt_refreshed": False}
+    
+    try:
+        # 模拟 JWT 过期场景
+        data = load_identity(credential_name)
+        old_jwt = data.get("jwt_token")
+        
+        # 加载身份（应自动刷新 JWT）
+        asyncio.run(load_saved_identity(credential_name))
+        
+        # 验证 JWT 已刷新
+        refreshed_data = load_identity(credential_name)
+        new_jwt = refreshed_data.get("jwt_token")
+        
+        output_data["loaded"] = True
+        output_data["jwt_refreshed"] = old_jwt != new_jwt
+        
+        return record_result("load_jwt_expired", input_args, output_data, True)
+    except Exception as e:
+        return record_result("load_jwt_expired", input_args, output_data, False, str(e))
+```
+
+#### 单元测试阶段（以 send_message.py 为例）
+
+```javascript
+// doc/scripts/send_message.py/test.js
+
+describe('send_message - JWT 过期场景', () => {
+  it('should auto-refresh JWT when sending message with expired token', () => {
+    // 使用 JWT 过期的身份
+    const { execSync } = require('child_process');
+    
+    // 模拟 JWT 过期（修改凭证文件中的 JWT）
+    // ... 代码略 ...
+    
+    // 发送消息（应自动刷新 JWT）
+    execSync('python scripts/send_message.py --credential distill_alice_py --to @bob --content "Test"');
+    
+    // 验证 JWT 已刷新
+    const credData = JSON.parse(fs.readFileSync(credentialPath, 'utf8'));
+    assert.ok(credData.jwt_token !== oldJwt, 'JWT should be refreshed');
+  });
+});
+```
+
+#### 集成测试阶段
+
+**集成测试假设**: JWT 过期测试已在蒸馏和单元测试阶段完成，集成测试直接使用正常身份
+
+---
+
+### 6.3 集成测试依赖追溯矩阵
+
+**核心原则**: 所有集成测试步骤都要向前追溯，确保蒸馏和单元测试环节都有对应覆盖
+
+#### 场景 A: 明文消息通信依赖追溯
+
+| 脚本 | 蒸馏覆盖 | 单元测试覆盖 | 缺失项 | 优先级 |
+|------|---------|-------------|--------|--------|
+| `send_message.py` | ✅ | ❌ | `test_send_message_cli.py` | 🔴 高 |
+| `check_inbox.py` | ✅ | ✅ (`test_check_inbox_cli.py`) | 补充 E2EE 装饰器测试 | 🟡 中 |
+
+**蒸馏脚本应覆盖** (`send_message.py/distill.py`):
+- ✅ 函数签名：`send_message(receiver, content, msg_type, credential_name, title)`
+- ✅ CLI 参数：`--to`, `--content`, `--type`, `--credential`
+- ✅ 正常流程：消息发送、RPC 调用、本地存储
+- ✅ 错误场景：凭证不可用、RPC 失败
+
+**单元测试应覆盖** (`send_message.py/test.js` - 待创建):
+- ❌ CLI 参数验证：`--to` 必需，`--content` 必需
+- ❌ 返回值验证：`server_seq`, `client_msg_id` 存在性
+- ❌ 本地存储验证：消息持久化、联系人更新
+- ❌ 错误处理：凭证不可用、RPC 失败
+
+#### 场景 B: E2EE 密文通信依赖追溯
+
+| 脚本 | 蒸馏覆盖 | 单元测试覆盖 | 缺失项 | 优先级 |
+|------|---------|-------------|--------|--------|
+| `e2ee_messaging.py` | ✅ | ❌ | `test_e2ee_messaging_cli.py` | 🔴 高 |
+| `e2ee_handler.py` | ✅ | ❌ | `test_e2ee_handler_cli.py` | 🟡 中 |
+| `utils/e2ee.py` | ✅ | ✅ (`test_e2ee_private_helpers.py`) | 补充 E2eeClient 完整测试 | 🟡 中 |
+
+**蒸馏脚本应覆盖** (`e2ee_messaging.py/distill.py`):
+- ✅ 函数签名：`initiate_handshake`, `send_encrypted`, `process_inbox`
+- ✅ CLI 参数：`--handshake`, `--send`, `--process`, `--peer`, `--content`
+- ✅ 正常流程：E2EE 会话初始化、加密消息发送、收件箱处理
+- ✅ 错误场景：会话不存在、解密失败、发件箱记录
+
+**单元测试应覆盖** (`e2ee_messaging.py/test.js` - 待创建):
+- ❌ CLI 参数验证：`--send` 需要 `--content`，`--process` 需要 `--peer`
+- ❌ 发件箱管理：`begin_send_attempt`, `mark_send_success`, `record_local_failure`
+- ❌ 自动会话初始化：`ensure_active_session` 返回 `init_msgs`
+- ❌ 解密失败处理：`_classify_decrypt_error` 所有分支
+
+#### 场景 C: 群组生命周期依赖追溯
+
+| 脚本 | 蒸馏覆盖 | 单元测试覆盖 | 缺失项 | 优先级 |
+|------|---------|-------------|--------|--------|
+| `manage_group.py` | ✅ | ✅ (`test_manage_group_cli.py`) | 补充 leave/kick/update 测试 | 🟡 中 |
+
+**蒸馏脚本应覆盖** (`manage_group.py/distill.py`):
+- ✅ 函数签名：`create_group`, `join_group`, `leave_group`, `post_message`, `list_messages`, `get_group_members`
+- ✅ CLI 参数：`--create`, `--join`, `--leave`, `--post-message`, `--list-messages`, `--members`
+- ✅ 正常流程：群组创建、加入、离开、发消息、查看
+- ✅ 错误场景：join-code 无效、权限不足、RPC 错误
+
+**单元测试应覆盖** (`manage_group.py/test.js` - 补充):
+- ✅ CLI 参数解析：`--join` 拒绝 `--group-id`
+- ✅ 本地持久化：群组快照、消息存储、成员快照
+- ❌ 缺失：`leave_group`, `kick_member`, `update_group` 测试
+- ❌ 缺失：权限错误测试
+
+#### 场景 D: E2EE 群消息依赖追溯
+
+| 脚本 | 蒸馏覆盖 | 单元测试覆盖 | 缺失项 | 优先级 |
+|------|---------|-------------|--------|--------|
+| `manage_group.py` | ✅ | ✅ (部分) | 补充 E2EE 群消息测试 | 🟡 中 |
+| `e2ee_messaging.py` | ✅ | ❌ | 同场景 B | 🔴 高 |
+
+**特殊覆盖** (E2EE 群消息):
+- ❌ 群组会话初始化
+- ❌ 群组成员密钥分发
+- ❌ 群消息加密/解密循环
+
+#### 场景 E: 日常巡检依赖追溯
+
+| 脚本 | 蒸馏覆盖 | 单元测试覆盖 | 缺失项 | 优先级 |
+|------|---------|-------------|--------|--------|
+| `setup_identity.py` | ✅ | ✅ (`test_setup_identity_cli.py`) | 补充 --list 测试 | 🟢 低 |
+| `check_inbox.py` | ✅ | ✅ | - | - |
+| `e2ee_messaging.py` | ✅ | ❌ | 同场景 B | 🔴 高 |
+| `manage_group.py` | ✅ | ✅ (部分) | 同场景 C | 🟡 中 |
+| `search_users.py` | ✅ | ✅ (`test_search_users.py`) | 补充结果解析测试 | 🟢 低 |
+| `get_profile.py` | ✅ | ❌ | `test_get_profile_cli.py` | 🟡 中 |
+| `manage_credits.py` | ✅ | ❌ | `test_manage_credits_cli.py` | 🟡 中 |
+
+#### 场景 F: 内容管理依赖追溯
+
+| 脚本 | 蒸馏覆盖 | 单元测试覆盖 | 缺失项 | 优先级 |
+|------|---------|-------------|--------|--------|
+| `manage_content.py` | ✅ | ❌ | `test_manage_content_cli.py` | 🟡 中 |
+
+**蒸馏脚本应覆盖** (`manage_content.py/distill.py`):
+- ✅ 函数签名：`create_page`, `update_page`, `rename_page`, `delete_page`, `list_pages`, `get_page`
+- ✅ CLI 参数：`--create`, `--update`, `--rename`, `--delete`, `--list`, `--get`
+- ✅ 正常流程：页面 CRUD、父子页面关系
+- ✅ 错误场景：页面不存在、权限不足
+
+**单元测试应覆盖** (`manage_content.py/test.js` - 待创建):
+- ❌ CLI 参数验证
+- ❌ 页面层级测试
+- ❌ 错误处理
+
+#### 场景 G: 联系人管理依赖追溯
+
+| 脚本 | 蒸馏覆盖 | 单元测试覆盖 | 缺失项 | 优先级 |
+|------|---------|-------------|--------|--------|
+| `manage_contacts.py` | ✅ | ❌ | `test_manage_contacts_cli.py` | 🟡 中 |
+| `query_db.py` | ✅ | ❌ | `test_query_db_cli.py` | 🟢 低 |
+
+**蒸馏脚本应覆盖** (`manage_contacts.py/distill.py`):
+- ✅ 函数签名：`record_recommendation`, `save_from_group`, `mark_followed`, `update_note`
+- ✅ CLI 参数：`--record-recommendation`, `--save-from-group`, `--from`, `--contacts`, `--group`
+- ✅ 正常流程：联系人记录、群组联系人保存
+- ✅ 错误场景：无效联系人格式、群组不存在
+
+**单元测试应覆盖** (`manage_contacts.py/test.js` - 待创建):
+- ❌ CLI 参数验证
+- ❌ 本地存储验证：联系人持久化、去重
+- ❌ 群组联系人测试
+
+---
+
+### 6.4 关键缺失测试文件（高优先级）
+
+**必须创建** (影响集成测试):
+
+1. **`python/tests/test_send_message_cli.py`** - 场景 A 核心
+   ```python
+   # 应覆盖:
+   - test_cli_requires_to_and_content()
+   - test_send_message_stores_locally()
+   - test_send_message_updates_contacts()
+   - test_send_message_handles_rpc_error()
+   - test_send_message_exits_on_missing_credential()
+   ```
+
+2. **`python/tests/test_e2ee_messaging_cli.py`** - 场景 B、D、E 核心
+   ```python
+   # 应覆盖:
+   - test_send_encrypted_auto_initiates_session()
+   - test_process_inbox_decrypts_messages()
+   - test_process_inbox_handles_protocol_messages()
+   - test_send_encrypted_records_to_outbox_on_failure()
+   - test_list_failed_outbox_records()
+   - test_retry_failed_outbox_record()
+   ```
+
+3. **`python/tests/test_e2ee_handler_cli.py`** - 场景 B、E
+   ```python
+   # 应覆盖:
+   - test_e2ee_handler_initialization()
+   - test_handle_protocol_message_e2ee_init()
+   - test_handle_protocol_message_e2ee_ack()
+   - test_decrypt_message_returns_plaintext()
+   - test_decrypt_message_handles_errors()
+   ```
+
+---
+
+### 6.5 场景依赖关系图
+
+```
+场景 A (明文消息 3 轮) ─────────┐
+    ↓                           │
+场景 B (E2EE 三轮)              │
+    ↓                           │
+场景 C (群组生命周期) ←─────────┘
+    ↓
+场景 D (E2EE 群消息 4 轮)
+    ↓
+场景 E (内容管理)
+    ↓
+场景 F (联系人管理) ───┐
+    ↓                  │
+场景 G (日常巡检) ←────┘
+```
+
+**依赖说明**:
+- 场景 A、B、C 是基础场景，相互独立
+- 场景 D 依赖场景 B（E2EE）和场景 C（群组）
+- 场景 E（内容管理）和场景 F（联系人管理）依赖场景 A
+- 场景 G（日常巡检）依赖所有前述场景
+
+---
+
+### 6.4 场景 A: 明文消息通信（Python ↔ Node.js 双向 3 轮）
+
+**依赖**: 无（基础场景）  
+**测试文件**: `doc/integration/01-plain-messaging.test.js`  
+**前置条件**: 蒸馏和单元测试已验证 JWT 过期自动刷新
+
+#### 泳道图
+
+```
+Alice (Python)          Bob (Node.js)
+     |                       |
+     |-- Round 1: send ----->|
+     |                       |-- check_inbox
+     |                       |-- send reply
+     |<-------- Round 2: send -|
+     |-- check_inbox          |
+     |-- send reply           |
+     |                       |-- Round 3: send
+     |                       |
+```
+
+#### 集成测试执行
+
+```bash
+# Round 1: Alice (Python) → Bob (Node.js)
+python scripts/send_message.py \
+  --credential distill_alice_py \
+  --to did:wba:awiki.ai:user:k1_Bob \
+  --content "[Plain Round 1] Hello from Alice (Python)"
+
+# Bob 检查收件箱
+node scripts/check-inbox.js --credential distill_bob_js --limit 5
+
+# Round 2: Bob (Node.js) → Alice (Python)
+node scripts/send-message.js \
+  --credential distill_bob_js \
+  --to did:wba:awiki.ai:user:k1_Alice \
+  --content "[Plain Round 2] Hi from Bob (Node.js)"
+
+# Alice 检查收件箱
+python scripts/check_inbox.py --credential distill_alice_py --limit 5
+
+# Round 3: Alice (Python) → Bob (Node.js)
+python scripts/send_message.py \
+  --credential distill_alice_py \
+  --to did:wba:awiki.ai:user:k1_Bob \
+  --content "[Plain Round 3] Nice to meet you!"
+
+# Bob 验证 3 轮消息都收到
+node scripts/check-inbox.js --credential distill_bob_js --limit 10
+```
+
+---
+
+### 6.5 场景 B: E2EE 密文通信（5 轮完整交流）
+
+**依赖**: 场景 A（明文通信已测试）  
+**测试文件**: `doc/integration/02-e2ee-5rounds.test.js`
+
+#### 泳道图
+
+```
+Alice (Python)                    Bob (Node.js)
+     |                                 |
+     |-- E2EE Round 1 (e2ee_init) ---->|
+     |                                 |-- auto e2ee_ack
+     |                                 |-- decrypt Round 1
+     |<-------- E2EE Round 2 (e2ee_msg)-|
+     |-- decrypt Round 2                |
+     |-- send reply                     |
+     |                                 |-- E2EE Round 3
+     |                                 |-- decrypt Round 3
+     |<-------- E2EE Round 4 (e2ee_msg)-|
+     |-- decrypt Round 4                |
+     |-- send final reply               |
+     |                                 |-- E2EE Round 5
+     |                                 |-- decrypt Round 5
+```
+
+#### 集成测试执行
+
+```bash
+# 前置条件：清除 E2EE 会话状态（测试新会话建立）
+rm -f ~/.openclaw/credentials/awiki-agent-id-message/e2ee_sessions/*.json
+
+# E2EE Round 1: Alice (Python) → Bob (Node.js)
+python scripts/e2ee_messaging.py \
+  --credential distill_alice_py \
+  --send did:wba:awiki.ai:user:k1_Bob \
+  --content "[E2EE Round 1] 你好，这是加密消息！"
+
+# Bob 处理收件箱（自动回复 e2ee_ack）
+node scripts/e2ee-messaging.js \
+  --credential distill_bob_js \
+  --process \
+  --peer did:wba:awiki.ai:user:k1_Alice
+
+# E2EE Round 2: Bob (Node.js) → Alice (Python)
+node scripts/e2ee-messaging.js \
+  --credential distill_bob_js \
+  --send did:wba:awiki.ai:user:k1_Alice \
+  --content "[E2EE Round 2] 收到！这是回复。"
+
+# Alice 处理
+python scripts/e2ee_messaging.py \
+  --credential distill_alice_py \
+  --process \
+  --peer did:wba:awiki.ai:user:k1_Bob
+
+# E2EE Round 3: Alice (Python) → Bob (Node.js)
+python scripts/e2ee_messaging.py \
+  --credential distill_alice_py \
+  --send did:wba:awiki.ai:user:k1_Bob \
+  --content "[E2EE Round 3] 第三次加密通信测试"
+
+# Bob 处理
+node scripts/e2ee-messaging.js --credential distill_bob_js --process
+
+# E2EE Round 4: Bob (Node.js) → Alice (Python)
+node scripts/e2ee-messaging.js \
+  --credential distill_bob_js \
+  --send did:wba:awiki.ai:user:k1_Alice \
+  --content "[E2EE Round 4] 第四轮确认"
+
+# Alice 处理
+python scripts/e2ee_messaging.py --credential distill_alice_py --process
+
+# E2EE Round 5: Alice (Python) → Bob (Node.js)
+python scripts/e2ee_messaging.py \
+  --credential distill_alice_py \
+  --send did:wba:awiki.ai:user:k1_Bob \
+  --content "[E2EE Round 5] 第五轮完成"
+
+# Bob 处理并验证所有 5 轮消息
+node scripts/e2ee-messaging.js --credential distill_bob_js --process
+
+# 验证：检查双方都有完整的 5 轮对话
+python scripts/check_inbox.py --credential distill_alice_py --e2ee --limit 10
+node scripts/check-inbox.js --credential distill_bob_js --e2ee --limit 10
+```
+
+---
+
+### 6.6 场景 C: 群组管理（创建→加入→发消息→退出）
+
+**依赖**: 场景 A（明文通信已测试）  
+**测试文件**: `doc/integration/03-group-lifecycle.test.js`
+
+#### 泳道图
+
+```
+Alice (Python)          Charlie (Python)        Bob (Node.js)
+     |                        |                       |
+     |-- create_group ------->|                       |
+     |<-- join_code ---------|                       |
+     |                        |-- join_group -------->|
+     |                        |<-- success -----------|
+     |<-- join_group ---------|                       |
+     |-- post_message ------->|                       |
+     |                        |-- list_messages ------>|
+     |                        |                       |-- post_message
+     |<-- list_messages ------|                       |
+     |-- leave_group -------->|                       |
+     |                        |-- leave_group -------->|
+```
+
+#### 集成测试执行
+
+```bash
+# Step 1: Alice (Python) 创建群组
+CREATE_OUTPUT=$(python scripts/manage_group.py \
+  --credential distill_alice_py \
+  --create \
+  --name "集成测试群" \
+  --slug "distill_test_group" \
+  --description "用于集成测试的群组")
+
+GROUP_ID=$(echo "$CREATE_OUTPUT" | grep "Group ID" | cut -d: -f2 | tr -d ' ')
+JOIN_CODE=$(echo "$CREATE_OUTPUT" | grep "Join Code" | cut -d: -f2 | tr -d ' ')
+
+# Step 2: Charlie (Python) 加入群组
+python scripts/manage_group.py \
+  --credential distill_charlie_py \
+  --join \
+  --join-code "$JOIN_CODE"
+
+# Step 3: Bob (Node.js) 加入群组
+node scripts/manage-group.js \
+  --credential distill_bob_js \
+  --join \
+  --join-code "$JOIN_CODE"
+
+# Step 4: Alice 发送第一条群消息
+python scripts/manage_group.py \
+  --credential distill_alice_py \
+  --group-id "$GROUP_ID" \
+  --post-message \
+  --content "[群消息 1] 欢迎大家加入测试群！"
+
+# Step 5: Charlie 发送群消息
+python scripts/manage_group.py \
+  --credential distill_charlie_py \
+  --group-id "$GROUP_ID" \
+  --post-message \
+  --content "[群消息 2] Charlie 来报到了！"
+
+# Step 6: Bob 发送群消息
+node scripts/manage-group.js \
+  --credential distill_bob_js \
+  --group-id "$GROUP_ID" \
+  --post-message \
+  --content "[群消息 3] Bob from Node.js here!"
+
+# Step 7: 所有成员查看群消息
+python scripts/manage_group.py --credential distill_alice_py --group-id "$GROUP_ID" --messages --limit 10
+python scripts/manage_group.py --credential distill_charlie_py --group-id "$GROUP_ID" --messages --limit 10
+node scripts/manage-group.js --credential distill_bob_js --group-id "$GROUP_ID" --messages --limit 10
+
+# Step 8: Charlie 离开群组
+python scripts/manage_group.py \
+  --credential distill_charlie_py \
+  --group-id "$GROUP_ID" \
+  --leave
+
+# Step 9: Alice 查看成员列表（Charlie 已离开）
+python scripts/manage_group.py \
+  --credential distill_alice_py \
+  --group-id "$GROUP_ID" \
+  --members
+
+# Step 10: 清理 - Alice 离开群组
+python scripts/manage_group.py \
+  --credential distill_alice_py \
+  --group-id "$GROUP_ID" \
+  --leave
+```
+
+---
+
+### 6.7 场景 D: 跨平台 E2EE 群消息（4 轮加密通信）
+
+**依赖**: 场景 B（E2EE 会话）、场景 C（群组管理）  
+**测试文件**: `doc/integration/04-e2ee-group.test.js`
+
+#### 泳道图
+
+```
+Alice (Python)          Bob (Node.js)           Charlie (Python)
+     |                        |                        |
+     |-- create_group ------->|                        |
+     |                        |-- join --------------->|
+     |<-- E2EE 群消息 1 -------|                        |
+     |-- decrypt & reply ---->|                        |
+     |                        |-- E2EE 群消息 2 ------->|
+     |                        |<-- E2EE 群消息 3 -------|
+```
+
+#### 集成测试执行
+
+```bash
+# Step 1: Alice (Python) 创建 E2EE 群组
+CREATE_OUTPUT=$(python scripts/manage_group.py \
+  --credential distill_alice_py \
+  --create \
+  --name "E2EE 测试群" \
+  --slug "e2ee_test_group")
+
+GROUP_ID=$(echo "$CREATE_OUTPUT" | grep "Group ID" | cut -d: -f2 | tr -d ' ')
+JOIN_CODE=$(echo "$CREATE_OUTPUT" | grep "Join Code" | cut -d: -f2 | tr -d ' ')
+
+# Step 2: Bob (Node.js) 加入群组
+node scripts/manage-group.js --credential distill_bob_js --join --join-code "$JOIN_CODE"
+
+# Step 3: Charlie (Python) 加入群组
+python scripts/manage_group.py --credential distill_charlie_py --join --join-code "$JOIN_CODE"
+
+# Step 4: Alice 发送 E2EE 群消息（第一轮）
+python scripts/manage_group.py \
+  --credential distill_alice_py \
+  --group-id "$GROUP_ID" \
+  --post-message \
+  --content "[E2EE 群消息 1] 这是第一条加密群消息"
+
+# Step 5: Bob 查看并回复（第二轮）
+node scripts/manage-group.js \
+  --credential distill_bob_js \
+  --group-id "$GROUP_ID" \
+  --post-message \
+  --content "[E2EE 群消息 2] Bob 收到，这是加密回复"
+
+# Step 6: Charlie 查看并回复（第三轮）
+python scripts/manage_group.py \
+  --credential distill_charlie_py \
+  --group-id "$GROUP_ID" \
+  --post-message \
+  --content "[E2EE 群消息 3] Charlie 也来加密发言"
+
+# Step 7: Alice 发送第四轮
+python scripts/manage_group.py \
+  --credential distill_alice_py \
+  --group-id "$GROUP_ID" \
+  --post-message \
+  --content "[E2EE 群消息 4] 大家的加密通信都很成功！"
+
+# Step 8: 所有成员验证 4 轮 E2EE 群消息
+python scripts/manage_group.py --credential distill_alice_py --group-id "$GROUP_ID" --messages --limit 10
+node scripts/manage-group.js --credential distill_bob_js --group-id "$GROUP_ID" --messages --limit 10
+python scripts/manage_group.py --credential distill_charlie_py --group-id "$GROUP_ID" --messages --limit 10
+
+# Step 9: 清理 - 所有人离开群组
+python scripts/manage_group.py --credential distill_alice_py --group-id "$GROUP_ID" --leave
+node scripts/manage-group.js --credential distill_bob_js --group-id "$GROUP_ID" --leave
+python scripts/manage_group.py --credential distill_charlie_py --group-id "$GROUP_ID" --leave
+```
+
+---
+
+### 6.8 场景 F: 内容管理（多人协作：创建→搜索→获取→评论）
+
+**依赖**: 场景 A（身份已加载）、场景 B（搜索功能）  
+**测试文件**: `doc/integration/05-content-management.test.js`
+
+#### 泳道图（多用户协作）
+
+```
+Alice (Python) - 内容创作者          Bob (Node.js) - 内容消费者
+     |                                    |
+     |-- 1. 创建页面 -------------------> |
+     |    (create: "技术文档")            |
+     |                                    |-- 2. 搜索页面
+     |                                    |   (search: "技术")
+     |                                    |-- 3. 获取页面详情
+     |                                    |   (get: pageId)
+     |<-- 4. 页面访问通知 --------------- |
+     |    (本地数据库记录)                 |
+     |-- 5. 更新页面内容 ---------------> |
+     |    (update: 添加新章节)             |-- 6. 再次获取页面
+     |                                    |   (验证内容变化)
+     |                                    |-- 7. 记录到联系人
+     |                                    |   (因为 Alice 是专家)
+     |-- 8. 重命名页面 ----------------> |
+     |    (rename: 更专业的标题)           |-- 9. 验证重命名
+     |                                    |   (搜索新标题)
+     |-- 10. 删除页面 -----------------> |
+          (delete: 过时内容)              |-- 11. 验证删除
+                                          (get 返回 404)
+```
+
+#### 蒸馏脚本应覆盖
+
+**`manage_content.py/distill.py`**:
+- ✅ 函数签名：`create_page`, `update_page`, `rename_page`, `delete_page`, `list_pages`, `get_page`
+- ✅ CLI 参数：`--create`, `--update`, `--rename`, `--delete`, `--list`, `--get`, `--title`, `--content`, `--page`, `--parent`
+- ✅ 正常流程：页面 CRUD 操作、父子页面关系、可见性控制
+- ✅ 错误场景：页面不存在、权限不足、RPC 错误
+- ✅ 多用户场景：页面访问记录、通知机制
+
+**`search_users.py/distill.py`** (内容搜索):
+- ✅ 函数签名：`search_users(query, limit)`, `search_content(query, limit)` (如有)
+- ✅ CLI 参数：`query` (位置参数), `--limit`, `--credential`
+- ✅ 正常流程：搜索用户/内容、返回结果列表
+- ✅ 错误场景：搜索词为空、服务不可用
+
+#### 单元测试应覆盖
+
+**`manage_content.py/test.js`** (待创建):
+- ❌ CLI 参数验证：`--create` 需要 `--title` 和 `--content`
+- ❌ 返回值验证：`pageId` 存在性
+- ❌ 页面层级测试：父子页面关系
+- ❌ 错误处理：页面不存在、权限不足
+- ❌ **多用户场景**：页面访问记录、通知机制
+
+**`search_users.py/test.js`** (补充):
+- ✅ CLI 参数解析
+- ❌ 搜索结果验证：返回格式、字段完整性
+- ❌ **内容搜索**：按关键词搜索页面
+
+#### 集成测试执行（多用户协作）
+
+```bash
+# ============================================
+# Step 1: Alice 创建页面
+# ============================================
+CREATE_OUTPUT=$(python scripts/manage_content.py \
+  --credential distill_alice_py \
+  --create \
+  --title "Python 入门教程" \
+  --content "# Python 入门\n\n这是第一章内容...")
+
+PAGE_ID=$(echo "$CREATE_OUTPUT" | grep "Page ID" | cut -d: -f2 | tr -d ' ')
+echo "✓ Alice 创建页面成功：$PAGE_ID"
+
+# ============================================
+# Step 2: Bob 搜索页面
+# ============================================
+SEARCH_OUTPUT=$(python scripts/search_users.py \
+  "Python 教程")
+
+echo "✓ Bob 搜索 'Python 教程'：$SEARCH_OUTPUT"
+
+# ============================================
+# Step 3: Bob 获取页面详情
+# ============================================
+python scripts/manage_content.py \
+  --credential distill_bob_js \
+  --get \
+  --page "$PAGE_ID"
+
+echo "✓ Bob 获取页面详情"
+
+# ============================================
+# Step 4: Alice 更新页面内容（添加章节）
+# ============================================
+python scripts/manage_content.py \
+  --credential distill_alice_py \
+  --update \
+  --page "$PAGE_ID" \
+  --content "# Python 入门\n\n这是第一章内容...\n\n## 第二章：变量与数据类型"
+
+echo "✓ Alice 更新页面内容"
+
+# ============================================
+# Step 5: Bob 再次获取页面（验证内容变化）
+# ============================================
+python scripts/manage_content.py \
+  --credential distill_bob_js \
+  --get \
+  --page "$PAGE_ID"
+
+echo "✓ Bob 验证内容更新"
+
+# ============================================
+# Step 6: Bob 记录 Alice 为联系人（因为她是 Python 专家）
+# ============================================
+python scripts/manage_contacts.py \
+  --credential distill_bob_js \
+  --record-recommendation \
+  --from "content_expert" \
+  --contacts "did:wba:awiki.ai:user:k1_Alice"
+
+echo "✓ Bob 记录 Alice 为联系人"
+
+# ============================================
+# Step 7: Alice 重命名页面（更专业的标题）
+# ============================================
+python scripts/manage_content.py \
+  --credential distill_alice_py \
+  --rename \
+  --page "$PAGE_ID" \
+  --title "Python 完全指南"
+
+echo "✓ Alice 重命名页面"
+
+# ============================================
+# Step 8: Bob 搜索新标题验证
+# ============================================
+python scripts/search_users.py "Python 完全指南"
+
+echo "✓ Bob 验证重命名"
+
+# ============================================
+# Step 9: Alice 删除页面（内容过时）
+# ============================================
+python scripts/manage_content.py \
+  --credential distill_alice_py \
+  --delete \
+  --page "$PAGE_ID"
+
+echo "✓ Alice 删除页面"
+
+# ============================================
+# Step 10: Bob 验证页面已删除（应返回 404）
+# ============================================
+python scripts/manage_content.py \
+  --credential distill_bob_js \
+  --get \
+  --page "$PAGE_ID" \
+  2>&1 || echo "✓ Bob 验证页面已删除（返回错误）"
+```
+
+---
+
+### 6.9 场景 G: 联系人管理（Profile 更新→搜索发现→添加联系人）
+
+**依赖**: 场景 A（身份已加载）、场景 B（搜索）、场景 C（群组）  
+**测试文件**: `doc/integration/06-contacts-management.test.js`
+
+#### 泳道图（多用户协作）
+
+```
+Alice (Python) - 被观察者              Bob (Node.js) - 观察者
+     |                                    |
+     |-- 1. 初始 Profile ---------------> |
+     |    (nickName: "普通用户")          |
+     |                                    |-- 2. 搜索用户
+     |                                    |   (search: "AI")
+     |                                    |   → 未找到 Alice
+     |                                    |
+     |-- 3. 更新 Profile ---------------> |
+     |    (nickName: "AI 专家",            |
+     |     tags: ["AI", "ML", "NLP"])     |
+     |                                    |-- 4. 再次搜索
+     |                                    |   (search: "AI 专家")
+     |                                    |   → 找到 Alice!
+     |                                    |-- 5. 查看 Alice Profile
+     |                                    |   (get_profile: Alice)
+     |                                    |-- 6. 添加为联系人
+     |                                    |   (record-recommendation)
+     |                                    |
+     |-- 7. 再次更新 Profile -----------> |
+     |    (bio: "专注 NLP 研究")           |-- 8. 搜索 NLP 专家
+     |                                    |   (search: "NLP")
+     |                                    |   → Alice 排名上升
+     |                                    |-- 9. 更新联系人备注
+     |                                    |   (update_note)
+     |                                    |
+     |-- 10. 从群组保存联系人 ----------->|
+          (群组成员批量添加)               |-- 11. 验证联系人列表
+                                          (query_db: contacts)
+```
+
+#### 蒸馏脚本应覆盖
+
+**`manage_contacts.py/distill.py`**:
+- ✅ 函数签名：`record_recommendation`, `save_from_group`, `mark_followed`, `mark_messaged`, `update_note`
+- ✅ CLI 参数：`--record-recommendation`, `--save-from-group`, `--from`, `--contacts`, `--group`, `--note`
+- ✅ 正常流程：联系人记录、群组联系人保存、备注更新
+- ✅ 错误场景：群组不存在、联系人格式错误、数据库错误
+- ✅ **Profile 联动**：Profile 变化触发联系人推荐
+
+**`get_profile.py/distill.py`**:
+- ✅ 函数签名：`get_my_profile`, `get_public_profile`, `resolve_did`
+- ✅ CLI 参数：`--did`, `--handle`, `--resolve`, `--credential`
+- ✅ 正常流程：获取 Profile、解析 DID
+- ✅ **Profile 更新通知**：Profile 变化广播机制
+
+**`update_profile.py/distill.py`**:
+- ✅ 函数签名：`update_profile(nick_name, bio, tags)`
+- ✅ CLI 参数：`--nick-name`, `--bio`, `--tags`
+- ✅ 正常流程：更新 Profile、触发通知
+- ✅ **搜索索引更新**：Profile 更新后搜索可见性变化
+
+#### 单元测试应覆盖
+
+**`manage_contacts.py/test.js`** (待创建):
+- ❌ CLI 参数验证：`--record-recommendation` 需要 `--from` 和 `--contacts`
+- ❌ 本地存储验证：联系人持久化、去重逻辑
+- ❌ **Profile 联动测试**：Profile 更新触发联系人推荐
+- ❌ 群组联系人测试：从群组批量保存
+- ❌ 错误处理：无效联系人格式、数据库错误
+
+**`update_profile.py/test.js`** (待创建):
+- ❌ CLI 参数验证：`--nick-name`, `--bio`, `--tags` 至少一个
+- ❌ **搜索索引测试**：Profile 更新后可被搜索到
+- ❌ 通知机制测试：Profile 更新通知关注者
+
+#### 集成测试执行（Profile 联动）
+
+```bash
+# ============================================
+# Step 1: Alice 初始 Profile（普通用户）
+# ============================================
+python scripts/update_profile.py \
+  --credential distill_alice_py \
+  --nick-name "普通用户" \
+  --bio "只是一个普通用户"
+
+echo "✓ Alice 设置初始 Profile"
+
+# ============================================
+# Step 2: Bob 搜索"AI 专家"（未找到 Alice）
+# ============================================
+SEARCH_OUTPUT=$(python scripts/search_users.py "AI 专家")
+echo "✓ Bob 搜索 'AI 专家'：$SEARCH_OUTPUT"
+# 预期：未找到 Alice
+
+# ============================================
+# Step 3: Alice 更新 Profile（成为 AI 专家）
+# ============================================
+python scripts/update_profile.py \
+  --credential distill_alice_py \
+  --nick-name "AI 专家" \
+  --bio "专注人工智能研究" \
+  --tags "AI,ML,NLP"
+
+echo "✓ Alice 更新 Profile 为 AI 专家"
+
+# ============================================
+# Step 4: Bob 再次搜索"AI 专家"（找到 Alice）
+# ============================================
+SEARCH_OUTPUT=$(python scripts/search_users.py "AI 专家")
+echo "✓ Bob 搜索 'AI 专家'：$SEARCH_OUTPUT"
+# 预期：找到 Alice
+
+# ============================================
+# Step 5: Bob 查看 Alice Profile
+# ============================================
+python scripts/get_profile.py \
+  --credential distill_bob_js \
+  --handle "alice"  # 或用 DID
+
+echo "✓ Bob 查看 Alice Profile"
+
+# ============================================
+# Step 6: Bob 添加 Alice 为联系人
+# ============================================
+python scripts/manage_contacts.py \
+  --credential distill_bob_js \
+  --record-recommendation \
+  --from "profile_search" \
+  --contacts "did:wba:awiki.ai:user:k1_Alice" \
+  --note "AI 专家，可以请教 NLP 问题"
+
+echo "✓ Bob 添加 Alice 为联系人"
+
+# ============================================
+# Step 7: Alice 再次更新 Profile（专注 NLP）
+# ============================================
+python scripts/update_profile.py \
+  --credential distill_alice_py \
+  --bio "专注 NLP 研究，发表多篇论文"
+
+echo "✓ Alice 更新 Profile（专注 NLP）"
+
+# ============================================
+# Step 8: Bob 搜索"NLP 专家"（Alice 排名上升）
+# ============================================
+SEARCH_OUTPUT=$(python scripts/search_users.py "NLP 专家")
+echo "✓ Bob 搜索 'NLP 专家'：$SEARCH_OUTPUT"
+# 预期：Alice 排名靠前
+
+# ============================================
+# Step 9: Bob 更新联系人备注
+# ============================================
+python scripts/manage_contacts.py \
+  --credential distill_bob_js \
+  --update-note \
+  --contact "did:wba:awiki.ai:user:k1_Alice" \
+  --note "NLP 专家，已合作多个项目"
+
+echo "✓ Bob 更新 Alice 的联系人备注"
+
+# ============================================
+# Step 10: 从群组保存联系人（批量添加）
+# ============================================
+# 使用场景 C 创建的群组
+python scripts/manage_contacts.py \
+  --credential distill_bob_js \
+  --save-from-group \
+  --group "$GROUP_ID"
+
+echo "✓ Bob 从群组批量保存联系人"
+
+# ============================================
+# Step 11: 验证联系人列表
+# ============================================
+python scripts/query_db.py \
+  "SELECT did, nick_name, source, note FROM contacts ORDER BY created_at DESC"
+
+echo "✓ 验证联系人列表"
+```
+
+---
+
+### 6.10 场景 H: 完整用户旅程（日常巡检）
+
+**依赖**: 所有前述场景  
+**测试文件**: `doc/integration/05-daily-check.test.js`
+
+#### 泳道图
+
+```
+Agent (Python)
+     |
+     |-- 1. 加载身份（JWT 过期→刷新）← 已在蒸馏/单元测试中验证
+     |-- 2. 检查未读消息（明文 + 密文）
+     |-- 3. 处理 E2EE 消息（解密 + 回复）
+     |-- 4. 检查群消息（3 个群）
+     |-- 5. 搜索新用户
+     |-- 6. 查看 Profile
+     |-- 7. 检查积分余额
+     |-- 8. 生成巡检报告
+```
+
+#### 集成测试执行
+
+```bash
+echo "=== Agent 日常巡检开始 ==="
+
+# Step 1: 加载身份（JWT 过期已在蒸馏/单元测试中验证）
+python scripts/setup_identity.py --load distill_alice_py
+
+# Step 2: 检查未读消息
+INBOX_OUTPUT=$(python scripts/check_inbox.py --credential distill_alice_py --limit 20)
+UNREAD_COUNT=$(echo "$INBOX_OUTPUT" | grep -c "read.*false" || echo "0")
+echo "未读消息数：$UNREAD_COUNT"
+
+# Step 3: 处理 E2EE 消息
+python scripts/e2ee_messaging.py --credential distill_alice_py --process
+
+# Step 4: 检查群消息（假设有 3 个群）
+for GROUP_ID in "$GROUP1" "$GROUP2" "$GROUP3"; do
+  python scripts/manage_group.py --credential distill_alice_py --group-id "$GROUP_ID" --messages --limit 10
+done
+
+# Step 5: 搜索用户
+python scripts/search_users.py "AI"
+
+# Step 6: 查看 Profile
+python scripts/get_profile.py --credential distill_alice_py
+
+# Step 7: 检查积分
+python scripts/manage_credits.py --credential distill_alice_py --balance
+
+# Step 8: 生成巡检报告
+echo "=== 巡检报告 ==="
+echo "身份：distill_alice_py"
+echo "未读消息：$UNREAD_COUNT"
+echo "检查群组：3"
+echo "=== 巡检完成 ==="
+```
+
+---
+
+### 6.13 测试执行命令
+
+```bash
+# 按依赖顺序执行所有集成测试
+cd module
+
+# 1. 明文消息测试
+npm run test:integration -- 01-plain-messaging.test.js
+
+# 2. E2EE 三轮测试
+npm run test:integration -- 02-e2ee-5rounds.test.js
+
+# 3. 群组生命周期测试
+npm run test:integration -- 03-group-lifecycle.test.js
+
+# 4. E2EE 群消息测试
+npm run test:integration -- 04-e2ee-group.test.js
+
+# 5. 内容管理测试
+npm run test:integration -- 05-content-management.test.js
+
+# 6. 联系人管理测试
+npm run test:integration -- 06-contacts-management.test.js
+
+# 7. 完整用户旅程测试
+npm run test:integration -- 07-daily-check.test.js
+
+# 运行所有集成测试
+npm run test:integration
+```
+
+### 6.14 测试数据清理
+
+```bash
+# 清理所有测试身份
+python scripts/setup_identity.py --delete distill_alice_py
+python scripts/setup_identity.py --delete distill_charlie_py
+node scripts/setup-identity.js --delete distill_bob_js
+
+# 清理 E2EE 会话状态
+rm -rf ~/.openclaw/credentials/awiki-agent-id-message/e2ee_sessions/*
+
+# 清理本地数据库（可选）
+rm -f ~/.openclaw/credentials/awiki-agent-id-message/database/*.db
+```
+
+### 6.15 测试场景覆盖矩阵（含蒸馏/单元测试追溯）
+
+| 场景 | 依赖脚本 | 蒸馏覆盖 | 单元测试覆盖 | 集成测试 | 跨平台 | E2EE 轮次 | 缺失项 |
+|------|---------|---------|-------------|---------|--------|----------|--------|
+| A: 明文消息 | send_message.py | ✅ | ❌ | ✅ | ✅ | - | test_send_message_cli.py |
+| A: 明文消息 | check_inbox.py | ✅ | ✅ | ✅ | ✅ | - | 补充 E2EE 装饰器测试 |
+| B: E2EE 三轮 | e2ee_messaging.py | ✅ | ❌ | ✅ | ✅ | 5 轮 | test_e2ee_messaging_cli.py |
+| B: E2EE 三轮 | e2ee_handler.py | ✅ | ❌ | ✅ | ✅ | - | test_e2ee_handler_cli.py |
+| B: E2EE 三轮 | utils/e2ee.py | ✅ | ✅ (部分) | ✅ | ✅ | - | E2eeClient 完整测试 |
+| C: 群组生命周期 | manage_group.py | ✅ | ✅ (部分) | ✅ | ✅ | - | leave/kick/update 测试 |
+| D: E2EE 群消息 | manage_group.py | ✅ | ✅ (部分) | ✅ | ✅ | 4 轮 | E2EE 群消息测试 |
+| D: E2EE 群消息 | e2ee_messaging.py | ✅ | ❌ | ✅ | ✅ | 4 轮 | 同场景 B |
+| E: 内容管理 | manage_content.py | ✅ | ❌ | ✅ | ❌ | - | test_manage_content_cli.py |
+| F: 联系人管理 | manage_contacts.py | ✅ | ❌ | ✅ | ❌ | - | test_manage_contacts_cli.py |
+| G: 日常巡检 | setup_identity.py | ✅ | ✅ (部分) | ✅ | ❌ | - | --list 测试 |
+| G: 日常巡检 | check_inbox.py | ✅ | ✅ | ✅ | ❌ | - | - |
+| G: 日常巡检 | e2ee_messaging.py | ✅ | ❌ | ✅ | ❌ | 混合 | 同场景 B |
+| G: 日常巡检 | manage_group.py | ✅ | ✅ (部分) | ✅ | ❌ | - | 同场景 C |
+| G: 日常巡检 | search_users.py | ✅ | ✅ | ✅ | ❌ | - | 结果解析测试 |
+| G: 日常巡检 | get_profile.py | ✅ | ❌ | ✅ | ❌ | - | test_get_profile_cli.py |
+| G: 日常巡检 | manage_credits.py | ✅ | ❌ | ✅ | ❌ | - | test_manage_credits_cli.py |
+| G: 日常巡检 | manage_content.py | ✅ | ❌ | ✅ | ❌ | - | 同场景 E |
+| G: 日常巡检 | manage_contacts.py | ✅ | ❌ | ✅ | ❌ | - | 同场景 F |
+
+**图例**:
+- ✅ = 已覆盖
+- ❌ = 缺失
+- ✅ (部分) = 部分覆盖
+
+**JWT 过期测试**: 已前移到每个脚本的蒸馏和单元测试阶段
+
+### 6.16 蒸馏/单元测试创建优先级
+
+**🔴 高优先级** (影响核心集成测试):
+1. `python/tests/test_send_message_cli.py` - 场景 A
+2. `python/tests/test_e2ee_messaging_cli.py` - 场景 B、D、G
+3. `python/tests/test_e2ee_handler_cli.py` - 场景 B、G
+
+**🟡 中优先级** (影响部分集成测试):
+4. `python/tests/test_manage_content_cli.py` - 场景 E、G
+5. `python/tests/test_manage_contacts_cli.py` - 场景 F、G
+6. `python/tests/test_get_profile_cli.py` - 场景 G
+7. `python/tests/test_manage_credits_cli.py` - 场景 G
+8. `python/tests/test_manage_group_cli.py` (补充) - 场景 C、D
+
+**🟢 低优先级** (完善测试覆盖):
+9. `python/tests/test_setup_identity_cli.py` (补充) - 场景 G
+10. `python/tests/test_search_users.py` (补充) - 场景 G
+11. `python/tests/test_check_inbox_cli.py` (补充) - 场景 A、B
+12. `python/tests/test_query_db_cli.py` - 场景 F
+
+---
+
+## 7. Python vs Node.js 交叉测试方案
+
+### 7.1 交叉测试矩阵
 
 | Python 版本 | Node.js 版本 | 测试场景 | 轮次要求 |
 |------------|-------------|----------|----------|
@@ -629,1161 +1722,420 @@ npm run test:watch
 
 ## 10. 任务模版详情
 
-### 10.1 Python 文件蒸馏任务模版
+
+## 步骤 1: Python 代码分析
+
+**目标**: 为所有 Python 文件创建分析报告 `doc/*/py.md`
+
+**输入**: 
+- `python/scripts/**/*.py` (所有 Python 源文件)
+
+**输出**:
+- `doc/scripts/**/*.py/py.md` (每个 py 文件对应一个分析报告)
+- `doc/tests/**/*.py/py.md` (测试文件分析报告)
+
+**任务描述**:
 
 ```markdown
-# 任务描述：Python 文件蒸馏
+# 步骤 1: Python 代码分析
 
-## 任务信息
-- **任务类型**: 蒸馏
-- **目标文件**: `python/scripts/<path>/<file>.py`
-- **输出文件**: `doc/scripts/<path>/<file>.py/py.json`
-- **依赖文件**: 
-  - `doc/scripts/<path>/<file>.py/py.md` (分析报告)
-  - `python/scripts/<path>/<file>.py` (Python 源文件)
+## 任务
+为 python/scripts 下的每个 .py 文件创建分析报告 py.md
 
-## 项目上下文
+## 分析内容
+每个 py.md 应包含：
+1. 文件概述
+2. 常量定义
+3. 类定义（属性、方法）
+4. 函数签名（参数、返回值）
+5. 导入的模块
+6. 调用关系（调用谁、被谁调用）
+7. 环境变量（如有）
 
-### 项目根目录
-- Python 版本：`D:\huangyg\git\sample\awiki\python\`
-- 文档目录：`D:\huangyg\git\sample\awiki\doc\`
+## 输出位置
+- python/scripts/utils/config.py → doc/scripts/utils/config.py/py.md
+- python/scripts/send_message.py → doc/scripts/send_message.py/py.md
+- ... (所有文件)
 
-### 相关文件位置
-- Python 源文件：`python/scripts/<path>/<file>.py`
-- 蒸馏脚本输出：`doc/scripts/<path>/<file>.py/distill.py`
-- 蒸馏输出：`doc/scripts/<path>/<file>.py/py.json`
-- 分析报告：`doc/scripts/<path>/<file>.py/py.md`
+## 完成标准
+- [ ] 所有 py 文件都有对应的 py.md
+- [ ] py.md 包含完整的函数/类签名
+- [ ] py.md 包含调用关系
+- [ ] doc/cli.md 已更新（CLI 命令文档）
+- [ ] doc/web.md 已更新（API 文档）
+- [ ] doc/skill.py.md 已更新（Python 版本分析）
+- [ ] doc/skill.js.md 已更新（Node.js 移植方案）
 
-## 任务目标
-
-为指定的 Python 文件创建蒸馏脚本并执行蒸馏，提取所有公共函数/类的输入输出作为"黄金标准"，保存到 py.json 文件中。
-
-## 前置任务确认
-
-### 步骤 0: 确认前置任务完成（必需！）
-
-**在执行任何操作之前，必须确认前置任务已完成！**
-
-#### 检查清单
-
-- [ ] `python/scripts/<path>/<file>.py` 存在（Python 源文件）
-- [ ] `doc/scripts/<path>/<file>.py/py.md` 存在（分析报告）
-
-#### 如果前置任务未完成
-
-**退出当前任务**，并通知主 agent：
-
-```
-【前置任务未完成】
-任务：Python 文件蒸馏 - <file>.py
-缺失的前置条件：
-- Python 源文件不存在：python/scripts/<path>/<file>.py
-或
-- 分析报告不存在：doc/scripts/<path>/<file>.py/py.md
-
-请先执行前置任务：
-1. 确认 Python 源文件路径正确
-2. 阅读分析报告 py.md
-
-当前任务已暂停，等待前置任务完成。
+## 验证
+执行以下命令验证：
+```bash
+# 检查是否所有 py 文件都有 py.md
+python scripts/verify_step1.py
 ```
 
-**不要继续执行**，直到前置任务完成！
+**文件列表** (63 个 py 文件):
+- scripts/utils/ (11 个): config, logging_config, auth, identity, client, rpc, handle, e2ee, resolve, ws, __init__
+- scripts/ (32 个): setup_identity, register_handle, send_message, check_inbox, manage_group, etc.
+- tests/ (19 个): test_*.py
+- 根目录 (1 个): install_dependencies.py
 
-## 执行步骤
+---
 
-### 步骤 1: 阅读分析报告
+## 步骤 2: 蒸馏脚本编写
 
-读取 `doc/scripts/<path>/<file>.py/py.md`，了解：
-- 文件的功能概述
-- 所有公共函数/类的签名
-- 导入的模块和依赖
-- 调用关系
+**目标**: 为所有 Python 文件创建蒸馏脚本 `doc/*/distill.py`
 
-### 步骤 2: 阅读 Python 源文件
+**前置条件**: 步骤 1 完成（所有 py.md 已创建）
 
-读取 `python/scripts/<path>/<file>.py`，理解：
-- 每个函数的实现逻辑
-- 参数类型和返回值
-- 异常处理
-- 常量定义
+**输入**:
+- `python/scripts/**/*.py` (Python 源文件)
+- `doc/scripts/**/*.py/py.md` (分析报告)
 
-### 步骤 3: 设计测试场景
+**输出**:
+- `doc/scripts/**/*.py/distill.py` (每个 py 文件对应一个蒸馏脚本)
 
-为每个公共函数/类设计测试场景：
+**任务描述**:
 
-**纯函数**：直接调用，记录输入输出
+```markdown
+# 步骤 2: 蒸馏脚本编写
 
-**有外部依赖的函数**：
-- 使用 mock 或模拟数据
-- 记录 mock 的配置和预期行为
+## 任务
+为每个 Python 文件创建蒸馏脚本 distill.py
 
-**CLI 脚本**：
-- 记录命令行参数
-- 记录标准输出
-- 记录退出码
+## 蒸馏脚本要求
+每个 distill.py 应：
+1. 导入目标 Python 模块
+2. 为每个公共函数设计测试输入
+3. 执行函数，捕获输出
+4. 输出 JSON 格式的蒸馏数据
 
-### 步骤 4: 编写蒸馏脚本
+## 输出位置
+- doc/scripts/utils/config.py/distill.py
+- doc/scripts/send_message.py/distill.py
+- ... (所有文件)
 
-创建 `doc/scripts/<path>/<file>.py/distill.py`：
+## 完成标准
+- [ ] 所有 py 文件都有对应的 distill.py
+- [ ] distill.py 可以执行（语法正确）
+- [ ] distill.py 覆盖所有公共函数
+- [ ] 包含常量导出
+- [ ] 包含类信息
 
-```python
-#!/usr/bin/env python3
-"""蒸馏脚本 - <file>.py"""
+## 验证
+```bash
+# 检查是否所有文件都有 distill.py
+python scripts/verify_step2.py
 
-import sys
-import json
-from pathlib import Path
-
-# 添加 Python 脚本目录到路径
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'python' / 'scripts'))
-
-# 导入目标模块
-from <path>.<file> import <function_name>
-
-def distill():
-    """执行蒸馏，返回输入输出对"""
-    results = {
-        "file": "python/scripts/<path>/<file>.py",
-        "doc_path": "doc/scripts/<path>/<file>.py",
-        "functions": [],
-        "constants": {},
-        "classes": {}
-    }
-    
-    # 为每个函数添加测试
-    # 示例：
-    test_input = {"param1": "value1"}
-    test_output = <function_name>(**test_input)
-    results["functions"].append({
-        "name": "<function_name>",
-        "type": "function",
-        "signature": "(param1) -> return_type",
-        "tests": [{
-            "input": test_input,
-            "output": test_output,
-            "scenario": "测试场景描述"
-        }]
-    })
-    
-    # 导出常量
-    results["constants"] = {
-        "CONSTANT_NAME": "value"
-    }
-    
-    return results
-
-if __name__ == "__main__":
-    results = distill()
-    print(json.dumps(results, indent=2, default=str))
+# 抽样执行蒸馏脚本
+python doc/scripts/utils/config.py/distill.py
 ```
 
-### 步骤 5: 执行蒸馏脚本
+**注意**: 此步骤不需要 task-distill.md 文件，直接编写 distill.py
 
+---
+
+## 步骤 3: 蒸馏执行
+
+**目标**: 执行所有蒸馏脚本，生成 `doc/*/py.json`
+
+**前置条件**: 步骤 2 完成（所有 distill.py 已创建）
+
+**输入**:
+- `doc/scripts/**/*.py/distill.py` (所有蒸馏脚本)
+
+**输出**:
+- `doc/scripts/**/*.py/py.json` (蒸馏输出)
+
+**任务描述**:
+
+```markdown
+# 步骤 3: 蒸馏执行
+
+## 任务
+执行所有蒸馏脚本，生成 py.json 文件
+
+## 执行命令
 ```bash
 cd D:\huangyg\git\sample\awiki
-python doc/scripts/<path>/<file>.py/distill.py > doc/scripts/<path>/<file>.py/py.json
+
+# 批量执行
+for file in doc/scripts/*/distill.py; do
+    python "$file" > "${file/distill.py/py.json}" 2>&1
+done
+
+# utils 子目录
+for file in doc/scripts/utils/*/distill.py; do
+    python "$file" > "${file/distill.py/py.json}" 2>&1
+done
+
+# tests 子目录
+for file in doc/tests/*/distill.py; do
+    python "$file" > "${file/distill.py/py.json}" 2>&1
+done
 ```
 
-### 步骤 6: 验证输出
-
-检查生成的 `py.json`：
-- JSON 格式正确
-- 所有公共函数都有测试
-- 输入输出数据完整
-- 场景描述清晰
-
-### 步骤 7: 更新 py.md（必需！）
-
-**重要**：蒸馏完成后必须更新 py.md，添加蒸馏数据章节：
-
-```markdown
-## 蒸馏数据
-
-### 测试输入
-
-| 函数 | 输入 | 场景 |
-|------|------|------|
-| function_name | {} | 场景描述 |
-
-### 测试输出
-
-| 函数 | 输出 | 验证点 |
-|------|------|--------|
-| function_name | {key: value} | 验证点描述 |
-
-### 蒸馏输出
-
-蒸馏数据已保存到 `py.json`，包含：
-- 函数输入输出
-- 常量定义
-- 类信息
-
-### 蒸馏脚本
-
-`distill.py` 已保存到同路径下。
-```
-
-### 步骤 8: 完整性检查（防遗漏）
-
-**任务完成检查清单**：
-
-- [ ] distill.py 已创建
-- [ ] py.json 已生成（执行蒸馏脚本）
-- [ ] py.md 已更新（添加"蒸馏数据"章节）
-- [ ] py.json 内容验证（JSON 格式、覆盖所有函数）
-
-**只有所有复选框都勾选，任务才算完成！**
-
-## 验收标准
-
-1. ✅ 蒸馏脚本 `distill.py` 已创建并可执行
-2. ✅ 蒸馏输出 `py.json` 格式正确
-3. ✅ 所有公共函数/类都有测试场景
-4. ✅ 测试场景覆盖正常流程和边界情况
-5. ✅ CLI 脚本包含命令行参数和输出测试
-6. ✅ 常量定义已导出
-7. ✅ **py.md 已更新**（包含"蒸馏数据"章节）
-8. ✅ **完整性检查通过**（检查清单全部勾选）
-
-## 注意事项
-
-- **不要修改 Python 源文件**：蒸馏只读取，不修改
-- **处理外部依赖**：使用 mock 或模拟数据隔离外部依赖
-- **覆盖所有场景**：包括正常流程、错误处理、边界情况
-- **CLI 测试**：对于用户通过 CLI 使用的脚本，必须测试命令行模式
-- **敏感数据**：不要记录真实的凭证、密钥等敏感信息
-- **必须更新 py.md**：蒸馏完成后立即更新 py.md，不要跳过
-
-## 常见遗漏错误
-
-❌ **错误 1**：蒸馏成功就认为完成，忘记更新 py.md
-   - **防止**：执行步骤 7 和步骤 8 完整性检查
-
-❌ **错误 2**：用快速测试代替正式 test.js
-   - **防止**：测试任务有独立的 test.js 创建步骤
-
-❌ **错误 3**：py.json 生成后不验证内容
-   - **防止**：步骤 6 明确要求验证 JSON 内容和覆盖度
-
-## 参考资料
-
-- [skill.js.md](../skill.js.md) - 第 3 节：开发流程
-- [skill.py.md](../skill.py.md) - Python 版本分析
-- `doc/scripts/<path>/<file>.py/py.md` - 分析报告
-```
-
----
-
-### 10.2 JS 测试文件创建任务模版
-
-```markdown
-# 任务描述：Node.js 测试文件创建
-
-## 任务信息
-- **任务类型**: 测试创建
-- **目标文件**: `doc/scripts/<path>/<file>.py/test.js`
-- **依赖文件**: 
-  - `doc/scripts/<path>/<file>.py/py.json` (蒸馏输出)
-  - `doc/scripts/<path>/<file>.py/py.md` (分析报告)
-  - `module/scripts/<path>/<file>.js` (Node.js 源文件，如已移植)
-  - 依赖模块的测试文件
-
-## 项目上下文
-
-### 项目根目录
-- Python 版本：`D:\huangyg\git\sample\awiki\python\`
-- 文档目录：`D:\huangyg\git\sample\awiki\doc\`
-- module 目录：`D:\huangyg\git\sample\awiki\module\`
-
-### 相关文件位置
-- 蒸馏输出：`doc/scripts/<path>/<file>.py/py.json`
-- 分析报告：`doc/scripts/<path>/<file>.py/py.md`
-- 测试文件输出：`doc/scripts/<path>/<file>.py/test.js`
-- Node.js 源文件：`module/scripts/<path>/<file>.js`
-
-## 任务目标
-
-基于蒸馏数据 (py.json) 和分析报告 (py.md)，为 Node.js 移植代码创建单元测试文件。测试应覆盖：
-1. 目标文件的所有公共函数/类
-2. 依赖文件的接口（确保依赖正确传递）
-3. CLI 命令行模式（如果适用）
-
-## 前置任务确认
-
-### 步骤 0: 确认前置任务完成（必需！）
-
-**在执行任何操作之前，必须确认前置任务已完成！**
-
-#### 检查清单
-
-- [ ] `doc/scripts/<path>/<file>.py/py.json` 存在（蒸馏输出）
-- [ ] `doc/scripts/<path>/<file>.py/py.json` 包含"functions"数组
-- [ ] `doc/scripts/<path>/<file>.py/py.md` 存在（分析报告）
-- [ ] `doc/scripts/<path>/<file>.py/py.md` 包含"蒸馏数据"章节
-
-#### 如果前置任务未完成
-
-**退出当前任务**，并通知主 agent：
-
-```
-【前置任务未完成】
-任务：Node.js 测试文件创建 - <file>.py
-缺失的前置条件：
-- 蒸馏输出不存在：doc/scripts/<path>/<file>.py/py.json
-或
-- 蒸馏数据不完整：py.json 缺少 functions 数组
-或
-- 分析报告未更新：doc/scripts/<path>/<file>.py/py.md 缺少"蒸馏数据"章节
-
-请先执行前置任务：
-1. 执行蒸馏任务，生成 py.json
-2. 更新 py.md，添加"蒸馏数据"章节
-
-当前任务已暂停，等待前置任务完成。
-```
-
-**不要继续执行**，直到前置任务完成！
-
-## 执行步骤
-
-### 步骤 1: 阅读蒸馏数据
-
-读取 `doc/scripts/<path>/<file>.py/py.json`，了解：
-- 所有函数/类的签名
-- 测试输入和预期输出
-- 测试场景描述
-
-### 步骤 2: 阅读分析报告
-
-读取 `doc/scripts/<path>/<file>.py/py.md`，了解：
-- 文件的功能概述
-- 调用其他文件的接口
-- 被哪些文件调用
-
-### 步骤 3: 检查 Node.js 源文件（如已移植）
-
-如果 `module/scripts/<path>/<file>.js` 已存在，阅读了解：
-- 函数实现
-- 参数处理
-- 返回值格式
-
-### 步骤 4: 编写测试文件
-
-创建 `doc/scripts/<path>/<file>.py/test.js`：
-
-```javascript
-/**
- * <file>.py 的 Node.js 测试文件
- * 
- * 基于蒸馏数据生成，确保与 Python 版本行为一致
- */
-
-const assert = require('assert');
-
-// 导入目标模块（如已移植）
-// const { <function_name> } = require('../../../module/scripts/<path>/<file>.js');
-
-// 导入依赖模块（如需要）
-// const { <dep_function> } = require('../../../module/scripts/<path>/<dep>.js');
-
-describe('<file> - <功能描述>', () => {
-  
-  // 测试每个函数
-  describe('<function_name>', () => {
-    it('should <行为描述> - <场景描述>', () => {
-      // 从 py.json 获取测试输入
-      const input = { param1: 'value1' };
-      
-      // 调用函数（如已移植）
-      // const result = <function_name>(input.param1);
-      
-      // 从 py.json 获取预期输出
-      const expected = { /* 预期输出 */ };
-      
-      // 断言
-      assert.deepStrictEqual(result, expected);
-    });
-    
-    // 添加更多测试场景
-    it('should handle edge case - <场景描述>', () => {
-      // 边界情况测试
-    });
-  });
-  
-  // 测试依赖接口（如果目标模块调用其他模块）
-  describe('dependency interfaces', () => {
-    it('should call <dep_module>.<dep_function> with correct args', () => {
-      // 测试依赖调用
-    });
-  });
-  
-  // CLI 测试（如果适用）
-  describe('CLI mode', () => {
-    const { execSync } = require('child_process');
-    
-    it('should work with CLI arguments', () => {
-      // 执行 CLI 命令
-      const output = execSync('node module/scripts/<path>/<file>.js --arg1 value1', {
-        encoding: 'utf8'
-      });
-      
-      // 验证输出
-      assert.ok(output.includes('expected output'));
-    });
-  });
-});
-```
-
-### 步骤 5: 添加交叉测试（如目标模块已移植）
-
-如果目标模块和依赖模块都已移植，添加 Python vs Node.js 交叉测试：
-
-```javascript
-describe('Cross-platform tests', () => {
-  const { execSync } = require('child_process');
-  
-  it('Python → Node.js: <场景描述>', () => {
-    // Python 执行
-    execSync('python scripts/<file>.py <args>');
-    
-    // Node.js 验证
-    const nodeOutput = execSync('node module/scripts/<path>/<file>.js <args>', {
-      encoding: 'utf8'
-    });
-    
-    // 验证
-    assert.ok(nodeOutput.includes('expected'));
-  });
-});
-```
-
-### 步骤 6: 验证测试文件
-
+## 完成标准
+- [ ] 所有 py.json 文件已生成
+- [ ] py.json 格式正确（JSON 可解析）
+- [ ] py.json 包含 functions 数组
+- [ ] py.json 包含测试输入输出
+
+## 验证
 ```bash
-# 运行测试
-cd D:\huangyg\git\sample\awiki\module
-npm test -- doc/scripts/<path>/<file>.py/test.js
-```
+# 验证 JSON 格式
+python scripts/verify_step3.py
 
-## 验收标准
-
-1. ✅ 测试文件 `test.js` 已创建
-2. ✅ 所有公共函数/类都有测试
-3. ✅ 测试覆盖正常流程和边界情况
-4. ✅ 依赖接口测试已添加
-5. ✅ CLI 测试已添加（如果适用）
-6. ✅ 交叉测试已添加（如果模块已移植）
-7. ✅ 测试可以执行并通过
-
-## 注意事项
-
-- **基于蒸馏数据**：测试输入输出应与 py.json 一致
-- **依赖测试**：测试依赖接口确保数据正确传递
-- **CLI 测试**：对于用户通过 CLI 使用的脚本，必须测试命令行模式
-- **交叉测试**：如模块已移植，添加 Python vs Node.js 对比测试
-- **独立执行**：测试文件应可独立运行，不依赖其他测试
-
-## 参考资料
-
-- [skill.js.md](../skill.js.md) - 第 3.4 节：编写单元测试
-- `doc/scripts/<path>/<file>.py/py.json` - 蒸馏数据
-- `doc/scripts/<path>/<file>.py/py.md` - 分析报告
+# 检查 py.json 内容
+python -c "import json; json.load(open('doc/scripts/utils/config.py/py.json'))"
 ```
 
 ---
 
-### 10.3 JS 文件移植任务模版
+## 步骤 4: 测试代码编写
+
+**目标**: 为所有文件创建 Node.js 单元测试代码 `doc/*/test.js`
+
+**前置条件**: 步骤 3 完成（所有 py.json 已生成）
+
+**输入**:
+- `doc/scripts/**/*.py/py.json` (蒸馏数据)
+- `doc/scripts/**/*.py/py.md` (分析报告)
+
+**输出**:
+- `doc/scripts/**/*.py/test.js` (Node.js 测试文件)
+
+**任务描述**:
 
 ```markdown
-# 任务描述：Node.js 文件移植
+# 步骤 4: Node.js 测试代码编写
 
-## 任务信息
-- **任务类型**: 移植
-- **目标文件**: `module/scripts/<path>/<file>.js`
-- **依赖文件**: 
-  - `doc/scripts/<path>/<file>.py/py.md` (分析报告)
-  - `doc/scripts/<path>/<file>.py/py.json` (蒸馏数据)
-  - `python/scripts/<path>/<file>.py` (Python 源文件)
-  - 依赖模块的 Node.js 版本（如已移植）
+## 任务
+基于 py.json 和 py.md，为每个文件编写 Node.js 测试代码
 
-## 项目上下文
+## 测试代码要求
+每个 test.js 应：
+1. 导入蒸馏数据（py.json）
+2. 为每个函数创建测试用例
+3. 包含 CLI 测试（如适用）
+4. 包含交叉测试（Python vs Node.js）
 
-### 项目根目录
-- Python 版本：`D:\huangyg\git\sample\awiki\python\`
-- 文档目录：`D:\huangyg\git\sample\awiki\doc\`
-- module 目录：`D:\huangyg\git\sample\awiki\module\`
+## 输出位置
+- doc/scripts/utils/config.py/test.js
+- doc/scripts/send_message.py/test.js
+- ... (所有文件)
 
-### 相关文件位置
-- Python 源文件：`python/scripts/<path>/<file>.py`
-- 分析报告：`doc/scripts/<path>/<file>.py/py.md`
-- 蒸馏数据：`doc/scripts/<path>/<file>.py/py.json`
-- Node.js 输出：`module/scripts/<path>/<file>.js`
+## 完成标准
+- [ ] 所有 py 文件都有对应的 test.js
+- [ ] test.js 基于 py.json 的测试数据
+- [ ] test.js 使用 Jest 格式
+- [ ] CLI 脚本包含命令行测试
+- [ ] 包含 Python vs Node.js 交叉测试
 
-## 任务目标
+## 验证
+```bash
+# 检查是否所有文件都有 test.js
+python scripts/verify_step4.py
+```
 
-根据 Python 源文件、分析报告和蒸馏数据，将 Python 代码移植到 Node.js，保持：
-1. 函数名、参数、返回值完全一致
-2. 变量名保持一致（如可能）
+---
+
+## 步骤 5: Node.js 代码移植
+
+**目标**: 将所有 Python 文件移植到 Node.js，形成 `module/scripts/*.js`
+
+**前置条件**: 步骤 4 完成（所有 test.js 已创建）
+
+**输入**:
+- `python/scripts/**/*.py` (Python 源文件)
+- `doc/scripts/**/*.py/py.json` (蒸馏数据)
+- `doc/scripts/**/*.py/py.md` (分析报告)
+- `doc/scripts/**/*.py/test.js` (测试文件)
+
+**输出**:
+- `module/scripts/**/*.js` (Node.js 移植代码)
+
+**执行顺序**（按依赖关系）:
+
+### 5.1 第一批次：基础工具模块
+1. `module/scripts/utils/config.js` - 配置管理
+2. `module/scripts/utils/logging.js` - 日志管理
+
+### 5.2 第二批次：核心工具模块
+3. `module/scripts/utils/rpc.js` - JSON-RPC
+4. `module/scripts/utils/client.js` - HTTP 客户端
+5. `module/scripts/utils/auth.js` - 认证
+6. `module/scripts/utils/identity.js` - 身份创建
+
+### 5.3 第三批次：业务工具模块
+7. `module/scripts/utils/handle.js` - Handle 管理
+8. `module/scripts/utils/e2ee.js` - E2EE 加密
+9. `module/scripts/utils/resolve.js` - DID 解析
+10. `module/scripts/utils/ws.js` - WebSocket
+
+### 5.4 第四批次：核心业务脚本
+11. `module/scripts/credential-store.js` - 凭证存储
+12. `module/scripts/local-store.js` - 本地存储
+13. `module/scripts/setup-identity.js` - 身份设置
+14. `module/scripts/send-message.js` - 发送消息
+15. `module/scripts/check-inbox.js` - 检查收件箱
+
+### 5.5 第五批次：其他业务脚本
+16-50. 其他业务脚本（按依赖顺序）
+
+### 5.6 第六批次：测试脚本
+51-63. 测试脚本移植
+
+**任务描述**:
+
+```markdown
+# 步骤 5: Node.js 代码移植
+
+## 任务
+按依赖顺序将所有 Python 文件移植到 Node.js
+
+## 移植要求
+每个 .js 文件应：
+1. 函数名、参数、返回值与 Python 完全一致
+2. 变量名保持一致
 3. 实现逻辑一致
-4. 不做任何猜测和简化
+4. 不做猜测和简化
 
-## 前置任务确认
+## 移植流程（每个文件）
+1. 阅读 py.md 和 py.json
+2. 编写 Node.js 代码
+3. 运行 test.js 测试
+4. 如失败，修复直到通过
+5. Python vs Node.js 交叉验证
+6. 通过后提交
 
-### 步骤 0: 确认前置任务完成（必需！）
+## 输出位置
+- module/scripts/utils/config.js
+- module/scripts/utils/logging.js
+- module/scripts/send-message.js
+- ... (所有文件)
 
-**在执行任何操作之前，必须确认前置任务已完成！**
-
-#### 检查清单
-
-- [ ] `python/scripts/<path>/<file>.py` 存在（Python 源文件）
-- [ ] `doc/scripts/<path>/<file>.py/py.md` 存在（分析报告）
-- [ ] `doc/scripts/<path>/<file>.py/py.md` 包含"蒸馏数据"章节
-- [ ] `doc/scripts/<path>/<file>.py/py.json` 存在（蒸馏输出）
-- [ ] `doc/scripts/<path>/<file>.py/py.json` 包含完整的 functions 数组
-- [ ] `doc/scripts/<path>/<file>.py/test.js` 存在（测试文件，如已创建）
-
-#### 如果前置任务未完成
-
-**退出当前任务**，并通知主 agent：
-
-```
-【前置任务未完成】
-任务：Node.js 文件移植 - <file>.py
-缺失的前置条件：
-- Python 源文件不存在：python/scripts/<path>/<file>.py
-或
-- 分析报告未更新：doc/scripts/<path>/<file>.py/py.md 缺少"蒸馏数据"章节
-或
-- 蒸馏输出不存在：doc/scripts/<path>/<file>.py/py.json
-或
-- 测试文件未创建：doc/scripts/<path>/<file>.py/test.js
-
-请先执行前置任务：
-1. 蒸馏任务 - 生成 py.json
-2. 更新 py.md - 添加"蒸馏数据"章节
-3. 测试文件创建 - 创建 test.js
-
-当前任务已暂停，等待前置任务完成。
-```
-
-**不要继续执行**，直到前置任务完成！
-
-## 执行步骤
-
-### 步骤 1: 阅读分析报告
-
-读取 `doc/scripts/<path>/<file>.py/py.md`，了解：
-- 文件的功能概述
-- 所有函数/类的签名
-- 导入的模块和依赖
-- 调用其他文件的接口
-- 被哪些文件调用
-
-### 步骤 2: 阅读蒸馏数据
-
-读取 `doc/scripts/<path>/<file>.py/py.json`，了解：
-- 测试输入和预期输出
-- 常量定义
-- 类结构
-
-### 步骤 3: 阅读 Python 源文件
-
-读取 `python/scripts/<path>/<file>.py`，理解：
-- 每个函数的实现逻辑
-- 参数处理方式
-- 返回值格式
-- 异常处理
-- 使用的 Python 特有语法
-
-### 步骤 4: 检查依赖模块
-
-检查依赖的模块是否已移植：
-- 如已移植：记录导入路径
-- 如未移植：标记为待处理，使用占位实现
-
-### 步骤 5: 编写 Node.js 代码
-
-创建 `module/scripts/<path>/<file>.js`：
-
-```javascript
-/**
- * <file>.py 的 Node.js 移植
- *
- * Python 源文件：python/scripts/<path>/<file>.py
- * 分析报告：doc/scripts/<path>/<file>.py/py.md
- * 蒸馏数据：doc/scripts/<path>/<file>.py/py.json
- */
-
-// 导入依赖（如已移植）
-// const { <function> } = require('./<dep>.js');
-
-// 导入 Node.js 内置模块
-const path = require('path');
-const fs = require('fs');
-const os = require('os'); // 用于 home directory 等
-
-/**
- * <函数描述>
- *
- * Python 签名：<function_name>(param1, param2) -> return_type
- *
- * @param {type} param1 - 参数描述
- * @param {type} param2 - 参数描述
- * @returns {type} 返回值描述
- */
-function <function_name>(param1, param2) {
-  // 实现逻辑与 Python 版本一致
-  // ...
-
-  return result;
-}
-
-/**
- * 类描述
- */
-class <ClassName> {
-  /**
-   * 构造函数
-   * @param {type} param - 参数描述
-   */
-  constructor(param) {
-    this.param = param;
-  }
-
-  /**
-   * 方法描述
-   * @returns {type} 返回值描述
-   */
-  methodName() {
-    // 实现
-  }
-}
-
-// 导出公共 API
-module.exports = {
-  <function_name>,
-  <ClassName>
-};
-```
-
-**经验教训** (从 config.js 移植中获得):
-
-1. **路径处理**: Python 的 `Path` 对象在 Node.js 中使用 `path.join()` 处理
-2. **数据类转换**: Python 的 `@dataclass` 转换为 Node.js 的 `class` + 构造函数
-3. **frozen=True**: 使用 `Object.freeze(this)` 模拟 Python 的 frozen dataclass
-4. **环境变量**: Node.js 使用 `process.env.VAR_NAME` 对应 Python 的 `os.environ.get()`
-5. **默认值**: Python 的 `field(default_factory=...)` 转换为 JS 的构造函数默认参数
-6. **Path 对象**: Python 的 `Path.home()` 对应 Node.js 的 `os.homedir()`
-
-### 步骤 6: Python vs Node.js 语法转换
-
-| Python | Node.js |
-|--------|---------|
-| `def func():` | `function func() {` |
-| `class Name:` | `class Name {` |
-| `self.param` | `this.param` |
-| `None` | `null` |
-| `True/False` | `true/false` |
-| `import x` | `const x = require('x')` |
-| `with x as y:` | `using` 或 try/finally |
-| `list.append()` | `array.push()` |
-| `dict.get(key)` | `obj[key]` |
-| `f-string` | 模板字符串 |
-| `async def` | `async function` |
-| `await` | `await` |
-
-### 步骤 7: 处理外部依赖
-
-**lib 适配器**：
-```javascript
-// 使用 lib 适配器
-const anp = require('../../lib/anp-0.6.8/index.js');
-const httpx = require('../../lib/httpx-0.28.0/index.js');
-const websockets = require('../../lib/websockets-14.0/index.js');
-```
-
-**Node.js 内置模块**：
-```javascript
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
-const http = require('http');
-const { URL } = require('url');
-```
-
-**第三方库**：
-```javascript
-// package.json 中已安装的库
-const undici = require('undici');
-const ws = require('ws');
-const betterSqlite3 = require('better-sqlite3');
-```
-
-### 步骤 8: 验证代码
-
-```bash
-# 语法检查
-cd D:\huangyg\git\sample\awiki\module
-node --check scripts/<path>/<file>.js
-
-# 运行测试（如测试文件已存在）
-npm test -- doc/scripts/<path>/<file>.py/test.js
-```
-
-### 步骤 9: 完整性检查（防遗漏）
-
-**任务完成检查清单**：
-
-- [ ] Node.js 源文件已创建
-- [ ] 所有公共函数/类都已移植
-- [ ] 函数名、参数、返回值与 Python 一致
-- [ ] 依赖导入正确（检查 require 路径）
+## 完成标准
+- [ ] 所有 py 文件都有对应的 js 文件
+- [ ] 所有 test.js 测试通过
+- [ ] Python vs Node.js 交叉测试通过
 - [ ] 代码通过语法检查（node --check）
-- [ ] 测试通过（如有 test.js）
-- [ ] 交叉测试验证（Python vs Node.js 输出对比）
 
-**只有所有复选框都勾选，任务才算完成！**
-
-## 验收标准
-
-1. ✅ Node.js 代码 `module/scripts/<path>/<file>.js` 已创建
-2. ✅ 所有公共函数/类都已移植
-3. ✅ 函数名、参数、返回值与 Python 版本一致
-4. ✅ 变量名保持一致（如可能）
-5. ✅ 实现逻辑与 Python 版本一致
-6. ✅ 依赖处理正确（导入/导出）
-7. ✅ 代码可以通过语法检查
-8. ✅ 测试通过（如测试文件已存在）
-9. ✅ **完整性检查通过**（检查清单全部勾选）
-
-## 注意事项
-
-- **不做猜测**：严格按照 Python 版本实现，不做任何猜测和简化
-- **保持一致**：函数名、参数、返回值完全一致
-- **依赖检查**：确保依赖的模块已移植或有替代方案
-- **CLI 支持**：对于用户通过 CLI 使用的脚本，保留命令行参数处理
-- **注释完整**：添加 JSDoc 注释，说明函数功能、参数、返回值
-- **快速测试≠正式测试**：node -e 验证不能替代 test.js 文件
-
-## 常见遗漏错误
-
-❌ **错误 1**：用 node -e 快速测试代替正式 test.js
-   - **防止**：测试任务有独立的 test.js 创建步骤，必须执行
-
-❌ **错误 2**：移植后不做交叉验证
-   - **防止**：步骤 9 要求 Python vs Node.js 输出对比
-
-❌ **错误 3**：依赖模块未检查
-   - **防止**：步骤 4 明确要求检查依赖是否已移植
-
-## 参考资料
-
-- [skill.js.md](../skill.js.md) - 第 3.5 节：移植模块
-- [skill.py.md](../skill.py.md) - Python 版本分析
-- `doc/scripts/<path>/<file>.py/py.md` - 分析报告
-- `doc/scripts/<path>/<file>.py/py.json` - 蒸馏数据
-- `python/scripts/<path>/<file>.py` - Python 源文件
+## 验证
+```bash
+cd module
+npm test
 ```
 
 ---
 
-### 10.4 JS 文件测试任务模版
+## 步骤 6: module 集成测试
+
+**目标**: 完成 module 项目的集成测试
+
+**前置条件**: 步骤 5 完成（所有 js 文件已移植且单元测试通过）
+
+**输入**:
+- `module/scripts/**/*.js` (所有 Node.js 代码)
+
+**输出**:
+- `module/tests/integration/**/*.test.js` (集成测试)
+- 修复后的 module 代码
+
+**任务描述**:
 
 ```markdown
-# 任务描述：Node.js 文件测试
+# 步骤 6: module 集成测试
 
-## 任务信息
-- **任务类型**: 测试
-- **目标文件**: `module/scripts/<path>/<file>.js`
-- **测试文件**: `doc/scripts/<path>/<file>.py/test.js`
-- **依赖文件**: 
-  - `doc/scripts/<path>/<file>.py/py.json` (蒸馏数据)
-  - `doc/scripts/<path>/<file>.py/test.js` (测试文件)
+## 任务
+编写集成测试，验证模块间协作
 
-## 项目上下文
+## 测试场景
+1. 身份创建 → Handle 注册 → 发送消息
+2. 创建群组 → 加入群组 → 群消息
+3. E2EE 会话建立 → 加密通信
+4. Python ↔ Node.js 交叉通信
 
-### 项目根目录
-- Python 版本：`D:\huangyg\git\sample\awiki\python\`
-- 文档目录：`D:\huangyg\git\sample\awiki\doc\`
-- module 目录：`D:\huangyg\git\sample\awiki\module\`
+## 输出位置
+- module/tests/integration/messaging.test.js
+- module/tests/integration/group.test.js
+- module/tests/integration/e2ee.test.js
+- module/tests/integration/cross-platform.test.js
 
-### 相关文件位置
-- Node.js 源文件：`module/scripts/<path>/<file>.js`
-- 蒸馏数据：`doc/scripts/<path>/<file>.py/py.json`
-- 测试文件：`doc/scripts/<path>/<file>.py/test.js`
+## 完成标准
+- [ ] 所有集成测试通过
+- [ ] Python vs Node.js 行为一致
+- [ ] 3 轮以上来回通信测试通过
+- [ ] 性能达标（CLI < 500ms）
 
-## 任务目标
-
-运行测试文件验证 Node.js 移植代码的正确性，确保：
-1. 所有测试通过
-2. 行为与 Python 版本一致
-3. 蒸馏数据验证通过
-
-## 执行步骤
-
-### 步骤 1: 检查前置条件
-
-确认以下文件存在：
-- [ ] `module/scripts/<path>/<file>.js` (Node.js 源文件)
-- [ ] `doc/scripts/<path>/<file>.py/test.js` (测试文件)
-- [ ] `doc/scripts/<path>/<file>.py/py.json` (蒸馏数据)
-
-### 步骤 2: 安装依赖
-
+## 验证
 ```bash
-cd D:\huangyg\git\sample\awiki\module
-npm install
-```
-
-### 步骤 3: 运行单元测试
-
-```bash
-# 运行单个测试文件
-npm test -- doc/scripts/<path>/<file>.py/test.js
-
-# 或运行特定测试
-npm test -- --testNamePattern="<测试名称>"
-```
-
-### 步骤 4: 运行 CLI 测试（如果适用）
-
-```bash
-# 直接执行 CLI 脚本
-node module/scripts/<path>/<file>.js --arg1 value1
-
-# 验证输出
-node module/scripts/<path>/<file>.js --arg1 value1 | findstr "expected"
-```
-
-### 步骤 5: 运行交叉测试（如果适用）
-
-```bash
-# Python vs Node.js 对比测试
-npm run test:compare -- doc/scripts/<path>/<file>.py/test.js
-```
-
-### 步骤 6: 分析测试结果
-
-**通过**：
-- ✅ 所有测试通过
-- ✅ 输出与预期一致
-- ✅ 无错误和警告
-
-**失败**：
-- ❌ 记录失败的测试
-- ❌ 分析失败原因
-- ❌ 生成修复建议
-
-### 步骤 7: 生成测试报告
-
-```markdown
-## 测试报告：<file>.js
-
-### 测试概览
-- 总测试数：X
-- 通过：Y
-- 失败：Z
-- 跳过：W
-
-### 通过的测试
-1. ✅ <测试名称 1>
-2. ✅ <测试名称 2>
-
-### 失败的测试
-1. ❌ <测试名称>
-   - 原因：<失败原因>
-   - 建议：<修复建议>
-
-### CLI 测试
-- ✅/❌ CLI 命令执行成功
-- ✅/❌ 输出与预期一致
-
-### 交叉测试
-- ✅/❌ Python vs Node.js 行为一致
-```
-
-## 验收标准
-
-1. ✅ 所有单元测试通过
-2. ✅ CLI 测试通过（如果适用）
-3. ✅ 交叉测试通过（如果适用）
-4. ✅ 测试报告已生成
-5. ✅ 失败测试有修复建议
-
-## 注意事项
-
-- **蒸馏数据验证**：确保测试使用 py.json 中的蒸馏数据
-- **CLI 测试**：对于用户通过 CLI 使用的脚本，必须测试命令行模式
-- **交叉测试**：如可能，运行 Python vs Node.js 对比测试
-- **错误分析**：详细记录失败原因和修复建议
-
-## 参考资料
-
-- [skill.js.md](../skill.js.md) - 第 3.6 节：单元测试验证
-- `doc/scripts/<path>/<file>.py/py.json` - 蒸馏数据
-- `doc/scripts/<path>/<file>.py/test.js` - 测试文件
-```
-
----
-
-### 10.5 集成测试编写任务模版
-
-```markdown
-# 任务描述：集成测试编写
-
-## 任务信息
-- **任务类型**: 集成测试
-- **目标文件**: `module/tests/integration/<scenario>.test.js`
-- **依赖文件**: 
-  - 多个已移植的模块
-  - Python 版本的对应场景脚本
-
-## 项目上下文
-
-### 项目根目录
-- Python 版本：`D:\huangyg\git\sample\awiki\python\`
-- 文档目录：`D:\huangyg\git\sample\awiki\doc\`
-- module 目录：`D:\huangyg\git\sample\awiki\module\`
-
-### 测试场景
-- **场景名称**: <场景描述，如"明文通信">
-- **涉及模块**: <模块列表>
-- **轮次要求**: 3 轮以上来回通信
-
-## 任务目标
-
-编写集成测试验证多个模块协作的正确性，包括：
-1. Python vs Node.js 交叉测试
-2. 多轮来回通信
-3. 端到端场景验证
-
-## 执行步骤
-
-### 步骤 1: 确定测试场景
-
-根据需求确定测试场景：
-
-**明文通信场景**：
-- Python 发送 → Node.js 接收
-- Node.js 发送 → Python 接收
-- 双向通信（3 轮以上）
-
-**密文通信场景**：
-- E2EE 会话初始化
-- E2EE 加密消息
-- E2EE 解密消息
-
-**群组通信场景**：
-- 创建群组 → 加入 → 发送消息
-- 多成员消息交换
-
-### 步骤 2: 准备测试身份
-
-```javascript
-// 测试身份配置
-const TEST_IDENTITIES = {
-  python: {
-    did: 'did:wba:awiki.ai:user:k1_python_test',
-    credential: 'python_test'
-  },
-  node: {
-    did: 'did:wba:awiki.ai:user:k1_node_test',
-    credential: 'node_test'
-  }
-};
-```
-
-### 步骤 3: 编写集成测试
-
-创建 `module/tests/integration/<scenario>.test.js`：
-
-```javascript
-/**
- * 集成测试：<场景名称>
- * 
- * 测试 Python vs Node.js 交叉通信
- */
-
-const assert = require('assert');
-const { execSync } = require('child_process');
-const path = require('path');
-
-// 项目路径
-const PYTHON_DIR = path.join(__dirname, '../../..', 'python');
-const MODULE_DIR = path.join(__dirname, '../..');
-
-describe('Integration Tests: <场景名称>', () => {
-  
-  // 测试身份
-  const pythonDid = '<Python DID>';
-  const nodeDid = '<Node.js DID>';
-  
-  before(() => {
-    // 前置条件检查
-    // 确保 Python 和 Node.js 身份都已创建
-  });
-  
-  // 场景 1: Python → Node.js
-  describe('Python → Node.js', () => {
-    it('should receive message from Python (Round 1)', () => {
-      // Python 发送
-      execSync(
-        `python scripts/send_message.py --to ${nodeDid} --content "Round 1 from Python"`,
-        { cwd: PYTHON_DIR, stdio: 'pipe' }
-      );
-      
-      // Node.js 接收
-      const inbox = execSync(
-        'node scripts/check-inbox.js --limit 1',
-        { cwd: MODULE_DIR, encoding: 'utf8' }
-      );
-      
-      // 验证
-      assert.ok(inbox.includes('Round 1 from Python'));
-    });
-    
-    // 添加更多轮次...
-  });
-  
-  // 场景 2: Node.js → Python
-  describe('Node.js → Python', () => {
-    it('should receive message from Node.js (Round 2)', () => {
-      // Node.js 发送
-      execSync(
-        `node scripts/check-inbox.js --to ${pythonDid} --content "Round 2 from Node.js"`,
-        { cwd: MODULE_DIR, stdio: 'pipe' }
-      );
-      
-      // Python 接收
-      const inbox = execSync(
-        'python scripts/check_inbox.py --limit 1',
-        { cwd: PYTHON_DIR, encoding: 'utf8' }
-      );
-      
-      // 验证
-      assert.ok(inbox.includes('Round 2 from Node.js'));
-    });
-  });
-  
-  // 场景 3: 双向通信（3 轮以上）
-  describe('Bidirectional Communication (3+ rounds)', () => {
-    const messages = [];
-    
-    it('Round 1: Python → Node.js', () => {
-      // 实现
-    });
-    
-    it('Round 2: Node.js → Python', () => {
-      // 实现
-    });
-    
-    it('Round 3: Python → Node.js', () => {
-      // 实现
-    });
-    
-    it('Round 4: Node.js → Python', () => {
-      // 实现
-    });
-  });
-});
-```
-
-### 步骤 4: 添加 E2EE 测试（如果适用）
-
-```javascript
-describe('E2EE Cross-Platform Tests', () => {
-  it('should complete E2EE handshake and exchange messages', () => {
-    // Round 1: Python initiates E2EE
-    execSync(
-      `python scripts/e2ee_messaging.py --send ${nodeDid} --content "E2EE Round 1"`,
-      { cwd: PYTHON_DIR }
-    );
-    
-    // Round 2: Node.js responds
-    execSync(
-      `node scripts/e2ee-messaging.js --send ${pythonDid} --content "E2EE Round 2"`,
-      { cwd: MODULE_DIR }
-    );
-    
-    // Round 3: Verify decryption
-    const inbox = execSync(
-      'node scripts/check-inbox.js --e2ee --limit 2',
-      { cwd: MODULE_DIR, encoding: 'utf8' }
-    );
-    
-    assert.ok(inbox.includes('E2EE'));
-  });
-});
-```
-
-### 步骤 5: 添加群组测试（如果适用）
-
-```javascript
-describe('Group Cross-Platform Tests', () => {
-  let groupId;
-  let joinCode;
-  
-  it('Python creates group', () => {
-    const result = execSync(
-      'python scripts/manage_group.py --create --name "Test" --slug test',
-      { cwd: PYTHON_DIR, encoding: 'utf8' }
-    );
-    const data = JSON.parse(result);
-    groupId = data.groupId;
-    joinCode = data.join_code;
-  });
-  
-  it('Node.js joins group', () => {
-    execSync(
-      `node scripts/manage-group.js --join --group-id ${groupId} --join-code ${joinCode}`,
-      { cwd: MODULE_DIR }
-    );
-  });
-  
-  it('Exchange group messages (3 rounds)', () => {
-    // 实现 3 轮群消息交换
-  });
-});
-```
-
-### 步骤 6: 运行集成测试
-
-```bash
-cd D:\huangyg\git\sample\awiki\module
-
-# 运行所有集成测试
+cd module
 npm run test:integration
-
-# 运行特定场景测试
-npm run test:integration -- --testNamePattern="<场景名称>"
 ```
 
-### 步骤 7: 分析测试结果
+---
 
-生成测试报告：
+## 步骤 7: nodejs-client 项目
+
+**目标**: 将 module 的代码转移到 nodejs-client，完成最终产品
+
+**前置条件**: 步骤 6 完成（module 集成测试通过）
+
+**输入**:
+- `module/scripts/**/*.js` (已验证的 Node.js 代码)
+- `module/tests/**/*.js` (测试代码)
+
+**输出**:
+- `nodejs-client/` (完整的 Skill 项目)
+
+**任务描述**:
 
 ```markdown
-## 集成测试报告：<场景名称>
+# 步骤 7: nodejs-client 项目
 
-### 测试概览
-- 总测试数：X
-- 通过：Y
-- 失败：Z
+## 任务
+将 module 的代码转移到 nodejs-client，创建完整的 Skill 项目
 
-### 交叉测试结果
-| 方向 | 轮次 | 结果 |
-|------|------|------|
-| Python → Node.js | 1 | ✅ |
-| Node.js → Python | 2 | ✅ |
-| Python → Node.js | 3 | ✅ |
-| Node.js → Python | 4 | ✅ |
+## 转移内容
+1. scripts/ → nodejs-client/scripts/
+2. lib/ → nodejs-client/lib/ (适配器)
+3. 创建 nodejs-client/package.json
+4. 创建 nodejs-client/SKILL.md
+5. 创建 nodejs-client/README.md
 
-### 问题记录
-1. <问题描述>
-   - 原因：<原因分析>
-   - 建议：<修复建议>
+## 输出位置
+- nodejs-client/scripts/utils/config.js
+- nodejs-client/scripts/send-message.js
+- nodejs-client/SKILL.md
+- nodejs-client/package.json
+- ...
+
+## 完成标准
+- [ ] 所有代码已转移
+- [ ] nodejs-client 可以独立运行
+- [ ] 集成测试通过
+- [ ] SKILL.md 符合 agentskills.io 规范
+- [ ] 文档完整
+
+## 验证
+```bash
+cd nodejs-client
+npm install
+npm test
 ```
+---
+
+## 步骤完成检查
+
+| 步骤 | 输入 | 输出 | 完成标准 |
+|------|------|------|----------|
+| 1. Python 分析 | python/**/*.py | doc/*/py.md | 所有文件有 py.md |
+| 2. 蒸馏脚本 | python/**/*.py, doc/*/py.md | doc/*/distill.py | 所有文件有 distill.py |
+| 3. 蒸馏执行 | doc/*/distill.py | doc/*/py.json | 所有文件有 py.json |
+| 4. 测试编写 | doc/*/py.json, doc/*/py.md | doc/*/test.js | 所有文件有 test.js |
+| 5. 代码移植 | python/**/*.py, doc/*/* | module/scripts/*.js | 所有测试通过 |
+| 6. 集成测试 | module/scripts/*.js | module/tests/integration/ | 集成测试通过 |
+| 7. 最终项目 | module/* | nodejs-client/ | Skill 项目完成 |
 
 ## 验收标准
 

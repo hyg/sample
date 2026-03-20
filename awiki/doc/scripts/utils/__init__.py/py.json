@@ -1,0 +1,100 @@
+============================================================
+utils 包入口蒸馏报告
+============================================================
+执行时间：2026-03-20T17:46:28.598742
+项目路径：D:\huangyg\git\sample\awiki\python\scripts
+
+------------------------------------------------------------
+【INPUT】输入模块
+------------------------------------------------------------
+  - utils.config
+  - utils.identity
+  - utils.auth
+  - utils.client
+  - utils.e2ee
+  - utils.rpc
+  - utils.handle
+  - utils.logging_config
+  - utils.ws
+  - utils.resolve
+
+------------------------------------------------------------
+【OUTPUT】导入验证
+------------------------------------------------------------
+✓ utils 包导入成功
+  包路径：['D:\\huangyg\\git\\sample\\awiki\\python\\scripts\\utils']
+  包文件：D:\huangyg\git\sample\awiki\python\scripts\utils\__init__.py
+
+------------------------------------------------------------
+【OUTPUT】__all__ 导出列表
+------------------------------------------------------------
+导出数量：28
+  - SDKConfig
+  - DIDIdentity
+  - create_identity
+  - load_private_key
+  - generate_wba_auth_header
+  - register_did
+  - update_did_document
+  - get_jwt_via_wba
+  - create_authenticated_identity
+  - create_user_service_client
+  - create_molt_message_client
+  - E2eeClient
+  - JsonRpcError
+  - rpc_call
+  - authenticated_rpc_call
+  - send_otp
+  - register_handle
+  - recover_handle
+  - resolve_handle
+  - lookup_handle
+  - normalize_phone
+  - cleanup_log_files
+  - configure_logging
+  - find_latest_log_file
+  - get_log_dir
+  - get_log_file_path
+  - WsClient
+  - resolve_to_did
+
+------------------------------------------------------------
+【OUTPUT】实际可访问性验证
+------------------------------------------------------------
+  ✓ SDKConfig: type (来自 utils.config)
+  ✓ DIDIdentity: type (来自 utils.identity)
+  ✓ create_identity: function (来自 utils.identity)
+  ✓ load_private_key: function (来自 utils.identity)
+  ✓ generate_wba_auth_header: function (来自 utils.auth)
+  ✓ register_did: function (来自 utils.auth)
+  ✓ update_did_document: function (来自 utils.auth)
+  ✓ get_jwt_via_wba: function (来自 utils.auth)
+  ✓ create_authenticated_identity: function (来自 utils.auth)
+  ✓ create_user_service_client: function (来自 utils.client)
+  ✓ create_molt_message_client: function (来自 utils.client)
+  ✓ E2eeClient: type (来自 utils.e2ee)
+  ✓ JsonRpcError: type (来自 utils.rpc)
+  ✓ rpc_call: function (来自 utils.rpc)
+  ✓ authenticated_rpc_call: function (来自 utils.rpc)
+  ✓ send_otp: function (来自 utils.handle)
+  ✓ register_handle: function (来自 utils.handle)
+  ✓ recover_handle: function (来自 utils.handle)
+  ✓ resolve_handle: function (来自 utils.handle)
+  ✓ lookup_handle: function (来自 utils.handle)
+  ✓ normalize_phone: function (来自 utils.handle)
+  ✓ cleanup_log_files: function (来自 utils.logging_config)
+  ✓ configure_logging: function (来自 utils.logging_config)
+  ✓ find_latest_log_file: function (来自 utils.logging_config)
+  ✓ get_log_dir: function (来自 utils.logging_config)
+  ✓ get_log_file_path: function (来自 utils.logging_config)
+  ✓ WsClient: type (来自 utils.ws)
+  ✓ resolve_to_did: function (来自 utils.resolve)
+
+------------------------------------------------------------
+【SUMMARY】汇总
+------------------------------------------------------------
+总导出数：28
+可访问：28
+不可访问：0
+
+✓ 所有导出项验证通过

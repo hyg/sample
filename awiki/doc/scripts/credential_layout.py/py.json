@@ -1,0 +1,155 @@
+============================================================
+DISTILLATION RESULTS - credential_layout.py
+============================================================
+
+✓ constants
+  Input: N/A
+  Output: {
+  "INDEX_SCHEMA_VERSION": 3,
+  "INDEX_FILE_NAME": "index.json",
+  "IDENTITY_FILE_NAME": "identity.json",
+  "AUTH_FILE_NAME": "auth.json",
+  "DID_DOCUMENT_FILE_NAME": "did_document.json",
+  "KEY1_PRI...
+
+✓ _default_index
+  Input: N/A
+  Output: {
+  "schema_version": 3,
+  "default_credential_name": null,
+  "credentials": {}
+}
+
+✓ _normalize_index_payload
+  Input: {
+  "schema_version": 2,
+  "credentials": {
+    "test_cred": {
+      "dir_name": "test_dir"
+    }
+  ...
+  Output: {
+  "schema_version": 3,
+  "default_credential_name": null,
+  "credentials": {
+    "test_cred": {
+      "dir_name": "test_dir",
+      "credential_name": "test_cred",
+      "is_default": false
+    }
+  ...
+
+✓ sanitize_credential_dir_name
+  Input: ["test-cred", "test_cred", "test.cred", "test@cred!"]
+  Output: {
+  "test-cred": "test-cred",
+  "test_cred": "test_cred",
+  "test.cred": "test.cred",
+  "test@cred!": "test_cred"
+}
+
+✓ preferred_credential_dir_name
+  Input: {"handle": "test_handle", "unique_id": "abc123"}
+  Output: {
+  "result": "abc123"
+}
+
+✓ ensure_credentials_root
+  Input: {
+  "credentials_dir": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t"
+}
+  Output: {
+  "root": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t",
+  "exists": true
+}
+
+✓ index_path
+  Input: {
+  "credentials_dir": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t"
+}
+  Output: {
+  "index_path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t\\index.json"
+}
+
+✓ legacy_backup_root
+  Input: {
+  "credentials_dir": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t"
+}
+  Output: {
+  "backup_path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t\\.legacy-backup"
+}
+
+✓ build_credential_paths
+  Input: {
+  "dir_name": "test_dir_name"
+}
+  Output: {
+  "root_dir": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t",
+  "dir_name": "test_dir_name",
+  "credential_dir": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t\\test_dir_name",
+  "identity_...
+
+✓ write_secure_text
+  Input: {
+  "path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t\\test_text.txt",
+  "content": "test c...
+  Output: {
+  "written": true,
+  "content": "test content"
+}
+
+✓ write_secure_json
+  Input: {
+  "path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t\\test_json.json",
+  "payload": {
+    ...
+  Output: {
+  "written": true,
+  "content": {
+    "key": "value",
+    "number": 42
+  }
+}
+
+✓ write_secure_bytes
+  Input: {
+  "path": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t\\test_bytes.bin",
+  "content": "b'bin...
+  Output: {
+  "written": true,
+  "content": "b'binary content'"
+}
+
+✓ _is_legacy_identity_payload
+  Input: {
+  "legacy_payload": {
+    "did": "did:wba:test",
+    "private_key_pem": "-----BEGIN..."
+  },
+  "no...
+  Output: {
+  "legacy_result": true,
+  "non_legacy_result": false
+}
+
+✓ legacy_layout_hint
+  Input: N/A
+  Output: {
+  "hint": "Legacy credential layout detected. Run 'uv run python scripts/check_status.py' once to migrate credentials."
+}
+
+✓ CredentialPaths
+  Input: {
+  "dir_name": "test_dir_name"
+}
+  Output: {
+  "type": "CredentialPaths",
+  "dir_name": "test_dir_name",
+  "credential_dir": "C:\\Users\\hyg\\AppData\\Local\\Temp\\tmpvvlhon6t\\test_dir_name"
+}
+
+============================================================
+SUMMARY: 15 passed, 0 failed, 15 total
+============================================================
+
+Golden standard saved to: D:\huangyg\git\sample\awiki\doc\scripts\credential_layout.py\golden.json

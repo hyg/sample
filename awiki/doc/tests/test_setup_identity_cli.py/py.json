@@ -1,0 +1,26 @@
+============================================================
+Distiller: test_setup_identity_cli.py
+============================================================
+
+[INPUT FILES]
+  Test file: D:\huangyg\git\sample\awiki\python\tests\test_setup_identity_cli.py
+  Doc file:  D:\huangyg\git\sample\awiki\doc\tests\test_setup_identity_cli.py\py.md
+
+[RUNNING TESTS]
+------------------------------------------------------------
+============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\hyg\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+rootdir: D:\huangyg\git\sample\awiki\python
+configfile: pyproject.toml
+plugins: anyio-4.12.1
+collecting ... collected 2 items
+
+tests/test_setup_identity_cli.py::test_load_saved_identity_bootstraps_missing_jwt PASSED [ 50%]
+tests/test_setup_identity_cli.py::test_load_saved_identity_without_jwt_or_auth_files_requests_recreation PASSED [100%]
+
+============================== 2 passed in 0.56s ==============================
+
+------------------------------------------------------------
+[RESULT] PASS (exit code: 0)
+============================================================

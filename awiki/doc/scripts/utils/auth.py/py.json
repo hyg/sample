@@ -1,2 +1,128 @@
-错误: 无效语法。默认选项不允许超过 '1' 次。
-键入 "TIMEOUT /?" 以了解用法。
+{
+  "file": "python/scripts/utils/auth.py",
+  "doc_path": "doc/scripts/utils/auth.py",
+  "functions": [
+    {
+      "name": "generate_wba_auth_header",
+      "type": "function",
+      "signature": "(identity: DIDIdentity, service_domain: str) -> str",
+      "tests": [
+        {
+          "input": {
+            "note": "\u9700\u8981\u5b9e\u9645\u7684 DIDIdentity \u5b9e\u4f8b",
+            "identity": "DIDIdentity(did, private_key)",
+            "service_domain": "https://awiki.ai"
+          },
+          "output": {
+            "note": "\u8fd4\u56de DIDWba \u683c\u5f0f\u7684\u6388\u6743\u5934",
+            "format": "DIDWba <did>:<signature>:<timestamp>"
+          },
+          "scenario": "\u751f\u6210 DID WBA \u6388\u6743\u5934"
+        }
+      ],
+      "mock_test": {
+        "input": {
+          "identity": "mock",
+          "service_domain": "https://awiki.ai"
+        },
+        "output": "DIDWba did:wba:awiki.ai:user:k1_test:signature:timestamp",
+        "scenario": "\u6a21\u62df\u6d4b\u8bd5\uff08\u4e0d\u9700\u8981\u5b9e\u9645\u8eab\u4efd\uff09"
+      }
+    },
+    {
+      "name": "register_did",
+      "type": "async_function",
+      "signature": "(client, identity, name, is_public, is_agent, role, endpoint_url, description) -> dict",
+      "tests": [
+        {
+          "input": {
+            "note": "\u9700\u8981\u5b9e\u9645\u7684 httpx.AsyncClient \u548c DIDIdentity",
+            "client": "httpx.AsyncClient",
+            "identity": "DIDIdentity",
+            "name": "Test User",
+            "is_public": true,
+            "is_agent": false
+          },
+          "output": {
+            "did": "did:wba:awiki.ai:user:k1_xxx",
+            "user_id": "uuid",
+            "message": "Registration successful"
+          },
+          "scenario": "\u6ce8\u518c DID \u8eab\u4efd"
+        }
+      ]
+    },
+    {
+      "name": "update_did_document",
+      "type": "async_function",
+      "signature": "(client, identity, domain, is_public, is_agent, role, endpoint_url) -> dict",
+      "tests": [
+        {
+          "input": {
+            "note": "\u9700\u8981\u5b9e\u9645\u7684 httpx.AsyncClient \u548c DIDIdentity",
+            "client": "httpx.AsyncClient",
+            "identity": "DIDIdentity",
+            "domain": "awiki.ai"
+          },
+          "output": {
+            "access_token": "jwt_token"
+          },
+          "scenario": "\u66f4\u65b0 DID \u6587\u6863"
+        }
+      ]
+    },
+    {
+      "name": "get_jwt_via_wba",
+      "type": "async_function",
+      "signature": "(client, identity, domain) -> str",
+      "tests": [
+        {
+          "input": {
+            "note": "\u9700\u8981\u5b9e\u9645\u7684 httpx.AsyncClient \u548c DIDIdentity",
+            "client": "httpx.AsyncClient",
+            "identity": "DIDIdentity",
+            "domain": "awiki.ai"
+          },
+          "output": {
+            "jwt_token": "eyJ..."
+          },
+          "scenario": "\u901a\u8fc7 WBA \u83b7\u53d6 JWT token"
+        }
+      ]
+    },
+    {
+      "name": "create_authenticated_identity",
+      "type": "async_function",
+      "signature": "(client, config, name, is_agent) -> DIDIdentity",
+      "tests": [
+        {
+          "input": {
+            "note": "\u9700\u8981\u5b9e\u9645\u7684 httpx.AsyncClient \u548c SDKConfig",
+            "client": "httpx.AsyncClient",
+            "config": "SDKConfig",
+            "name": "Test User",
+            "is_agent": false
+          },
+          "output": {
+            "did": "did:wba:awiki.ai:user:k1_xxx",
+            "unique_id": "k1_xxx",
+            "user_id": "uuid",
+            "jwt_token": "eyJ...",
+            "private_key_pem": "-----BEGIN EC PRIVATE KEY-----...",
+            "public_key_pem": "-----BEGIN PUBLIC KEY-----..."
+          },
+          "scenario": "\u4e00\u7ad9\u5f0f\u521b\u5efa\u8ba4\u8bc1\u8eab\u4efd"
+        }
+      ]
+    }
+  ],
+  "constants": {
+    "NOTE": "auth.py \u6ca1\u6709\u5b9a\u4e49\u6a21\u5757\u7ea7\u5e38\u91cf\uff0c\u6240\u6709\u914d\u7f6e\u901a\u8fc7\u53c2\u6570\u4f20\u9012"
+  },
+  "classes": {
+    "USED_CLASSES": [
+      "DIDIdentity (from utils.identity)",
+      "SDKConfig (from utils.config)"
+    ]
+  }
+}

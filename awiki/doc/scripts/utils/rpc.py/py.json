@@ -1,0 +1,154 @@
+============================================================
+蒸馏脚本：python/scripts/utils/rpc.py
+============================================================
+
+[1/4] 蒸馏异常类 JsonRpcError...
+      完成：2 个测试
+[2/4] 蒸馏函数 rpc_call...
+      完成：2 个测试
+[3/4] 蒸馏函数 authenticated_rpc_call...
+      完成：2 个测试
+[4/4] 蒸馏公共 API...
+      完成：导出 3 个公共符号
+
+============================================================
+蒸馏结果汇总
+============================================================
+
+黄金标准 (JSON 格式):
+------------------------------------------------------------
+{
+  "source_file": "python/scripts/utils/rpc.py",
+  "analysis_doc": "doc/scripts/utils/rpc.py/py.md",
+  "exception_classes": {
+    "basic_exception": {
+      "input": {
+        "code": -32000,
+        "message": "Method not found",
+        "data": null
+      },
+      "output": {
+        "code": -32000,
+        "message": "Method not found",
+        "data": null,
+        "str_repr": "JSON-RPC error -32000: Method not found"
+      }
+    },
+    "exception_with_data": {
+      "input": {
+        "code": -32602,
+        "message": "Invalid params",
+        "data": {
+          "detail": "Missing required field"
+        }
+      },
+      "output": {
+        "code": -32602,
+        "message": "Invalid params",
+        "data": {
+          "detail": "Missing required field"
+        },
+        "str_repr": "JSON-RPC error -32602: Invalid params"
+      }
+    }
+  },
+  "functions": {
+    "rpc_call": {
+      "rpc_call_structure": {
+        "input": {
+          "client": "httpx.AsyncClient",
+          "endpoint": "/post",
+          "method": "test.method",
+          "params": {
+            "key": "value"
+          },
+          "request_id": 1
+        },
+        "output": {
+          "description": "发送 JSON-RPC 2.0 请求，返回 result 字段值",
+          "request_format": {
+            "jsonrpc": "2.0",
+            "method": "test.method",
+            "params": {
+              "key": "value"
+            },
+            "id": 1
+          },
+          "success_response_handling": "返回 body['result']",
+          "error_response_handling": "抛出 JsonRpcError"
+        }
+      },
+      "request_payload_format": {
+        "input": {
+          "method": "example.method",
+          "params": {
+            "a": 1,
+            "b": 2
+          },
+          "request_id": 42
+        },
+        "output": {
+          "jsonrpc": "2.0",
+          "method": "example.method",
+          "params": {
+            "a": 1,
+            "b": 2
+          },
+          "id": 42
+        }
+      }
+    },
+    "authenticated_rpc_call": {
+      "authenticated_rpc_call_structure": {
+        "input": {
+          "client": "httpx.AsyncClient",
+          "endpoint": "/user-service/did-auth/rpc",
+          "method": "auth.login",
+          "params": {
+            "did": "did:wba:example"
+          },
+          "request_id": 1,
+          "auth": "DIDWbaAuthHeader instance",
+          "credential_name": "default"
+        },
+        "output": {
+          "description": "带自动 401 重试的 JSON-RPC 2.0 请求",
+          "401_retry_flow": [
+            "1. 首次请求使用 auth.get_auth_header(server_url)",
+            "2. 如果响应状态码为 401",
+            "3. 调用 auth.clear_token(server_url) 清除过期 token",
+            "4. 调用 auth.get_auth_header(server_url, force_new=True) 重新生成认证头",
+            "5. 使用新认证头重试请求"
+          ],
+          "token_caching": "成功响应后，从响应头提取新 token 并缓存",
+          "credential_update": "如果有新 token，调用 update_jwt(credential_name, new_token)"
+        }
+      },
+      "401_retry_behavior": {
+        "scenario": "收到 401 响应",
+        "actions": [
+          "auth.clear_token(server_url) - 清除本地缓存的过期 token",
+          "auth.get_auth_header(server_url, force_new=True) - 强制重新生成认证头",
+          "重试请求"
+        ],
+        "expected_outcome": "使用新认证头成功完成请求"
+      }
+    }
+  },
+  "public_api": {
+    "__all__": [
+      "JsonRpcError",
+      "rpc_call",
+      "authenticated_rpc_call"
+    ],
+    "exports": {
+      "JsonRpcError": "JSON-RPC 错误响应异常类",
+      "rpc_call": "发送 JSON-RPC 2.0 请求的辅助函数",
+      "authenticated_rpc_call": "带自动 401 重试的 JSON-RPC 2.0 请求函数"
+    }
+  }
+}
+
+============================================================
+蒸馏完成！
+============================================================
