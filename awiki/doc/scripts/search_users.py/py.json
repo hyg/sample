@@ -1,0 +1,12 @@
+{
+  "input": {
+    "query": "AI",
+    "credential_name": "default"
+  },
+  "output": {
+    "result": {
+      "error": "Credential 'default' unavailable; please create an identity first"
+    },
+    "status": "success"
+  }
+}

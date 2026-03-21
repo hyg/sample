@@ -5,8 +5,13 @@ import asyncio
 import json
 import logging
 import sys
+from pathlib import Path
 from io import StringIO
 from contextlib import redirect_stdout
+
+# 添加 python/scripts 目录到路径
+SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "python" / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from utils import SDKConfig, create_user_service_client, authenticated_rpc_call
 from utils.logging_config import configure_logging

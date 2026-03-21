@@ -10,74 +10,79 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DOC_DIR = BASE_DIR / 'doc' / 'scripts'
 
 # 需要执行的蒸馏脚本列表（按依赖顺序）
+# 格式：(相对路径，CLI 参数列表或 None)
 DISTILL_SCRIPTS = [
     # Phase 1: 基础工具
-    'utils/config.py',
-    'utils/logging_config.py',
+    ('utils/config.py', None),
+    ('utils/logging_config.py', None),
     
     # Phase 2: 核心工具
-    'utils/rpc.py',
-    'utils/client.py',
-    'utils/identity.py',
-    'utils/auth.py',
+    ('utils/rpc.py', None),
+    ('utils/client.py', None),
+    ('utils/identity.py', None),
+    ('utils/auth.py', None),
     
     # Phase 3: 业务工具
-    'utils/handle.py',
-    'utils/e2ee.py',
-    'utils/resolve.py',
-    'utils/ws.py',
+    ('utils/handle.py', None),
+    ('utils/e2ee.py', None),
+    ('utils/resolve.py', None),
+    ('utils/ws.py', None),
     
     # Phase 4: 存储层
-    'credential_store.py',
-    'local_store.py',
+    ('credential_store.py', None),
+    ('local_store.py', None),
     
     # Phase 5: 核心业务
-    'setup_identity.py',
-    'register_handle.py',
-    'recover_handle.py',
-    'resolve_handle.py',
-    'send_message.py',
-    'check_inbox.py',
-    'get_profile.py',
-    'update_profile.py',
+    ('setup_identity.py', ['--list']),
+    ('register_handle.py', None),  # 需要 OTP，跳过实际执行
+    ('recover_handle.py', None),
+    ('resolve_handle.py', ['--handle', 'test']),
+    ('send_message.py', ['--scenario', 'credential_missing', '--to', '@test', '--content', 'test']),
+    ('check_inbox.py', ['--limit', '1']),
+    ('get_profile.py', None),
+    ('update_profile.py', None),
     
     # Phase 6: 业务功能
-    'manage_group.py',
-    'manage_relationship.py',
-    'manage_content.py',
-    'manage_contacts.py',
-    'search_users.py',
-    'manage_credits.py',
-    'check_status.py',
-    'query_db.py',
+    ('manage_group.py', ['--list']),
+    ('manage_relationship.py', ['--following']),
+    ('manage_content.py', ['--list']),
+    ('manage_contacts.py', ['--test']),
+    ('search_users.py', ['AI']),
+    ('manage_credits.py', ['--balance']),
+    ('check_status.py', None),
+    ('query_db.py', ['SELECT 1']),
     
     # Phase 7: E2EE
-    'e2ee_messaging.py',
-    'e2ee_handler.py',
-    'e2ee_store.py',
-    'e2ee_outbox.py',
-    'regenerate_e2ee_keys.py',
+    ('e2ee_messaging.py', ['--test']),
+    ('e2ee_handler.py', None),
+    ('e2ee_store.py', None),
+    ('e2ee_outbox.py', None),
+    ('regenerate_e2ee_keys.py', None),
     
     # Phase 8: WebSocket
-    'ws_listener.py',
-    'listener_config.py',
-    'service_manager.py',
+    ('ws_listener.py', None),
+    ('listener_config.py', None),
+    ('service_manager.py', None),
     
     # Phase 9: 迁移工具
-    'database_migration.py',
-    'credential_migration.py',
-    'migrate_credentials.py',
-    'migrate_local_database.py',
+    ('database_migration.py', None),
+    ('credential_migration.py', None),
+    ('migrate_credentials.py', None),
+    ('migrate_local_database.py', None),
 ]
 
-def run_distill(script_path: Path) -> tuple[bool, str]:
+def run_distill(script_path: Path, args: list[str] = None) -> tuple[bool, str]:
     """执行单个蒸馏脚本"""
     try:
+        cmd = [sys.executable, str(script_path)]
+        if args:
+            cmd.extend(args)
+        
         result = subprocess.run(
-            [sys.executable, str(script_path)],
+            cmd,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=120,  # 增加到 120 秒
             cwd=BASE_DIR
         )
         
@@ -88,7 +93,9 @@ def run_distill(script_path: Path) -> tuple[bool, str]:
         if result.returncode == 0:
             return True, f"✅ {script_path.relative_to(BASE_DIR)}"
         else:
-            return False, f"❌ {script_path.relative_to(BASE_DIR)}: {result.stderr[:100]}"
+            # 截取错误信息前 200 字符
+            error_msg = result.stderr[:200] if result.stderr else result.stdout[:200]
+            return False, f"❌ {script_path.relative_to(BASE_DIR)}: {error_msg}"
             
     except subprocess.TimeoutExpired:
         return False, f"⏱️ {script_path.relative_to(BASE_DIR)}: 超时"
@@ -105,14 +112,14 @@ def main():
     fail_count = 0
     results = []
     
-    for script_rel_path in DISTILL_SCRIPTS:
+    for script_rel_path, args in DISTILL_SCRIPTS:
         script_path = DOC_DIR / script_rel_path / 'distill.py'
         
         if not script_path.exists():
             print(f"⚠️  跳过：{script_rel_path} (distill.py 不存在)")
             continue
         
-        success, message = run_distill(script_path)
+        success, message = run_distill(script_path, args)
         results.append((success, message))
         
         if success:

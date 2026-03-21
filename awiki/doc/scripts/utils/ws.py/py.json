@@ -36,7 +36,7 @@ DISTILL: python/scripts/utils/ws.py
         "content": "Hello!",
         "type": "text",
         "receiver_did": "did:wba:awiki.ai:user:k1_test",
-        "client_msg_id": "cd93fede-818c-4027-9285-966a20984aff"
+        "client_msg_id": "c55acd64-294d-48e8-9937-d6510b3aa401"
       },
       "id": 1
     },
@@ -69,11 +69,11 @@ DISTILL: python/scripts/utils/ws.py
   "send_message_params": {
     "content": "Hello!",
     "type": "text",
-    "client_msg_id": "5612bf53-d094-42c5-963f-73202970e480",
+    "client_msg_id": "9ae63bda-7373-4196-a239-66b7607bd23f",
     "receiver_did": "did:wba:awiki.ai:user:k1_test",
     "title": "Test Message"
   },
-  "auto_generated_client_msg_id": "5612bf53-d094-42c5-963f-73202970e480"
+  "auto_generated_client_msg_id": "9ae63bda-7373-4196-a239-66b7607bd23f"
 }
 
 [4] Notification Detection

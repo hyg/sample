@@ -24,19 +24,19 @@ OUTPUT: {'did': 'did:wba:awiki.ai:user:k1_test', 'user_id': 'user-123', 'jwt_tok
 TEST: create_identity - Basic
 ============================================================
 STATUS: PASS
-OUTPUT: {'did': 'did:wba:awiki.ai:user:k1__Goit6t6N0wmeYv06Ja_mkGOyRzm4t7jUZiLKZ7kyO0', 'did_starts_with': True, 'has_did_document': True, 'has_private_key': True, 'has_public_key': True, 'private_key_starts_with': True, 'public_key_starts_with': True}
+OUTPUT: {'did': 'did:wba:awiki.ai:user:k1_1oyXxzCAvOBAoO1pCOlx0jTUZ0Hg-gYcVE8NdyGE_g0', 'did_starts_with': True, 'has_did_document': True, 'has_private_key': True, 'has_public_key': True, 'private_key_starts_with': True, 'public_key_starts_with': True}
 
 ============================================================
 TEST: create_identity - Agent prefix
 ============================================================
 STATUS: PASS
-OUTPUT: {'did': 'did:wba:awiki.ai:agent:k1_yEhqZRdIYU-6Fo3BOlThB8rFD0QYCEunKoGNBtQWEXI', 'did_starts_with': True, 'unique_id': 'k1_yEhqZRdIYU-6Fo3BOlThB8rFD0QYCEunKoGNBtQWEXI'}
+OUTPUT: {'did': 'did:wba:awiki.ai:agent:k1_VN2JNTbT-fJnGNnb7sv5jJihWZT7P1cBBnlFUomZjnE', 'did_starts_with': True, 'unique_id': 'k1_VN2JNTbT-fJnGNnb7sv5jJihWZT7P1cBBnlFUomZjnE'}
 
 ============================================================
 TEST: create_identity - With services
 ============================================================
 STATUS: PASS
-OUTPUT: {'did': 'did:wba:awiki.ai:user:k1_0njF4X75PtwQhfWmWZn5Ay8tr3lVK5jPV2wvCjaOUFk', 'has_services': True}
+OUTPUT: {'did': 'did:wba:awiki.ai:user:k1_x0ZzmO8SQ2iMe4isOjLOL0xjH-s-v39_HjFcP9Lyfb8', 'has_services': True}
 
 ============================================================
 TEST: load_private_key - Valid key
@@ -63,3 +63,5 @@ SUMMARY
   [PASS] load_private_key - Invalid input
 
 Total: 8/8 tests passed
+
+All tests passed successfully!

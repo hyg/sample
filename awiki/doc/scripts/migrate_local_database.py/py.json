@@ -1,0 +1,7 @@
+{
+  "status": "ready",
+  "db_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\database\\awiki.db",
+  "before_version": 9,
+  "after_version": 9,
+  "backup_path": null
+}

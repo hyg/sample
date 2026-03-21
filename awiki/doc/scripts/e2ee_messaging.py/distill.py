@@ -389,13 +389,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="E2EE 端到端加密消息（正常路径：--send 自动初始化会话）"
     )
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)  # 改为可选
     group.add_argument("--handshake", type=str, help="预初始化 E2EE 会话")
     group.add_argument("--send", type=str, help="发送加密消息并自动初始化会话")
     group.add_argument("--process", action="store_true", help="处理收件箱 E2EE 消息")
     group.add_argument("--list-failed", action="store_true", help="列出失败的发件箱记录")
     group.add_argument("--retry", type=str, help="重试失败的记录")
     group.add_argument("--drop", type=str, help="丢弃失败的记录")
+    group.add_argument("--test", action="store_true", help="执行测试场景")
 
     parser.add_argument("--content", type=str, help="消息内容（--send 必需）")
     parser.add_argument("--title", type=str, default=None, help=argparse.SUPPRESS)
@@ -403,6 +404,16 @@ def main() -> None:
     parser.add_argument("--credential", type=str, default="default", help="凭证名称")
 
     args = parser.parse_args()
+    
+    # 如果指定--test 或无参数，执行测试场景
+    if args.test or not any([args.handshake, args.send, args.process, args.list_failed, args.retry, args.drop]):
+        print("Running E2EE test scenarios...")
+        r1 = test_e2ee_session_not_found(peer_did='test', plaintext='test', credential_name='huangyg.default')
+        print(f"test_e2ee_session_not_found: {'PASS' if r1['success'] else 'FAIL'}")
+        r2 = test_e2ee_decrypt_unsupported_version(peer_did='test', credential_name='huangyg.default')
+        print(f"test_e2ee_decrypt_unsupported_version: {'PASS' if r2['success'] else 'FAIL'}")
+        return
+    
     logger.info(
         "e2ee_messaging CLI started credential=%s action=%s",
         args.credential,

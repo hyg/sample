@@ -6,7 +6,7 @@ credential_store.py 蒸馏脚本
 蒸馏结果 (JSON)
 ============================================================
 {
-  "timestamp": "2026-03-20T15:39:05.036134+00:00",
+  "timestamp": "2026-03-20T16:44:51.535052+00:00",
   "module": "credential_store.py",
   "functions": {
     "list_identities_by_name_initial": {
@@ -16,17 +16,6 @@ credential_store.py 蒸馏脚本
           "credential_name": "test_delete_cred",
           "dir_name": "cred_test_delete_cred",
           "is_default": false
-        },
-        "default": {
-          "credential_name": "default",
-          "dir_name": "k1_unique",
-          "did": "did:wba:awiki.ai:user:k1_test",
-          "unique_id": "k1_test",
-          "user_id": "user-1",
-          "name": "Test User",
-          "handle": "alice",
-          "created_at": "2026-03-20T10:04:20.354790+00:00",
-          "is_default": true
         }
       },
       "status": "success"
@@ -34,18 +23,6 @@ credential_store.py 蒸馏脚本
     "list_identities_initial": {
       "input": {},
       "output": [
-        {
-          "credential_name": "default",
-          "did": "did:wba:awiki.ai:user:k1_test",
-          "unique_id": "k1_test",
-          "name": "Test User",
-          "handle": "alice",
-          "user_id": "user-1",
-          "created_at": "2026-03-20T10:04:20.354790+00:00",
-          "is_default": true,
-          "dir_name": "k1_unique",
-          "has_jwt": true
-        },
         {
           "credential_name": "test_delete_cred",
           "did": "",
@@ -63,8 +40,8 @@ credential_store.py 蒸馏脚本
     },
     "save_identity": {
       "input": {
-        "did": "did:wba:awiki.ai:user:k1_test_distill_20260320233905",
-        "unique_id": "distill_unique_20260320233905",
+        "did": "did:wba:awiki.ai:user:k1_test_distill_20260321004451",
+        "unique_id": "distill_unique_20260321004451",
         "user_id": "distill_user_001",
         "private_key_pem": "<bytes>",
         "public_key_pem": "<bytes>",
@@ -73,12 +50,12 @@ credential_store.py 蒸馏脚本
         "handle": "distill_test_handle",
         "name": "distill_test",
         "did_document": {
-          "id": "did:wba:awiki.ai:user:k1_test_distill_20260320233905",
+          "id": "did:wba:awiki.ai:user:k1_test_distill_20260321004451",
           "verificationMethod": []
         },
         "replace_existing": true
       },
-      "output": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\distill_unique_20260320233905\\identity.json",
+      "output": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\distill_unique_20260321004451\\identity.json",
       "status": "success"
     },
     "load_identity": {
@@ -86,8 +63,8 @@ credential_store.py 蒸馏脚本
         "name": "distill_test"
       },
       "output": {
-        "did": "did:wba:awiki.ai:user:k1_test_distill_20260320233905",
-        "unique_id": "distill_unique_20260320233905",
+        "did": "did:wba:awiki.ai:user:k1_test_distill_20260321004451",
+        "unique_id": "distill_unique_20260321004451",
         "user_id": "distill_user_001",
         "name": "Distill Test User",
         "handle": "distill_test_handle",
@@ -100,27 +77,15 @@ credential_store.py 蒸馏脚本
       "input": {},
       "output": [
         {
-          "credential_name": "default",
-          "did": "did:wba:awiki.ai:user:k1_test",
-          "unique_id": "k1_test",
-          "name": "Test User",
-          "handle": "alice",
-          "user_id": "user-1",
-          "created_at": "2026-03-20T10:04:20.354790+00:00",
-          "is_default": true,
-          "dir_name": "k1_unique",
-          "has_jwt": true
-        },
-        {
           "credential_name": "distill_test",
-          "did": "did:wba:awiki.ai:user:k1_test_distill_20260320233905",
-          "unique_id": "distill_unique_20260320233905",
+          "did": "did:wba:awiki.ai:user:k1_test_distill_20260321004451",
+          "unique_id": "distill_unique_20260321004451",
           "name": "Distill Test User",
           "handle": "distill_test_handle",
           "user_id": "distill_user_001",
-          "created_at": "2026-03-20T15:39:05.041987+00:00",
+          "created_at": "2026-03-20T16:44:51.538612+00:00",
           "is_default": false,
-          "dir_name": "distill_unique_20260320233905",
+          "dir_name": "distill_unique_20260321004451",
           "has_jwt": true
         },
         {
@@ -141,7 +106,7 @@ credential_store.py 蒸馏脚本
     "update_jwt": {
       "input": {
         "name": "distill_test",
-        "jwt_token": "updated_jwt_token_20260320233905"
+        "jwt_token": "updated_jwt_token_20260321004451"
       },
       "output": true,
       "status": "success"
@@ -151,8 +116,8 @@ credential_store.py 蒸馏脚本
         "name": "distill_test"
       },
       "output": {
-        "did_document_path": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\distill_unique_20260320233905\\did_document.json",
-        "key1_private_path": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\distill_unique_20260320233905\\key-1-private.pem"
+        "did_document_path": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\distill_unique_20260321004451\\did_document.json",
+        "key1_private_path": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\distill_unique_20260321004451\\key-1-private.pem"
       },
       "status": "success"
     },
@@ -160,7 +125,7 @@ credential_store.py 蒸馏脚本
       "input": {
         "name": "distill_test"
       },
-      "output": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\.recovery-backup\\distill_test\\20260320T153905Z",
+      "output": "C:\\Users\\hyg\\.openclaw\\credentials\\awiki-agent-id-message\\.recovery-backup\\distill_test\\20260320T164451Z",
       "status": "success"
     },
     "delete_identity": {
@@ -173,18 +138,6 @@ credential_store.py 蒸馏脚本
     "list_identities_after_delete": {
       "input": {},
       "output": [
-        {
-          "credential_name": "default",
-          "did": "did:wba:awiki.ai:user:k1_test",
-          "unique_id": "k1_test",
-          "name": "Test User",
-          "handle": "alice",
-          "user_id": "user-1",
-          "created_at": "2026-03-20T10:04:20.354790+00:00",
-          "is_default": true,
-          "dir_name": "k1_unique",
-          "has_jwt": true
-        },
         {
           "credential_name": "test_delete_cred",
           "did": "",

@@ -1,7 +1,7 @@
 ============================================================
 check_status.py Distill Script
 ============================================================
-Timestamp: 2026-03-20T15:39:24.866324+00:00
+Timestamp: 2026-03-20T16:45:05.144054+00:00
 Source: D:\huangyg\git\sample\awiki\python\scripts\check_status.py
 
 Running: ensure_local_upgrade_ready...
@@ -9,9 +9,9 @@ Running: ensure_local_upgrade_ready...
 Running: summarize_group_watch...
   Status: no_identity
 Running: check_identity...
-  Status: jwt_refresh_failed
+  Status: no_identity
 Running: summarize_inbox...
-  Status: error
+  Status: no_identity
 Running: check_status...
   Status: unknown
 
@@ -19,7 +19,7 @@ Running: check_status...
 DISTILL RESULTS (JSON)
 ============================================================
 {
-  "timestamp": "2026-03-20T15:39:24.954330+00:00",
+  "timestamp": "2026-03-20T16:45:05.229297+00:00",
   "source_file": "D:\\huangyg\\git\\sample\\awiki\\python\\scripts\\check_status.py",
   "distill_file": "D:\\huangyg\\git\\sample\\awiki\\doc\\scripts\\check_status.py\\distill.py",
   "tests": [
@@ -69,11 +69,10 @@ DISTILL RESULTS (JSON)
         "credential_name": "default"
       },
       "output": {
-        "status": "jwt_refresh_failed",
-        "did": "did:wba:awiki.ai:user:k1_test",
-        "name": "Test User",
-        "jwt_valid": false,
-        "error": "DID document is missing authentication methods."
+        "status": "no_identity",
+        "did": null,
+        "name": null,
+        "jwt_valid": false
       }
     },
     {
@@ -82,8 +81,7 @@ DISTILL RESULTS (JSON)
         "credential_name": "default"
       },
       "output": {
-        "status": "error",
-        "error": "DID document is missing authentication methods.",
+        "status": "no_identity",
         "total": 0,
         "by_type": {},
         "text_messages": 0,
@@ -97,7 +95,7 @@ DISTILL RESULTS (JSON)
         "credential_name": "default"
       },
       "output": {
-        "timestamp": "2026-03-20T15:39:27.532858+00:00",
+        "timestamp": "2026-03-20T16:45:05.620559+00:00",
         "local_upgrade": {
           "status": "ready",
           "credential_ready": true,
@@ -131,26 +129,19 @@ DISTILL RESULTS (JSON)
           "backup_path": null
         },
         "identity": {
-          "status": "jwt_refresh_failed",
-          "did": "did:wba:awiki.ai:user:k1_test",
-          "name": "Test User",
-          "jwt_valid": false,
-          "error": "DID document is missing authentication methods."
-        },
-        "group_watch": {
-          "status": "ok",
-          "active_groups": 0,
-          "groups_with_pending_recommendations": 0,
-          "groups": []
+          "status": "no_identity",
+          "did": null,
+          "name": null,
+          "jwt_valid": false
         },
         "inbox": {
-          "status": "error",
-          "error": "DID document is missing authentication methods.",
-          "total": 0,
-          "by_type": {},
-          "text_messages": 0,
-          "text_by_sender": {},
-          "messages": []
+          "status": "skipped",
+          "total": 0
+        },
+        "group_watch": {
+          "status": "no_identity",
+          "active_groups": 0,
+          "groups": []
         },
         "e2ee_sessions": {
           "active": 0

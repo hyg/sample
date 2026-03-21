@@ -14,9 +14,9 @@ import logging
 import sys
 from pathlib import Path
 
-# 添加 scripts 目录到路径
-script_dir = Path(__file__).resolve().parent
-sys.path.insert(0, str(script_dir))
+# 添加 scripts 目录到路径（使用绝对路径）
+PROJECT_ROOT = Path(r"D:\huangyg\git\sample\awiki")
+sys.path.insert(0, str(PROJECT_ROOT / "python" / "scripts"))
 
 from database_migration import migrate_local_database
 from utils.logging_config import configure_logging

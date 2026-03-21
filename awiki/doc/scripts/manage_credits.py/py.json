@@ -1,0 +1,5 @@
+{
+  "status": "error",
+  "error": "Credential 'default' unavailable",
+  "hint": "Please create an identity first with setup_identity.py or register_handle.py"
+}

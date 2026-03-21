@@ -229,12 +229,12 @@ if __name__ == "__main__":
     for name, passed in results:
         status = "PASS" if passed else "FAIL"
         print(f"  [{status}] {name}")
-    
+
     print(f"\nTotal: {passed_count}/{total_count} tests passed")
-    
+
     if passed_count == total_count:
-        print("\n✓ All tests passed successfully!")
+        print("\nAll tests passed successfully!")
         sys.exit(0)
     else:
-        print(f"\n✗ {total_count - passed_count} test(s) failed")
+        print(f"{total_count - passed_count} test(s) failed")
         sys.exit(1)

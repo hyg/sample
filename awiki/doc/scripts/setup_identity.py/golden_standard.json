@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-03-20T23:39:06.257044",
+  "generated_at": "2026-03-21T00:44:52.790243",
   "script": "setup_identity.py",
   "description": "DID 身份管理脚本的输入输出黄金标准",
   "test_results": [
     {
-      "timestamp": "2026-03-20T23:39:06.252731",
+      "timestamp": "2026-03-21T00:44:52.786733",
       "action": "config",
       "input": {
         "action": "config"
@@ -19,20 +19,13 @@
       "error": null
     },
     {
-      "timestamp": "2026-03-20T23:39:06.254746",
+      "timestamp": "2026-03-21T00:44:52.788917",
       "action": "list",
       "input": {
         "action": "list"
       },
       "output": {
         "identities": [
-          {
-            "credential_name": "default",
-            "did": "did:wba:awiki.ai:user:k1_test",
-            "name": "Test User",
-            "has_jwt": true,
-            "created_at": "2026-03-20T10:04:20.354790+00:00"
-          },
           {
             "credential_name": "test_delete_cred",
             "did": "",
@@ -41,35 +34,29 @@
             "created_at": ""
           }
         ],
-        "count": 2
+        "count": 1
       },
       "success": true,
       "error": null
     },
     {
-      "timestamp": "2026-03-20T23:39:06.256812",
+      "timestamp": "2026-03-21T00:44:52.789853",
       "action": "load",
       "input": {
         "action": "load",
         "credential_name": "default"
       },
       "output": {
-        "loaded": true,
-        "credential_name": "default",
-        "did": "did:wba:awiki.ai:user:k1_test",
-        "unique_id": "k1_test",
-        "user_id": "user-1",
-        "has_jwt": true,
-        "created_at": "2026-03-20T10:04:20.354790+00:00",
-        "name": "Test User"
+        "loaded": false,
+        "error": "Credential not found"
       },
-      "success": true,
-      "error": null
+      "success": false,
+      "error": "Credential not found"
     }
   ],
   "summary": {
     "total_tests": 3,
-    "passed": 3,
-    "failed": 0
+    "passed": 2,
+    "failed": 1
   }
 }

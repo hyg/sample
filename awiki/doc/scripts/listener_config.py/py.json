@@ -31,11 +31,11 @@ TEST 1: Default Configuration
     "blacklist_dids": []
   },
   "ignore_types": [
-    "e2ee_msg",
-    "e2ee_init",
-    "e2ee_rekey",
+    "e2ee_error",
     "e2ee_ack",
-    "e2ee_error"
+    "e2ee_rekey",
+    "e2ee_msg",
+    "e2ee_init"
   ],
   "e2ee_save_interval": 30.0,
   "e2ee_decrypt_fail_action": "drop",

@@ -51,7 +51,7 @@ JSON OUTPUT (for verification)
       "installed": false,
       "task_name": "awiki-ws-listener",
       "application_log_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\logs",
-      "application_log_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\logs\\awiki-agent-2026-03-20.log",
+      "application_log_path": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message\\logs\\awiki-agent-2026-03-21.log",
       "running": false
     }
   },

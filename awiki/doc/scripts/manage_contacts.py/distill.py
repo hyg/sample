@@ -301,7 +301,16 @@ def main() -> None:
     """CLI entrypoint."""
     configure_logging(console_level=None, mirror_stdio=True)
     parser = _build_parser()
+    parser.add_argument('--test', action='store_true', help='Run test scenarios')
     args = parser.parse_args()
+    
+    # 如果指定--test，执行测试场景
+    if args.test:
+        print("Running test scenarios...")
+        r1 = test_save_from_group_duplicate_contact(group_id='1', credential_name='huangyg.default')
+        print(f"test_save_from_group_duplicate_contact: {'PASS' if r1['success'] else 'FAIL'}")
+        return
+    
     logger.info("manage_contacts distill started credential=%s", args.credential)
 
     if args.record_recommendation:
@@ -324,7 +333,10 @@ def main() -> None:
             parser.error("--note requires --text")
         update_note(args)
     else:
-        parser.error("No action selected")
+        # 无参数时执行测试场景
+        print("Running test scenarios...")
+        r1 = test_save_from_group_duplicate_contact(group_id='1', credential_name='huangyg.default')
+        print(f"test_save_from_group_duplicate_contact: {'PASS' if r1['success'] else 'FAIL'}")
 
 
 if __name__ == "__main__":

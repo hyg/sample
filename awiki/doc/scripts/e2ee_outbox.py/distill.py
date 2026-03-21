@@ -32,9 +32,9 @@ try:
         get_record,
         mark_dropped,
     )
-    print("✓ 成功导入所有导出函数")
+    print("OK: 成功导入所有导出函数")
 except ImportError as e:
-    print(f"✗ 导入失败：{e}")
+    print(f"ERROR: 导入失败：{e}")
     sys.exit(1)
 
 # ============================================================================

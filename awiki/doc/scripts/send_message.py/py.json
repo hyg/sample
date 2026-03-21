@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-03-21T00:45:02.881795",
+  "script": "send_message.py",
+  "scenario": "credential_missing",
+  "input": {
+    "scenario": "credential_missing",
+    "receiver": "@test",
+    "content": "test",
+    "credential_name": "default"
+  },
+  "output": {
+    "exited": true,
+    "error_message": "Credential 'default' unavailable",
+    "error_contains_credential_name": true
+  },
+  "success": true,
+  "error": null
+}
