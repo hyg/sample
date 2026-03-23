@@ -1,0 +1,114 @@
+[
+  {
+    "test_metadata": {
+      "group_info": {
+        "group_id": "2a87e933-8f3b-48cb-9a13-cc397be4476c",
+        "name": "营养配餐",
+        "slug": "nutrition-meal",
+        "join_code": "860114",
+        "doc_url": "https://modeler.awiki.ai/group/nutrition-meal.md",
+        "description": "兼顾现实条件和科学性，尽可能严格执行中国居民膳食指南"
+      },
+      "test_identity": {
+        "credential_name": "hyg4awiki",
+        "did": "did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw"
+      },
+      "note": "这是一个真实群组，有真实用户在互动。可用于长期的群组功能蒸馏和测试。Python 版本升级时需重新运行蒸馏脚本。",
+      "usage": "此文件用于记录 manage_group.py 脚本的输入输出，支持回归测试和版本升级验证。新测试记录应追加到数组末尾。"
+    }
+  },
+  {
+    "timestamp": "2026-03-23T07:18:56.592143+00:00",
+    "test_type": "join_group_first_time",
+    "description": "首次加入群组 - 成功",
+    "input": {
+      "credential_name": "hyg4awiki",
+      "join_code": "860114",
+      "group_url": "https://modeler.awiki.ai/group/nutrition-meal.md"
+    },
+    "identity": {
+      "credential_name": "hyg4awiki",
+      "dir_name": "k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw",
+      "did": "did:wba:awiki.ai:user:k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw",
+      "unique_id": "k1_V1SjUrhl6aDXfbpPNIpWgj7wcPq2XrcI6tIWX6KJlOw",
+      "user_id": "e9fb8c8f-06c3-4f05-9457-479e1c3a4ef1",
+      "name": "hyg4awiki",
+      "handle": null,
+      "created_at": "2026-03-09T08:48:06.219823+00:00",
+      "is_default": false
+    },
+    "output": {
+      "returncode": 0,
+      "stdout": {
+        "group_id": "2a87e933-8f3b-48cb-9a13-cc397be4476c",
+        "status": "active",
+        "joined_at": "2026-03-23T07:18:55Z",
+        "message_prompt": "",
+        "limits_snapshot": {
+          "member_max_messages": null,
+          "member_max_total_chars": null,
+          "member_unlimited": true,
+          "owner_unlimited": true
+        }
+      },
+      "stderr": "Joined group successfully:\n",
+      "success": true
+    },
+    "group_info": {
+      "group_id": "2a87e933-8f3b-48cb-9a13-cc397be4476c",
+      "name": "营养配餐",
+      "slug": "nutrition-meal",
+      "description": "兼顾现实条件和科学性，尽可能严格执行中国居民膳食指南",
+      "goal": "分享和讨论营养配餐方案",
+      "rules": "基于科学证据，遵守膳食指南原则",
+      "doc_url": "https://modeler.awiki.ai/group/nutrition-meal.md",
+      "owner_did": "did:wba:awiki.ai:modeler:k1_6JnKZL55Vh8zGnJ6SFPjVE8Bh7HsDJMRleXIq16fiPs",
+      "owner_handle": "modeler.awiki.ai"
+    }
+  },
+  {
+    "timestamp": "2026-03-23T15:25:00.000000+00:00",
+    "test_type": "join_group_already_member",
+    "description": "再次加入群组 (已成员) - 返回错误",
+    "input": {
+      "credential_name": "hyg4awiki",
+      "join_code": "860114",
+      "group_id": "2a87e933-8f3b-48cb-9a13-cc397be4476c"
+    },
+    "output": {
+      "returncode": 1,
+      "stdout": {
+        "status": "error",
+        "error_type": "jsonrpc",
+        "code": -32001,
+        "message": "already an active group member",
+        "data": null
+      },
+      "stderr": "",
+      "success": false
+    },
+    "note": "已加入群组的成员再次尝试加入时，服务器返回 JSON-RPC 错误 (-32001): already an active group member"
+  },
+  {
+    "timestamp": "2026-03-23T15:23:53.000000+00:00",
+    "test_type": "post_group_message",
+    "description": "发送群消息",
+    "input": {
+      "credential_name": "hyg4awiki",
+      "group_id": "2a87e933-8f3b-48cb-9a13-cc397be4476c",
+      "content": "请问昨天的晚餐配餐记录是什么？想参考一下。"
+    },
+    "output": {
+      "returncode": 0,
+      "stdout": {
+        "message_id": "953a6d2f-b524-4fea-9b4d-262a7fa99e38",
+        "server_seq": 3,
+        "created_at": "2026-03-23T15:23:53",
+        "group_id": "2a87e933-8f3b-48cb-9a13-cc397be4476c",
+        "message_type": "group_user"
+      },
+      "stderr": "Group message posted successfully:\n",
+      "success": true
+    }
+  }
+]
