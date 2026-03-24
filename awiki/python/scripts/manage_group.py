@@ -1,7 +1,7 @@
-"""Manage discovery-oriented groups.
+"""Manage AWiki groups.
 
 Usage:
-    # Create a discovery group
+    # Create a group
     uv run python scripts/manage_group.py --create --name "OpenClaw Meetup" --slug "openclaw-meetup"
 
     # Join with the global 6-digit join-code
@@ -12,9 +12,9 @@ Usage:
 
 [INPUT]: SDK group RPC calls, credential_store authenticator, local_store SQLite cache,
          public markdown URLs, logging_config
-[OUTPUT]: Discovery group operation results, local group/message persistence,
+[OUTPUT]: Group operation results, local group/message persistence,
           and public markdown fetches with local X-Handle fallback
-[POS]: Discovery-group management CLI
+[POS]: Group management CLI
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -45,10 +45,7 @@ from credential_store import create_authenticator
 
 GROUP_RPC_ENDPOINT = "/group/rpc"
 logger = logging.getLogger(__name__)
-_JOIN_GUIDANCE = (
-    "Discovery groups can only be joined with the global 6-digit join-code. "
-    "Use --join --join-code <code>."
-)
+_JOIN_GUIDANCE = "Groups can only be joined with the global 6-digit join-code. Use --join --join-code <code>."
 
 
 def _get_identity_data_or_exit(credential_name: str, config: SDKConfig) -> dict[str, Any]:
@@ -81,6 +78,7 @@ def _persist_group_snapshot(
             group_id=group_id,
             group_did=group_payload.get("group_did"),
             name=group_payload.get("name"),
+            group_mode=group_payload.get("group_mode") or "general",
             slug=group_payload.get("slug"),
             description=group_payload.get("description"),
             goal=group_payload.get("goal"),
@@ -318,14 +316,16 @@ async def create_group(
     description: str,
     goal: str,
     rules: str,
-    message_prompt: str,
+    message_prompt: str | None,
+    member_max_messages: int | None,
+    member_max_total_chars: int | None,
     join_enabled: bool,
     credential_name: str,
 ) -> None:
-    """Create a discovery group."""
+    """Create a group."""
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
-    logger.info("Creating discovery group credential=%s slug=%s", credential_name, slug)
+    logger.info("Creating group credential=%s slug=%s", credential_name, slug)
     try:
         result = await _authenticated_group_call(
             credential_name,
@@ -336,8 +336,18 @@ async def create_group(
                 "description": description,
                 "goal": goal,
                 "rules": rules,
-                "message_prompt": message_prompt,
                 "join_enabled": join_enabled,
+                **({"message_prompt": message_prompt} if message_prompt is not None else {}),
+                **(
+                    {"member_max_messages": member_max_messages}
+                    if member_max_messages is not None
+                    else {}
+                ),
+                **(
+                    {"member_max_total_chars": member_max_total_chars}
+                    if member_max_total_chars is not None
+                    else {}
+                ),
             },
         )
     except JsonRpcError as exc:
@@ -368,7 +378,7 @@ async def get_group(
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Fetching discovery group detail credential=%s group_id=%s",
+        "Fetching group detail credential=%s group_id=%s",
         credential_name,
         group_id,
     )
@@ -395,13 +405,15 @@ async def update_group(
     goal: str | None,
     rules: str | None,
     message_prompt: str | None,
+    member_max_messages: int | None = None,
+    member_max_total_chars: int | None = None,
     credential_name: str,
 ) -> None:
     """Update mutable group metadata."""
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Updating discovery group credential=%s group_id=%s", credential_name, group_id
+        "Updating group credential=%s group_id=%s", credential_name, group_id
     )
     params = {"group_id": group_id}
     if name is not None:
@@ -414,6 +426,10 @@ async def update_group(
         params["rules"] = rules
     if message_prompt is not None:
         params["message_prompt"] = message_prompt
+    if member_max_messages is not None:
+        params["member_max_messages"] = member_max_messages
+    if member_max_total_chars is not None:
+        params["member_max_total_chars"] = member_max_total_chars
     result = await _authenticated_group_call(credential_name, "update", params)
     _persist_group_snapshot(
         credential_name=credential_name,
@@ -435,7 +451,7 @@ async def refresh_join_code(
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Refreshing discovery group join-code credential=%s group_id=%s",
+        "Refreshing group join-code credential=%s group_id=%s",
         credential_name,
         group_id,
     )
@@ -464,7 +480,7 @@ async def get_join_code(
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Fetching discovery group join-code credential=%s group_id=%s",
+        "Fetching group join-code credential=%s group_id=%s",
         credential_name,
         group_id,
     )
@@ -494,7 +510,7 @@ async def set_join_enabled(
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Updating discovery group join switch credential=%s group_id=%s join_enabled=%s",
+        "Updating group join switch credential=%s group_id=%s join_enabled=%s",
         credential_name,
         group_id,
         join_enabled,
@@ -523,7 +539,7 @@ async def join_group(
     """Join a group with the only supported global 6-digit join-code."""
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
-    logger.info("Joining discovery group credential=%s", credential_name)
+    logger.info("Joining group credential=%s", credential_name)
     result = await _authenticated_group_call(
         credential_name,
         "join",
@@ -556,7 +572,7 @@ async def leave_group(
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Leaving discovery group credential=%s group_id=%s", credential_name, group_id
+        "Leaving group credential=%s group_id=%s", credential_name, group_id
     )
     result = await _authenticated_group_call(
         credential_name,
@@ -595,7 +611,7 @@ async def kick_member(
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Kicking discovery group member credential=%s group_id=%s",
+        "Kicking group member credential=%s group_id=%s",
         credential_name,
         group_id,
     )
@@ -630,7 +646,7 @@ async def get_group_members(
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Fetching discovery group members credential=%s group_id=%s",
+        "Fetching group members credential=%s group_id=%s",
         credential_name,
         group_id,
     )
@@ -656,11 +672,11 @@ async def post_message(
     client_msg_id: str | None,
     credential_name: str,
 ) -> None:
-    """Post a discovery group message."""
+    """Post a group message."""
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Posting discovery group message credential=%s group_id=%s",
+        "Posting group message credential=%s group_id=%s",
         credential_name,
         group_id,
     )
@@ -687,11 +703,11 @@ async def list_messages(
     limit: int,
     credential_name: str,
 ) -> None:
-    """List discovery group messages."""
+    """List group messages."""
     config = SDKConfig()
     identity_data = _get_identity_data_or_exit(credential_name, config)
     logger.info(
-        "Listing discovery group messages credential=%s group_id=%s since_seq=%s limit=%d",
+        "Listing group messages credential=%s group_id=%s since_seq=%s limit=%d",
         credential_name,
         group_id,
         since_seq,
@@ -713,7 +729,7 @@ async def list_messages(
 
 async def fetch_doc(*, doc_url: str) -> None:
     """Fetch a public group markdown document."""
-    logger.info("Fetching discovery group markdown doc_url=%s", doc_url)
+    logger.info("Fetching group markdown doc_url=%s", doc_url)
     config = SDKConfig()
     async with create_user_service_client(config) as client:
         public_fetch_error: httpx.RequestError | None = None
@@ -749,10 +765,10 @@ async def fetch_doc(*, doc_url: str) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     """Build the CLI parser."""
-    parser = argparse.ArgumentParser(description="Discovery group management")
+    parser = argparse.ArgumentParser(description="AWiki group management")
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument(
-        "--create", action="store_true", help="Create a discovery group"
+        "--create", action="store_true", help="Create a group"
     )
     action.add_argument("--get", action="store_true", help="View group detail")
     action.add_argument("--update", action="store_true", help="Update group metadata")
@@ -792,7 +808,26 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--description", type=str, help="Group description")
     parser.add_argument("--goal", type=str, help="Group goal")
     parser.add_argument("--rules", type=str, help="Group rules")
-    parser.add_argument("--message-prompt", type=str, help="Message prompt for members")
+    parser.add_argument(
+        "--message-prompt",
+        type=str,
+        help="Optional member posting prompt",
+    )
+    parser.add_argument(
+        "--group-mode",
+        choices=("discovery", "chat"),
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--member-max-messages",
+        type=int,
+        help="Optional per-member message-count limit",
+    )
+    parser.add_argument(
+        "--member-max-total-chars",
+        type=int,
+        help="Optional per-member total-char limit",
+    )
     parser.add_argument(
         "--join-enabled", type=_parse_bool, default=None, help="true or false"
     )
@@ -833,10 +868,10 @@ def _reject_legacy_args(
     """Reject deprecated invitation-era CLI arguments."""
     if args.public:
         parser.error(
-            "Discovery groups do not support --public; use --join-enabled true|false"
+            "Groups do not support --public; use --join-enabled true|false"
         )
     if args.max_members is not None:
-        parser.error("Discovery groups do not support --max-members")
+        parser.error("Groups do not support --max-members")
     if args.handle:
         parser.error(_JOIN_GUIDANCE)
 
@@ -855,18 +890,16 @@ def main() -> None:
                 parser.error(
                     "Creating a group does not accept --join-code; the server generates the initial join-code"
                 )
-            if not all(
-                [
-                    args.name,
-                    args.slug,
-                    args.description,
-                    args.goal,
-                    args.rules,
-                    args.message_prompt,
-                ]
-            ):
+            required_create_args = [
+                args.name,
+                args.slug,
+                args.description,
+                args.goal,
+                args.rules,
+            ]
+            if not all(required_create_args):
                 parser.error(
-                    "Creating a group requires --name --slug --description --goal --rules --message-prompt"
+                    "Creating a group requires --name --slug --description --goal --rules"
                 )
             asyncio.run(
                 create_group(
@@ -876,6 +909,8 @@ def main() -> None:
                     goal=args.goal,
                     rules=args.rules,
                     message_prompt=args.message_prompt,
+                    member_max_messages=args.member_max_messages,
+                    member_max_total_chars=args.member_max_total_chars,
                     join_enabled=True
                     if args.join_enabled is None
                     else args.join_enabled,
@@ -898,6 +933,8 @@ def main() -> None:
                     args.goal,
                     args.rules,
                     args.message_prompt,
+                    args.member_max_messages,
+                    args.member_max_total_chars,
                 ]
             ):
                 parser.error("Updating a group requires at least one mutable field")
@@ -909,6 +946,8 @@ def main() -> None:
                     goal=args.goal,
                     rules=args.rules,
                     message_prompt=args.message_prompt,
+                    member_max_messages=args.member_max_messages,
+                    member_max_total_chars=args.member_max_total_chars,
                     credential_name=args.credential,
                 )
             )

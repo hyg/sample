@@ -2,8 +2,9 @@
 
 [INPUT]: SDKConfig, DIDIdentity (JWT token)
 [OUTPUT]: WsClient class (connect/send/receive/close)
-[POS]: Provides WebSocket message channel client wrapper for upper-layer applications and tests.
-       send_message auto-generates client_msg_id for idempotent delivery.
+[POS]: Provides a single-reader WebSocket client wrapper for upper-layer applications and tests.
+       All frames are received by one background reader loop and demultiplexed into
+       JSON-RPC responses and notifications safely.
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -57,6 +58,11 @@ class WsClient:
         self._identity = identity
         self._conn: ClientConnection | None = None
         self._request_id = 0
+        self._reader_task: asyncio.Task[None] | None = None
+        self._pending_responses: dict[int, asyncio.Future[dict[str, Any]]] = {}
+        self._notifications: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        self._send_lock = asyncio.Lock()
+        self._reader_error: BaseException | None = None
 
     async def connect(self) -> None:
         """Establish WebSocket connection.
@@ -85,14 +91,30 @@ class WsClient:
             elif verify is not False:
                 ssl_context = True
 
-        self._conn = await websockets.connect(url, ssl=ssl_context)
+        # Disable protocol-level keepalive to avoid competing ping loops.
+        self._conn = await websockets.connect(
+            url,
+            ssl=ssl_context,
+            ping_interval=None,
+            ping_timeout=None,
+        )
+        self._reader_error = None
+        self._reader_task = asyncio.create_task(self._reader_loop())
         logger.info("[WsClient] Connected to %s", url.split("?")[0])
 
     async def close(self) -> None:
         """Close the connection."""
+        if self._reader_task is not None:
+            self._reader_task.cancel()
+            try:
+                await self._reader_task
+            except asyncio.CancelledError:
+                pass
+            self._reader_task = None
         if self._conn:
             await self._conn.close()
             self._conn = None
+        self._fail_pending(RuntimeError("WebSocket closed"))
 
     async def __aenter__(self) -> WsClient:
         await self.connect()
@@ -104,6 +126,51 @@ class WsClient:
     def _next_id(self) -> int:
         self._request_id += 1
         return self._request_id
+
+    async def _reader_loop(self) -> None:
+        """Read all frames from the connection and demultiplex them.
+
+        This is the only coroutine allowed to call ``recv()`` on the
+        underlying websocket connection.
+        """
+        if self._conn is None:
+            return
+
+        try:
+            while True:
+                raw = await self._conn.recv()
+                data = json.loads(raw)
+                if "id" in data:
+                    req_id = data.get("id")
+                    if isinstance(req_id, int):
+                        future = self._pending_responses.pop(req_id, None)
+                        if future is not None and not future.done():
+                            future.set_result(data)
+                            continue
+                    logger.debug("Ignoring unmatched WebSocket response id=%s", data.get("id"))
+                    continue
+                await self._notifications.put(data)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._reader_error = exc
+            logger.debug("WebSocket reader loop stopped", exc_info=True)
+            self._fail_pending(RuntimeError(f"WebSocket reader stopped: {exc}"))
+
+    def _fail_pending(self, error: BaseException) -> None:
+        """Fail all pending JSON-RPC waiters with one shared error."""
+        for future in self._pending_responses.values():
+            if not future.done():
+                future.set_exception(error)
+        self._pending_responses.clear()
+
+    def _ensure_available(self) -> ClientConnection:
+        """Return the active connection or raise a runtime error."""
+        if self._conn is None:
+            raise RuntimeError("WebSocket not connected")
+        if self._reader_error is not None:
+            raise RuntimeError(f"WebSocket reader failed: {self._reader_error}")
+        return self._conn
 
     async def send_rpc(
         self,
@@ -122,8 +189,7 @@ class WsClient:
         Raises:
             RuntimeError: Not connected or received an error response.
         """
-        if not self._conn:
-            raise RuntimeError("WebSocket not connected")
+        conn = self._ensure_available()
 
         req_id = self._next_id()
         request: dict[str, Any] = {
@@ -134,26 +200,22 @@ class WsClient:
         if params:
             request["params"] = params
 
-        await self._conn.send(json.dumps(request))
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[dict[str, Any]] = loop.create_future()
+        self._pending_responses[req_id] = future
+        try:
+            async with self._send_lock:
+                await conn.send(json.dumps(request))
+            data = await future
+        finally:
+            self._pending_responses.pop(req_id, None)
 
-        # Wait for the matching response (skip push notifications received in between)
-        while True:
-            raw = await self._conn.recv()
-            data = json.loads(raw)
-
-            # Skip notifications (no id field)
-            if "id" not in data:
-                continue
-
-            if data.get("id") != req_id:
-                continue
-
-            if "error" in data and data["error"]:
-                error = data["error"]
-                raise RuntimeError(
-                    f"JSON-RPC error {error.get('code')}: {error.get('message')}"
-                )
-            return data.get("result", {})
+        if "error" in data and data["error"]:
+            error = data["error"]
+            raise RuntimeError(
+                f"JSON-RPC error {error.get('code')}: {error.get('message')}"
+            )
+        return data.get("result", {})
 
     async def send_message(
         self,
@@ -195,30 +257,35 @@ class WsClient:
         return await self.send_rpc("send", params)
 
     async def ping(self) -> bool:
-        """Send an application-layer heartbeat and wait for pong."""
-        if not self._conn:
-            raise RuntimeError("WebSocket not connected")
+        """Send a protocol-level ping and wait for the pong."""
+        conn = self._ensure_available()
 
-        await self._conn.send(json.dumps({"jsonrpc": "2.0", "method": "ping"}))
-        raw = await self._conn.recv()
-        data = json.loads(raw)
-        return data.get("method") == "pong"
+        pong_waiter = conn.ping()
+        try:
+            await asyncio.wait_for(pong_waiter, timeout=10.0)
+            return True
+        except asyncio.TimeoutError:
+            return False
+
+    async def send_pong(self) -> None:
+        """Send an application-layer pong response."""
+        conn = self._ensure_available()
+        async with self._send_lock:
+            await conn.send(json.dumps({"jsonrpc": "2.0", "method": "pong"}))
 
     async def receive(self, timeout: float = 10.0) -> dict[str, Any] | None:
-        """Receive a single message (request response or push notification).
+        """Receive a single notification message.
 
         Args:
             timeout: Timeout in seconds.
 
         Returns:
-            JSON message dict, or None on timeout.
+            Notification dict, or None on timeout.
         """
-        if not self._conn:
-            raise RuntimeError("WebSocket not connected")
+        self._ensure_available()
 
         try:
-            raw = await asyncio.wait_for(self._conn.recv(), timeout=timeout)
-            return json.loads(raw)
+            return await asyncio.wait_for(self._notifications.get(), timeout=timeout)
         except asyncio.TimeoutError:
             return None
 
@@ -231,22 +298,7 @@ class WsClient:
         Returns:
             JSON-RPC Notification dict, or None on timeout.
         """
-        if not self._conn:
-            raise RuntimeError("WebSocket not connected")
-
-        deadline = asyncio.get_event_loop().time() + timeout
-        while True:
-            remaining = deadline - asyncio.get_event_loop().time()
-            if remaining <= 0:
-                return None
-            try:
-                raw = await asyncio.wait_for(self._conn.recv(), timeout=remaining)
-                data = json.loads(raw)
-                # Notifications have no id field
-                if "id" not in data:
-                    return data
-            except asyncio.TimeoutError:
-                return None
+        return await self.receive(timeout=timeout)
 
 
 __all__ = ["WsClient"]

@@ -15,6 +15,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import ClassVar
 
 # Skill name used for path construction
 _SKILL_NAME = "awiki-agent-id-message"
@@ -50,6 +51,8 @@ def _default_data_dir() -> Path:
 @dataclass(frozen=True, slots=True)
 class SDKConfig:
     """awiki system service configuration."""
+
+    __test__: ClassVar[bool] = False
 
     user_service_url: str = field(
         default_factory=lambda: os.environ.get(

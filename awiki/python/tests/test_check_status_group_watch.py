@@ -1,8 +1,8 @@
-"""Tests for discovery-group heartbeat summaries in check_status.
+"""Tests for group heartbeat summaries in check_status.
 
 [INPUT]: check_status group-watch helper, local_store SQLite fixtures, and monkeypatched status helpers
 [OUTPUT]: Regression coverage for active-group heartbeat summaries and report integration
-[POS]: Unit tests for discovery-group watch state exposed by check_status.py
+[POS]: Unit tests for group watch state exposed by check_status.py
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -40,6 +41,7 @@ def test_summarize_group_watch_reports_active_group_metrics(
             owner_did="did:alice",
             group_id="grp_1",
             name="OpenClaw Meetup",
+            group_mode="general",
             slug="openclaw-meetup",
             my_role="member",
             membership_status="active",
@@ -132,6 +134,7 @@ def test_summarize_group_watch_reports_active_group_metrics(
     assert summary["groups_with_pending_recommendations"] == 1
     group = summary["groups"][0]
     assert group["group_id"] == "grp_1"
+    assert group["group_mode"] == "general"
     assert group["tracked_active_members"] == 5
     assert group["local_group_user_messages"] == 2
     assert group["local_owner_messages"] == 1
@@ -169,8 +172,9 @@ def test_check_status_includes_group_watch_summary(
 
     async def _fake_build_inbox_report_with_auto_e2ee(
         credential_name: str,
+        listener_status: dict | None = None,
     ) -> dict[str, object]:
-        del credential_name
+        del credential_name, listener_status
         return {
             "status": "ok",
             "total": 0,
@@ -198,7 +202,13 @@ def test_check_status_includes_group_watch_summary(
         if owner_did == "did:alice"
         else {"status": "no_identity", "active_groups": 0, "groups": []},
     )
-    monkeypatch.setattr(check_status, "load_e2ee_state", lambda credential_name: None)
+    monkeypatch.setattr(
+        check_status,
+        "load_e2ee_client",
+        lambda local_did, credential_name: SimpleNamespace(
+            export_state=lambda: {"sessions": []},
+        ),
+    )
 
     async def _fake_fetch_group_messages(
         group_watch, *, owner_did, credential_name

@@ -4,8 +4,8 @@ Usage:
     uv run python scripts/migrate_local_database.py
 
 [INPUT]: database_migration
-[OUTPUT]: JSON migration summary
-[POS]: Standalone local database migration CLI
+[OUTPUT]: JSON migration summary with listener stop/restart coordination
+[POS]: Standalone local database migration CLI for explicit upgrade runs
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -18,7 +18,7 @@ import argparse
 import json
 import logging
 
-from database_migration import migrate_local_database
+from database_migration import ensure_local_database_ready_for_upgrade
 from utils.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def main() -> None:
     parser.parse_args()
 
     logger.info("migrate_local_database CLI started")
-    result = migrate_local_database()
+    result = ensure_local_database_ready_for_upgrade()
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 

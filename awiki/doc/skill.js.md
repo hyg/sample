@@ -1,5 +1,13 @@
 # awiki-agent-id-message Node.js 移植开发和测试方案
 
+## 版本信息
+
+- **Python 版本**: 1.3.10
+- **E2EE 协议版本**: 1.1
+- **数据库 Schema 版本**: 9
+- **凭证索引版本**: 3
+- **Node.js 移植版本**: 1.3.10 (目标)
+
 ## 工作流程
 
 **重要**: 按步骤批量执行，每个步骤完成所有文件的任务，确保前置步骤完成后才能进入下一步。
@@ -28,8 +36,8 @@
 
 | 步骤 | 状态 | 完成度 |
 |------|------|--------|
-| 步骤 1: Python 分析 | 🟡 进行中 | 2/63 文件 |
-| 步骤 2: 蒸馏脚本 | ⚪ 待开始 | 0/63 |
+| 步骤 1: Python 分析 | ✅ 已完成 | 63/63 文件 |
+| 步骤 2: 蒸馏脚本 | 🟡 进行中 | 10/63 |
 | 步骤 3: 蒸馏执行 | ⚪ 待开始 | 0/63 |
 | 步骤 4: 测试编写 | ⚪ 待开始 | 0/63 |
 | 步骤 5: 代码移植 | ⚪ 待开始 | 0/63 |
@@ -70,22 +78,32 @@ module/
 │   │   ├── client.js
 │   │   ├── config.js
 │   │   ├── e2ee.js
-│   │   ├── handle.js
+│   │   ├── handle.js                 # 新增：Handle 绑定/验证
 │   │   ├── identity.js
 │   │   ├── logging.js
 │   │   ├── resolve.js
 │   │   ├── rpc.js
 │   │   └── ws.js
+│   ├── bind-contact.js               # 新增：绑定联系方式
 │   ├── check-inbox.js
 │   ├── check-status.js
 │   ├── credential-store.js
 │   ├── e2ee-handler.js
 │   ├── e2ee-messaging.js
+│   ├── e2ee-outbox.js                # 新增：E2EE 发件箱
+│   ├── e2ee-session-store.js         # 新增：E2EE 会话存储
 │   ├── local-store.js
+│   ├── listener-config.js            # 新增：监听器配置
+│   ├── listener-recovery.js          # 新增：监听器恢复
 │   ├── manage-group.js
 │   ├── manage-relationship.js
+│   ├── message-daemon.js             # 新增：消息守护进程
+│   ├── message-transport.js          # 新增：消息传输模式
 │   ├── send-message.js
+│   ├── send-verification-code.js     # 新增：发送验证码
 │   ├── setup-identity.js
+│   ├── setup-realtime.js             # 新增：实时消息设置
+│   ├── ws-listener.js
 │   └── ... (其他脚本，与 Python 版本一一对应)
 └── tests/                            # 测试文件
     ├── unit/                         # 单元测试
@@ -324,24 +342,26 @@ npm test
 |------|------|------|----------|
 | 配置模块 | scripts/utils/config.js | - | doc/scripts/utils/config.py/test.js |
 | 日志配置 | scripts/utils/logging.js | config | doc/scripts/utils/logging_config.py/test.js |
+| CLI 错误处理 | scripts/utils/cli-errors.js | config | doc/scripts/utils/cli_errors.py/test.js |
 | HTTP 客户端 | scripts/utils/client.js | config, httpx-0.28.0 | doc/scripts/utils/client.py/test.js |
 | RPC 模块 | scripts/utils/rpc.js | client, config | doc/scripts/utils/rpc.py/test.js |
 | 认证模块 | scripts/utils/auth.js | rpc, identity | doc/scripts/utils/auth.py/test.js |
 | 身份模块 | scripts/utils/identity.js | rpc, anp-0.6.8 | doc/scripts/utils/identity.py/test.js |
-| Handle 模块 | scripts/utils/handle.js | rpc | doc/scripts/utils/handle.py/test.js |
+| Handle 模块 | scripts/utils/handle.js | rpc | doc/scripts/utils/handle.py/test.js (新增绑定 API) |
 | E2EE 模块 | scripts/utils/e2ee.js | anp-0.6.8 | doc/scripts/utils/e2ee.py/test.js |
 | DID 解析 | scripts/utils/resolve.js | handle | doc/scripts/utils/resolve.py/test.js |
 | WebSocket | scripts/utils/ws.js | config, websockets-14.0 | doc/scripts/utils/ws.py/test.js |
 | 包导出 | scripts/utils/index.js | 所有 utils | - |
 
-### 4.3 Phase 3-6: scripts 和 tests
+### 4.3 Phase 3-7: scripts 和 tests
 
 | 阶段 | 任务 | 文件数 | 依赖 |
 |------|------|--------|------|
-| **Phase 3: 核心脚本** | credential-store, local-store, setup-identity, send-message, check-inbox, e2ee-messaging, check-status | 8 文件 | utils 模块 |
-| **Phase 4: 业务脚本** | manage-group, manage-relationship, get-profile, update-profile, manage-content, search-users, manage-credits, ws-listener, e2ee-handler, e2ee-store, e2ee-outbox, recover-handle, resolve-handle, manage-contacts, query-db | 15 文件 | 核心脚本 |
-| **Phase 5: 工具脚本** | database-migration, credential-migration, credential-layout, listener-config, service-manager, regenerate-e2ee-keys, migrate-credentials, migrate-local-database | 8 文件 | 核心脚本 |
-| **Phase 6: 测试移植** | 19 个 Python 测试文件移植 | 19 文件 | 所有模块 |
+| **Phase 3: 核心脚本** | credential-store, local-store, setup-identity, send-message, check-inbox, e2ee-messaging, check-status, e2ee-outbox, e2ee-session-store | 10 文件 | utils 模块 |
+| **Phase 4: 业务脚本** | manage-group, manage-relationship, get-profile, update-profile, manage-content, search-users, manage-credits, ws-listener, e2ee-handler, recover-handle, resolve-handle, manage-contacts, query-db, bind-contact | 14 文件 | 核心脚本 |
+| **Phase 5: 实时消息** | setup-realtime, message-transport, message-daemon, listener-config, listener-recovery, service-manager | 6 文件 | 核心脚本 |
+| **Phase 6: 工具脚本** | database-migration, credential-migration, credential-layout, regenerate-e2ee-keys, migrate-credentials, migrate-local-database, send-verification-code | 7 文件 | 核心脚本 |
+| **Phase 7: 测试移植** | 19 个 Python 测试文件移植 | 19 文件 | 所有模块 |
 
 ## 5. 测试覆盖场景
 
@@ -354,6 +374,8 @@ npm test
 | 列出所有身份 | {} | [identity_list] | 否 |
 | 删除身份 | {name: "test"} | {success: true} | 否 |
 | JWT 自动刷新 | {jwt_expired: true} | {jwt_token: "new"} | 否 |
+| 绑定邮箱 | {email: "user@example.com"} | {success: true} | 是（需要点击激活链接） |
+| 绑定手机 | {phone: "+8613800138000", otp: "123456"} | {success: true} | 是（需要 OTP） |
 
 ### 5.2 明文通信场景
 
@@ -363,6 +385,7 @@ npm test
 | 接收消息 | {limit: 10} | {messages: [...]} | 1 | 否 |
 | 标记已读 | {ids: [msg_id]} | {success: true} | 1 | 否 |
 | 查看历史 | {peer: did, limit: 50} | {messages: [...]} | 1 | 否 |
+| 通过 Handle 发送 | {to: "alice", content: "hi"} | {messageId, server_seq} | 1 | 否 |
 
 ### 5.3 密文通信场景 (E2EE)
 
@@ -373,28 +396,34 @@ npm test
 | E2EE 加密消息 | {content: "secret"} | {e2ee_msg} | 3 | 否 |
 | E2EE 解密消息 | {e2ee_msg} | {plaintext} | 3 | 否 |
 | E2EE 密钥轮换 | {rekey triggered} | {e2ee_rekey} | 1 | 否 |
+| E2EE 发送失败重试 | {outbox_id: "xxx"} | {success: true} | 1 | 否 |
+| E2EE 发件箱查询 | {} | {failed_records: [...]} | 1 | 否 |
 
 ### 5.4 群组场景
 
 | 场景 | 测试输入 | 预期输出 | 手工测试 |
 |------|----------|----------|----------|
-| 创建群组 | {name, slug, description} | {groupId, join_code} | 否 |
+| 创建无限群组 | {name, slug, description, goal, rules} | {groupId, join_code} | 否 |
+| 创建发现式群组 | {name, slug, member-max-messages, member-max-total-chars} | {groupId, join_code} | 否 |
 | 加入群组 | {group_id, join_code} | {success: true} | 否 |
 | 离开群组 | {group_id} | {success: true} | 否 |
 | 列出成员 | {group_id} | {members: [...]} | 否 |
 | 发送群消息 | {group_id, content} | {messageId} | 否 |
-| 查看群消息 | {group_id, limit} | {messages: [...]} | 否 |
+| 查看群消息（增量） | {group_id, since_seq} | {messages: [...]} | 否 |
+| 获取加入码 | {group_id} | {join_code, expires_at} | 否 |
+| 刷新加入码 | {group_id} | {join_code, expires_at} | 否 |
+| 更新群组配置 | {group_id, message-prompt, member-max-messages} | {success: true} | 否 |
 
 ### 5.5 内容管理场景
 
 | 场景 | 测试输入 | 预期输出 | 手工测试 |
 |------|----------|----------|----------|
-| 创建页面 | {title, content, parent_id?} | {pageId} | 否 |
-| 更新页面 | {page_id, content} | {success: true} | 否 |
-| 重命名页面 | {page_id, title} | {success: true} | 否 |
-| 删除页面 | {page_id} | {success: true} | 否 |
-| 列出页面 | {parent_id?} | {pages: [...]} | 否 |
-| 获取页面 | {page_id} | {page} | 否 |
+| 创建页面 | {title, content, slug, visibility?} | {pageId} | 否 |
+| 更新页面 | {slug, content} | {success: true} | 否 |
+| 重命名页面 | {slug, new_slug} | {success: true} | 否 |
+| 删除页面 | {slug} | {success: true} | 否 |
+| 列出页面 | {limit?, cursor?} | {pages: [...]} | 否 |
+| 获取页面 | {slug} | {page} | 否 |
 
 ### 5.6 搜索场景
 
@@ -404,13 +433,16 @@ npm test
 | 空结果搜索 | {query: "nonexistent"} | {users: []} | 否 |
 | 部分匹配 | {query: "alice"} | {users: [...]} | 否 |
 
-### 5.7 需要手工测试的场景（需要手机号）
+### 5.7 需要手工测试的场景（需要手机号/邮箱）
 
 | 场景 | 测试输入 | 预期输出 | 手工测试步骤 |
 |------|----------|----------|-------------|
-| Handle 注册（发送 OTP） | {handle, phone} | {success: true} | 1. 输入手机号 2. 接收短信 3. 输入 OTP |
-| Handle 注册（验证 OTP） | {handle, otp_code} | {did, handle} | 1. 输入 OTP 2. 验证完成 |
-| Handle 恢复 | {handle, phone} | {success: true} | 1. 输入手机号 2. 接收短信 3. 输入 OTP |
+| 发送验证码 | {phone: "+8613800138000"} | {success: true} | 1. 输入手机号 2. 接收短信 |
+| Handle 注册（手机） | {handle, phone, otp_code} | {did, handle} | 1. 输入 OTP 2. 验证完成 |
+| Handle 注册（邮箱） | {handle, email} | {pending} | 1. 发送激活邮件 2. 点击链接 3. 完成注册 |
+| Handle 恢复 | {handle, phone, otp} | {success: true} | 1. 输入手机号 2. 接收短信 3. 输入 OTP |
+| 绑定邮箱 | {email} | {pending/success} | 1. 发送激活邮件 2. 点击链接 3. 完成绑定 |
+| 绑定手机 | {phone, otp} | {success: true} | 1. 发送 OTP 2. 输入 OTP 3. 完成绑定 |
 
 ---
 
@@ -423,6 +455,8 @@ npm test
 4. **依赖链**: 前一步的蒸馏/测试结果作为下一步输入
 5. **跨平台**: Python ↔ Node.js 双向通信
 6. **E2EE 三轮+**: 密文通信至少 3 轮完整交流
+7. **实时消息**: 测试 WebSocket 推送和 HTTP 轮询两种模式
+8. **群组类型**: 测试无限群组和发现式群组两种类型
 
 ### 6.1 测试用户配置
 
@@ -431,6 +465,55 @@ npm test
 | Alice | Python | `distill_alice_py` | 主测试用户，JWT 过期场景 |
 | Bob | Node.js | `distill_bob_js` | 跨平台通信测试 |
 | Charlie | Python | `distill_charlie_py` | 群组测试、E2EE 三轮 |
+
+### 6.2 v1.3.10 新增功能测试
+
+#### 6.2.1 实时消息设置测试
+
+| 场景 | 测试输入 | 预期输出 | 手工测试 |
+|------|----------|----------|----------|
+| 设置 WebSocket 模式 | {mode: "websocket"} | {success: true, config_updated} | 否 |
+| 设置 HTTP 轮询模式 | {mode: "http"} | {success: true, config_updated} | 否 |
+| 安装后台服务 | {platform: "linux"} | {service_installed: true} | 是 |
+| 启动监听器 | {} | {listener_running: true} | 否 |
+| 停止监听器 | {} | {listener_stopped: true} | 否 |
+| 查看监听器状态 | {} | {status: "running"/"stopped"} | 否 |
+
+#### 6.2.2 心跳检查测试
+
+| 场景 | 测试输入 | 预期输出 | 手工测试 |
+|------|----------|----------|----------|
+| 心跳检查（正常） | {} | {identity: {...}, inbox: {...}, listener: {...}} | 否 |
+| 心跳检查（无身份） | {no_identity: true} | {identity: {status: "no_identity"}} | 否 |
+| 心跳检查（监听器停止） | {listener_stopped: true} | {listener: {running: false}} | 否 |
+| 心跳检查（未读消息） | {unread_messages: true} | {inbox: {messages: [...], unread_count: N}} | 否 |
+
+#### 6.2.3 E2EE 失败重试测试
+
+| 场景 | 测试输入 | 预期输出 | 手工测试 |
+|------|----------|----------|----------|
+| 列出失败记录 | {} | {failed_records: [{outbox_id, peer_did, content, error}]} | 否 |
+| 重试失败记录 | {outbox_id: "xxx"} | {success: true} | 否 |
+| 丢弃失败记录 | {outbox_id: "xxx"} | {success: true} | 否 |
+| 自动会话初始化 | {no_session: true, content: "hello"} | {e2ee_init_sent, message_sent} | 否 |
+
+#### 6.2.4 群组消息分类测试
+
+| 场景 | 测试输入 | 预期输出 | 手工测试 |
+|------|----------|----------|----------|
+| 成员加入事件 | {member_joined: true} | {event: {kind: "member_joined", actor: {...}}} | 否 |
+| 成员离开事件 | {member_left: true} | {event: {kind: "member_left", actor: {...}}} | 否 |
+| 成员踢出事件 | {member_kicked: true} | {event: {kind: "member_kicked", actor: {...}}} | 否 |
+| 文本消息 | {text_message: true} | {message: {content: "...", type: "group_user"}} | 否 |
+
+#### 6.2.5 联系方式绑定测试
+
+| 场景 | 测试输入 | 预期输出 | 手工测试 |
+|------|----------|----------|----------|
+| 绑定邮箱（发送激活） | {email: "user@example.com"} | {pending_verification: true} | 是（需要点击链接） |
+| 绑定邮箱（轮询） | {email: "user@example.com", wait: true} | {success: true} | 是（自动轮询） |
+| 绑定手机（发送 OTP） | {phone: "+8613800138000", send_otp: true} | {otp_sent: true} | 是（需要接收短信） |
+| 绑定手机（验证 OTP） | {phone: "+8613800138000", otp: "123456"} | {success: true} | 是（需要 OTP） |
 
 ### 6.2 JWT 过期测试前移策略
 

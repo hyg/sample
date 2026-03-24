@@ -1,4 +1,4 @@
-"""SQLite local storage for messages, contacts, relationship events, groups, and E2EE outbox state.
+"""SQLite local storage for messages, contacts, relationship events, groups, and E2EE state.
 
 [INPUT]: SDKConfig (data_dir for database path), credential_store (owner DID lookup
          during migration)
@@ -9,9 +9,9 @@
          replace_group_members(), delete_group_members(), rebind_owner_did(),
          clear_owner_e2ee_data(), execute_sql()
 [POS]: Persistence layer — single shared SQLite database for offline message storage,
-       relationship/contact snapshots, group state snapshots, and resendable E2EE
-       outbox tracking with explicit owner_did isolation for multi-identity local
-       environments
+       relationship/contact snapshots, group state snapshots, disk-first E2EE
+       session state, and resendable E2EE outbox tracking with explicit owner_did
+       isolation for multi-identity local environments
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -32,7 +32,7 @@ from utils.config import SDKConfig
 
 logger = logging.getLogger(__name__)
 
-_SCHEMA_VERSION = 9
+_SCHEMA_VERSION = 11
 
 _V6_TABLES_SQL = """
     CREATE TABLE IF NOT EXISTS contacts (
@@ -111,6 +111,7 @@ _V7_EXTRA_TABLES_SQL = """
         group_id           TEXT NOT NULL,
         group_did          TEXT,
         name               TEXT,
+        group_mode         TEXT NOT NULL DEFAULT 'general',
         slug               TEXT,
         description        TEXT,
         goal               TEXT,
@@ -171,6 +172,27 @@ _V8_EXTRA_TABLES_SQL = """
         updated_at       TEXT NOT NULL,
         metadata         TEXT,
         credential_name  TEXT NOT NULL DEFAULT ''
+    );
+"""
+
+_V11_EXTRA_TABLES_SQL = """
+    CREATE TABLE IF NOT EXISTS e2ee_sessions (
+        owner_did        TEXT NOT NULL DEFAULT '',
+        peer_did         TEXT NOT NULL,
+        session_id       TEXT NOT NULL,
+        is_initiator     INTEGER NOT NULL DEFAULT 0,
+        send_chain_key   TEXT NOT NULL,
+        recv_chain_key   TEXT NOT NULL,
+        send_seq         INTEGER NOT NULL DEFAULT 0,
+        recv_seq         INTEGER NOT NULL DEFAULT 0,
+        expires_at       REAL,
+        created_at       TEXT NOT NULL,
+        active_at        TEXT,
+        peer_confirmed   INTEGER NOT NULL DEFAULT 0,
+        credential_name  TEXT NOT NULL DEFAULT '',
+        updated_at       TEXT NOT NULL,
+        PRIMARY KEY (owner_did, peer_did),
+        UNIQUE (owner_did, session_id)
     );
 """
 
@@ -263,6 +285,17 @@ _V8_EXTRA_INDEX_STATEMENTS = {
     """,
 }
 
+_V11_EXTRA_INDEX_STATEMENTS = {
+    "idx_e2ee_sessions_owner_updated": """
+        CREATE INDEX IF NOT EXISTS idx_e2ee_sessions_owner_updated
+            ON e2ee_sessions(owner_did, updated_at DESC)
+    """,
+    "idx_e2ee_sessions_credential": """
+        CREATE INDEX IF NOT EXISTS idx_e2ee_sessions_credential
+            ON e2ee_sessions(credential_name)
+    """,
+}
+
 _V6_VIEW_STATEMENTS = {
     "threads": """
         CREATE VIEW threads AS
@@ -309,6 +342,7 @@ def get_connection() -> sqlite3.Connection:
     db_path = db_dir / "awiki.db"
     conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.row_factory = sqlite3.Row
     logger.debug("Opened local SQLite database path=%s", db_path)
@@ -418,6 +452,17 @@ def _ensure_v8_indexes(conn: sqlite3.Connection) -> list[str]:
     return repaired_indexes
 
 
+def _ensure_v11_indexes(conn: sqlite3.Connection) -> list[str]:
+    """Create any missing v11-only indexes and return the repaired index names."""
+    repaired_indexes: list[str] = []
+    for index_name, statement in _V11_EXTRA_INDEX_STATEMENTS.items():
+        if _schema_object_exists(conn, object_type="index", object_name=index_name):
+            continue
+        conn.execute(statement)
+        repaired_indexes.append(index_name)
+    return repaired_indexes
+
+
 def _recreate_v6_views(conn: sqlite3.Connection) -> None:
     """Recreate the canonical v6 views."""
     for view_name in _V6_VIEW_STATEMENTS:
@@ -452,14 +497,21 @@ def _create_schema_v8_extensions(conn: sqlite3.Connection) -> None:
     conn.executescript(_V8_EXTRA_TABLES_SQL)
 
 
+def _create_schema_v11_extensions(conn: sqlite3.Connection) -> None:
+    """Create the v11 disk-first E2EE session extensions."""
+    conn.executescript(_V11_EXTRA_TABLES_SQL)
+
+
 def _create_schema_v7(conn: sqlite3.Connection) -> None:
     """Create the full owner_did-aware schema."""
     _create_schema_v6(conn)
     _create_schema_v7_extensions(conn)
     _create_schema_v8_extensions(conn)
+    _create_schema_v11_extensions(conn)
     _ensure_v6_indexes(conn)
     _ensure_v7_indexes(conn)
     _ensure_v8_indexes(conn)
+    _ensure_v11_indexes(conn)
     _recreate_v6_views(conn)
 
 
@@ -765,6 +817,18 @@ def _ensure_v9_group_member_columns(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE group_members ADD COLUMN profile_url TEXT")
 
 
+def _ensure_v10_group_columns(conn: sqlite3.Connection) -> None:
+    """Ensure the group mode column added in v10 exists."""
+    group_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(groups)").fetchall()
+    }
+    if "group_mode" not in group_columns:
+        conn.execute(
+            "ALTER TABLE groups ADD COLUMN group_mode TEXT NOT NULL DEFAULT 'general'"
+        )
+
+
 def _upgrade_schema_v7_to_v8(conn: sqlite3.Connection) -> None:
     """Add contact provenance fields and relationship events on top of schema v7."""
     logger.info("Upgrading local schema from version=7 to version=%d", _SCHEMA_VERSION)
@@ -786,6 +850,30 @@ def _upgrade_schema_v8_to_v9(conn: sqlite3.Connection) -> None:
     _recreate_v6_views(conn)
 
 
+def _upgrade_schema_v9_to_v10(conn: sqlite3.Connection) -> None:
+    """Add group mode snapshots on top of schema v9."""
+    logger.info("Upgrading local schema from version=9 to version=%d", _SCHEMA_VERSION)
+    _ensure_v9_group_member_columns(conn)
+    _ensure_v10_group_columns(conn)
+    _ensure_v6_indexes(conn)
+    _ensure_v7_indexes(conn)
+    _ensure_v8_indexes(conn)
+    _recreate_v6_views(conn)
+
+
+def _upgrade_schema_v10_to_v11(conn: sqlite3.Connection) -> None:
+    """Add disk-first E2EE session state on top of schema v10."""
+    logger.info("Upgrading local schema from version=10 to version=%d", _SCHEMA_VERSION)
+    _ensure_v9_group_member_columns(conn)
+    _ensure_v10_group_columns(conn)
+    _create_schema_v11_extensions(conn)
+    _ensure_v6_indexes(conn)
+    _ensure_v7_indexes(conn)
+    _ensure_v8_indexes(conn)
+    _ensure_v11_indexes(conn)
+    _recreate_v6_views(conn)
+
+
 def ensure_schema(conn: sqlite3.Connection) -> None:
     """Create tables, views, and indexes if they don't exist."""
     version = conn.execute("PRAGMA user_version").fetchone()[0]
@@ -793,12 +881,15 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         conn.executescript(_V6_TABLES_SQL)
         conn.executescript(_V7_EXTRA_TABLES_SQL)
         conn.executescript(_V8_EXTRA_TABLES_SQL)
+        conn.executescript(_V11_EXTRA_TABLES_SQL)
         _ensure_v8_contact_columns(conn)
         _ensure_v9_group_member_columns(conn)
+        _ensure_v10_group_columns(conn)
         repaired_indexes = (
             _ensure_v6_indexes(conn)
             + _ensure_v7_indexes(conn)
             + _ensure_v8_indexes(conn)
+            + _ensure_v11_indexes(conn)
         )
         repaired_views = _ensure_v6_views(conn)
         if repaired_indexes or repaired_views:
@@ -827,6 +918,12 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             version = 8
         if version < 9:
             _upgrade_schema_v8_to_v9(conn)
+            version = 9
+        if version < 10:
+            _upgrade_schema_v9_to_v10(conn)
+            version = 10
+        if version < 11:
+            _upgrade_schema_v10_to_v11(conn)
 
     conn.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
     conn.commit()
@@ -1437,6 +1534,7 @@ def upsert_group(
     group_id: str,
     group_did: str | None = None,
     name: str | None = None,
+    group_mode: str | None = None,
     slug: str | None = None,
     description: str | None = None,
     goal: str | None = None,
@@ -1478,6 +1576,7 @@ def upsert_group(
         "group_id": group_id,
         "group_did": row.get("group_did"),
         "name": row.get("name"),
+        "group_mode": row.get("group_mode", "general"),
         "slug": row.get("slug"),
         "description": row.get("description"),
         "goal": row.get("goal"),
@@ -1505,6 +1604,7 @@ def upsert_group(
     updates = {
         "group_did": _normalize_optional_text(group_did),
         "name": _normalize_optional_text(name),
+        "group_mode": _normalize_optional_text(group_mode),
         "slug": _normalize_optional_text(slug),
         "description": _normalize_optional_text(description),
         "goal": _normalize_optional_text(goal),
@@ -1537,6 +1637,7 @@ def upsert_group(
         "group_id",
         "group_did",
         "name",
+        "group_mode",
         "slug",
         "description",
         "goal",
@@ -1918,12 +2019,12 @@ def rebind_owner_did(
     conn.execute(
         """
         INSERT OR REPLACE INTO groups
-        (owner_did, group_id, group_did, name, slug, description, goal, rules,
+        (owner_did, group_id, group_did, name, group_mode, slug, description, goal, rules,
          message_prompt, doc_url, group_owner_did, group_owner_handle, my_role,
          membership_status, join_enabled, join_code, join_code_expires_at, member_count, last_synced_seq,
          last_read_seq, last_message_at, remote_created_at, remote_updated_at,
          stored_at, metadata, credential_name)
-        SELECT ?, group_id, group_did, name, slug, description, goal, rules,
+        SELECT ?, group_id, group_did, name, group_mode, slug, description, goal, rules,
                message_prompt, doc_url, group_owner_did, group_owner_handle, my_role,
                membership_status, join_enabled, join_code, join_code_expires_at, member_count, last_synced_seq,
                last_read_seq, last_message_at, remote_created_at, remote_updated_at,
@@ -1971,21 +2072,32 @@ def clear_owner_e2ee_data(
     owner_did: str,
     credential_name: str | None = None,
 ) -> dict[str, int]:
-    """Delete owner-scoped E2EE outbox data after a DID recovery/reset."""
+    """Delete owner-scoped E2EE session and outbox data after a DID recovery/reset."""
     normalized_owner_did = _normalize_owner_did(owner_did)
     if not normalized_owner_did:
-        return {"e2ee_outbox": 0}
+        return {"e2ee_outbox": 0, "e2ee_sessions": 0}
 
-    row_count = conn.execute(
+    outbox_row_count = conn.execute(
         "SELECT COUNT(*) FROM e2ee_outbox WHERE owner_did = ?",
+        (normalized_owner_did,),
+    ).fetchone()[0]
+    session_row_count = conn.execute(
+        "SELECT COUNT(*) FROM e2ee_sessions WHERE owner_did = ?",
         (normalized_owner_did,),
     ).fetchone()[0]
     conn.execute(
         "DELETE FROM e2ee_outbox WHERE owner_did = ?",
         (normalized_owner_did,),
     )
+    conn.execute(
+        "DELETE FROM e2ee_sessions WHERE owner_did = ?",
+        (normalized_owner_did,),
+    )
     conn.commit()
-    return {"e2ee_outbox": row_count}
+    return {
+        "e2ee_outbox": outbox_row_count,
+        "e2ee_sessions": session_row_count,
+    }
 
 
 def execute_sql(
@@ -2005,7 +2117,9 @@ def execute_sql(
 
     if re.match(r"\s*DELETE\b", stripped, re.IGNORECASE):
         if not re.search(r"\bWHERE\b", stripped, re.IGNORECASE):
-            raise ValueError("DELETE without WHERE clause is not allowed")
+            raise ValueError(
+                "Forbidden SQL operation: DELETE without WHERE clause is not allowed"
+            )
 
     cursor = conn.execute(stripped, params)
 

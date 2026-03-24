@@ -11,6 +11,10 @@
 - recover_handle() - 恢复 Handle (异步)
 - resolve_handle() - 解析 Handle (异步)
 - lookup_handle() - 通过 DID 查找 Handle (异步)
+- bind_email_send() - 发送邮箱绑定激活邮件 (异步，v1.3.10 新增)
+- bind_phone_send_otp() - 发送手机绑定 OTP (异步，v1.3.10 新增)
+- bind_phone_verify() - 验证手机绑定 OTP (异步，v1.3.10 新增)
+- ensure_email_verification() - 确保邮箱验证完成 (异步，v1.3.10 新增)
 """
 
 import sys
@@ -28,6 +32,10 @@ from utils.handle import (
     recover_handle,
     resolve_handle,
     lookup_handle,
+    bind_email_send,
+    bind_phone_send_otp,
+    bind_phone_verify,
+    ensure_email_verification,
     HANDLE_RPC,
     DID_AUTH_RPC,
     DEFAULT_COUNTRY_CODE,

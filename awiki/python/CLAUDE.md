@@ -21,8 +21,8 @@ DID (Decentralized Identifier) identity interaction Skill. Built on the ANP prot
 All scripts must be run from the project root (`python scripts/<name>.py`). Python automatically adds `scripts/` to `sys.path` for resolving `from utils import ...` imports. All scripts support `--credential <name>` to specify an identity (defaults to `default`), enabling multi-identity per environment.
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (also runs local database upgrade checks)
+python install_dependencies.py
 
 # Identity management
 python scripts/setup_identity.py --name "AgentName"          # Create identity
@@ -44,11 +44,20 @@ python scripts/update_profile.py --nick-name "Name" --bio "Bio" --tags "tag1,tag
 python scripts/search_users.py "alice"                     # Search users
 python scripts/search_users.py "AI agent" --credential bob # Search with specific credential
 
-# Handle (short name) registration and resolution
-python scripts/register_handle.py --handle alice --phone +8613800138000
-python scripts/register_handle.py --handle bob --phone +8613800138000 --invite-code ABC123
+# Handle (short name) registration and resolution (supports phone and email verification)
+python scripts/send_verification_code.py --phone +8613800138000
+python scripts/register_handle.py --handle alice --phone +8613800138000 --otp-code 123456
+python scripts/register_handle.py --handle alice --email user@example.com
+python scripts/register_handle.py --handle alice --email user@example.com --wait-for-email-verification
+python scripts/register_handle.py --handle bob --phone +8613800138000 --otp-code 123456 --invite-code ABC123
 python scripts/resolve_handle.py --handle alice               # Resolve handle to DID
 python scripts/resolve_handle.py --did "<DID>"                # Look up handle by DID
+
+# Bind contact info (requires existing identity with JWT)
+python scripts/bind_contact.py --bind-email user@example.com                           # Send email activation or complete email bind
+python scripts/bind_contact.py --bind-email user@example.com --wait-for-email-verification
+python scripts/bind_contact.py --bind-phone +8613800138000 --send-phone-otp           # Send phone OTP only
+python scripts/bind_contact.py --bind-phone +8613800138000 --otp-code 123456          # Complete phone bind with a pre-issued OTP
 
 # Messaging (requires identity creation first)
 python scripts/send_message.py --to "<DID>" --content "hello"
@@ -101,6 +110,10 @@ python scripts/check_status.py                              # Mandatory E2EE aut
 python scripts/check_status.py --credential alice           # Specify credential
 python scripts/check_status.py --upgrade-only               # Run local upgrade / migration checks only
 
+# Real-time setup (one-click: settings.json + openclaw.json hooks + ws_listener service)
+python scripts/setup_realtime.py                             # Default credential
+python scripts/setup_realtime.py --credential alice          # Specify credential
+
 # WebSocket listener (background service management)
 python scripts/ws_listener.py install --credential default --mode smart  # Install and start
 python scripts/ws_listener.py install --credential default --config path/to/config.json  # Install with custom config
@@ -136,7 +149,7 @@ Three-layer architecture: CLI script layer -> Persistence layer -> Core utility 
 - **auth.py**: DID auth helpers — `create_authenticated_identity()` chains create identity -> `register_did()` -> `get_jwt_via_wba()` for first-time setup; `update_did_document()` uses DID WBA auth to update an existing DID document without re-registering
 - **client.py**: httpx AsyncClient factory (`create_user_service_client`, `create_molt_message_client`), 30s timeout, `trust_env=False`
 - **rpc.py**: JSON-RPC 2.0 client wrapper, `rpc_call()` sends requests, `JsonRpcError` wraps errors
-- **handle.py**: Handle (short name) registration and resolution — `send_otp()`, `register_handle()` (one-stop: create identity + register DID with handle + JWT), `resolve_handle()`, `lookup_handle()`. Uses `/user-service/handle/rpc` and `/user-service/did-auth/rpc` endpoints
+- **handle.py**: Handle (short name) registration and resolution — `send_otp()`, `register_handle()` (one-stop: create identity + register DID with handle + JWT), `resolve_handle()`, `lookup_handle()`, `send_email_verification()`, `check_email_verified()`, `register_handle_with_email()`, `bind_email_send()`, `bind_phone_send_otp()`, `bind_phone_verify()`. Uses `/user-service/handle/rpc` and `/user-service/did-auth/rpc` endpoints
 - **e2ee.py**: `E2eeClient` — Uses HPKE (RFC 9180, X25519 key agreement + chain Ratchet forward secrecy). One-step initialization (no multi-step handshake). Key separation: key-2 secp256r1 for signing + key-3 X25519 for key agreement (separate from DID's secp256k1). Supports `export_state()`/`from_state()` for cross-process state recovery
 - **ws.py**: `WsClient` — WebSocket client wrapper. Uses JWT query parameter authentication to connect to molt-message `/message/ws` endpoint. Supports JSON-RPC request/response, push notification reception, application-layer heartbeat (ping/pong)
 - **resolve.py**: `resolve_to_did()` — Handle-to-DID resolution. If input starts with `did:`, returns as-is. Otherwise calls `GET /user-service/.well-known/handle/{local_part}` (no auth required). Always resolves via server, no local cache
@@ -144,16 +157,21 @@ Three-layer architecture: CLI script layer -> Persistence layer -> Core utility 
 
 ### scripts/ — CLI Script Layer
 
-- **credential_store.py** / **e2ee_store.py**: Credential and E2EE state persistence to `~/.openclaw/credentials/awiki-agent-id-message/` directory (JSON format, 600 permissions)
-- **local_store.py**: SQLite local storage — contacts + `relationship_events` + messages + `groups` + `group_members` + `e2ee_outbox`, plus threads/inbox/outbox views. Single shared database at `<DATA_DIR>/database/awiki.db`. Local data is isolated by `owner_did`, while `credential_name` is retained as an alias/debug field; the same server message can exist for multiple local identities via composite key `(msg_id, owner_did)`. `contacts` now stores local connection provenance (`source_*`), recommendation reason, follow/message state, and note fields. `relationship_events` stores append-only AI recommendation and follow-up history. Messages also support an optional plaintext `title` field. `groups` stores local discovery-group snapshots (owner/member role, membership status, join code state, sync cursors), and `group_members` caches the latest active-member snapshot per group, including `profile_url`. `e2ee_outbox` tracks encrypted send attempts, peer-side failures, and resend/drop decisions. WAL mode for concurrent read/write. Sync API (sqlite3 stdlib), ws_listener wraps via `asyncio.to_thread()`. Schema versioned via `PRAGMA user_version` (current: v9)
+- **credential_store.py** / **e2ee_store.py**: Credential persistence and legacy JSON E2EE-state compatibility helpers under `~/.openclaw/credentials/awiki-agent-id-message/` (600 permissions). New runtime session truth now lives in SQLite; `e2ee_store.py` is retained for migration/backward-compatibility only.
+- **local_store.py**: SQLite local storage — contacts + `relationship_events` + messages + `groups` + `group_members` + `e2ee_sessions` + `e2ee_outbox`, plus threads/inbox/outbox views. Single shared database at `<DATA_DIR>/database/awiki.db`. Local data is isolated by `owner_did`, while `credential_name` is retained as an alias/debug field; the same server message can exist for multiple local identities via composite key `(msg_id, owner_did)`. `contacts` now stores local connection provenance (`source_*`), recommendation reason, follow/message state, and note fields. `relationship_events` stores append-only AI recommendation and follow-up history. Messages also support an optional plaintext `title` field. `groups` stores local unified-group snapshots (owner/member role, cached `group_mode=general`, membership status, join code state, sync cursors), and `group_members` caches the latest active-member snapshot per group, including `profile_url`. `e2ee_sessions` stores the disk-first HPKE session truth (chain keys, seq counters, confirmation state) and `e2ee_outbox` tracks encrypted send attempts, peer-side failures, and resend/drop decisions. WAL mode + busy timeout are enabled for concurrent read/write. Sync API (sqlite3 stdlib), ws_listener wraps local writes via `asyncio.to_thread()`. Schema versioned via `PRAGMA user_version` (current: v11)
+- **e2ee_session_store.py**: SQLite-backed E2EE session persistence layer. Loads/saves `E2eeClient` state from `awiki.db`, migrates legacy JSON session files on first access, and provides `BEGIN IMMEDIATE` transaction wrappers for disk-first send/receive flows.
 - **query_db.py**: Read-only SQL query CLI — accepts a SELECT statement, executes against local SQLite, returns JSON. Rejects write operations and multi-statement queries. AI agents should use it directly to inspect `messages`, `groups`, `group_members`, `contacts`, and `relationship_events`, typically after refreshing group state with `manage_group.py --get/--members/--list-messages`
 - **search_users.py**: User search — search users by semantic matching via `/search/rpc` search method
 - **manage_contacts.py**: Local relationship-sedimentation CLI — records AI recommendations, saves confirmed contacts from groups, and updates follow/message/note state without writing SQL directly
-- **check_status.py**: Unified status check entry point — chains identity verification, inbox classification summary, server_seq-aware E2EE auto-processing, and plaintext delivery for unread encrypted messages. Outputs structured JSON. Called by Agent session startup protocol and heartbeat
+- **message_transport.py**: Shared message transport selector — routes message RPC over the local WebSocket daemon in `receive_mode=websocket`, but automatically falls back to HTTP when the daemon or remote WebSocket transport is unavailable
+- **listener_recovery.py**: Listener runtime health + restart backoff helper — persists per-credential restart failures in `<DATA_DIR>/runtime/listener_recovery.json`, attempts bounded auto-restart, and exposes degraded-mode runtime reports to heartbeat/read/send flows
+- **check_status.py**: Unified status check entry point — chains identity verification, inbox classification summary, server_seq-aware E2EE auto-processing, plaintext delivery for unread encrypted messages, and listener degraded-mode recovery. Outputs structured JSON for Agent session startup and heartbeat, including `realtime_listener` runtime status
 - **listener_config.py**: `ListenerConfig` + `RoutingRules` — WebSocket listener configuration module. Defines dual webhook endpoints, routing modes (agent-all/smart/wake-all), message routing rules and E2EE transparent processing parameters. Supports unified settings.json (`listener` sub-object, at `<DATA_DIR>/config/settings.json`) + legacy JSON file + environment variables + CLI four-level override
-- **e2ee_handler.py**: `E2eeHandler` — E2EE transparent handler for WebSocket listener. Intercepts E2EE messages before `classify_message`: protocol messages (init/rekey/error) are handled internally without forwarding, encrypted messages (e2ee_msg) are decrypted and forwarded as plaintext. On terminal decryption failures, it emits sender-facing `e2ee_error` responses including failed message identifiers. asyncio.Lock protects concurrency, periodic state saving
-- **ws_listener.py**: WebSocket listener — persistent background process + cross-platform service lifecycle management. Reuses `WsClient` to connect to molt-message WebSocket. E2EE messages handled transparently by `E2eeHandler` (optional). Received messages stored to local SQLite via `local_store`. Others routed via `classify_message()` (agent/wake/discard) and forwarded to corresponding localhost webhook endpoints. Subcommands: `run` (foreground debug), `install` (install background service), `uninstall`, `start`/`stop`/`status` (management). Service management delegated to `service_manager.py`
+- **e2ee_handler.py**: `E2eeHandler` — E2EE transparent handler for WebSocket listener. Intercepts E2EE messages before `classify_message`: protocol messages (init/rekey/error) are handled internally without forwarding, encrypted messages (e2ee_msg) are decrypted and forwarded as plaintext. On terminal decryption failures, it emits sender-facing `e2ee_error` responses including failed message identifiers. asyncio.Lock still serializes runtime handling, but session truth is reloaded from SQLite for each mutation and saved back immediately instead of relying on a long-lived in-memory cache.
+- **setup_realtime.py**: One-click real-time setup — generates webhook token, creates/merges `<DATA_DIR>/config/settings.json` (listener config) and `~/.openclaw/openclaw.json` (OpenClaw hooks), then installs ws_listener background service. Idempotent: safe to run multiple times, existing config is merged not overwritten
+- **ws_listener.py**: WebSocket listener — persistent background process + cross-platform service lifecycle management. Reuses `WsClient` to connect to molt-message WebSocket. E2EE messages handled transparently by `E2eeHandler` (optional). Received messages stored to local SQLite via `local_store`. Others routed via `classify_message()` (agent/wake/discard) and forwarded to corresponding localhost webhook endpoints. Subcommands: `run` (foreground debug), `install` (install background service), `uninstall`, `start`/`stop`/`status` (management). When unhealthy, heartbeat/read/send flows now degrade to HTTP first and only auto-restart the listener up to three consecutive failures; while healthy, the foreground listener also polls the credential index and auto-enrolls newly created identities into WSS. Service management delegated to `service_manager.py`
 - **service_manager.py**: `ServiceManager` base class + `MacOSServiceManager` (launchd) / `LinuxServiceManager` (systemd) / `WindowsServiceManager` (Task Scheduler) + `get_service_manager()` factory. Handles install/uninstall/start/stop/status for each platform
+- **bind_contact.py**: Contact binding CLI — bind email or phone number to an existing authenticated account with pure non-interactive flows (`bind_email_send()`, `bind_phone_send_otp()`, `bind_phone_verify()` from handle.py)
 - Other scripts are CLI entry points for each feature, wrapping async calls via `asyncio.run()`
 
 ### service/ — Cross-Platform Service Management
@@ -191,7 +209,7 @@ When modifying code logic, the corresponding file's `[INPUT]/[OUTPUT]/[POS]` hea
 
 **Three-Key System**: DID identity uses secp256k1 key-1 (identity proof + WBA signing). E2EE uses secp256r1 key-2 (proof signing) + X25519 key-3 (HPKE key agreement). Three key sets are stored separately and support independent rotation.
 
-**E2EE State Persistence**: `E2eeClient.export_state()` serializes ACTIVE session state (with version="hpke_v1" marker), `from_state()` restores it. Legacy formats are automatically discarded. ACTIVE sessions expire after 24 hours. One-step initialization means no PENDING concept.
+**E2EE State Persistence**: `E2eeClient.export_state()` / `from_state()` remain the serialization boundary, but runtime truth is now stored in SQLite `e2ee_sessions` rows instead of JSON files. Listener / CLI flows are expected to reload the latest state from SQLite before mutation and persist back immediately (or within one SQLite transaction for send-side critical sections). Legacy JSON state is migrated into SQLite on first access. ACTIVE sessions expire after 24 hours. One-step initialization means no PENDING concept.
 
 **E2EE Inbox Processing Order**: Inbox processing prioritizes `server_seq` inside the same sender stream, falls back to `created_at`, then applies protocol type ordering (init < rekey < e2ee_msg < error). This keeps store-and-forward processing stable without assuming a global cross-server sequence.
 

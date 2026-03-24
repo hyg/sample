@@ -76,9 +76,37 @@ allows the same server message to be stored for multiple local identities.
 - `idx_messages_owner_sender`: `(owner_did, sender_did)` — owner-scoped sender lookup
 - `idx_messages_credential`: `(credential_name)` — credential-based filtering
 
+### e2ee_sessions
+
+Stores the disk-first private E2EE session truth for one local DID owner. There
+is at most one active row per `(owner_did, peer_did)`, while
+`(owner_did, session_id)` remains unique for exact decrypt lookups.
+
+| Column | Type | Constraint | Description |
+|--------|------|------------|-------------|
+| owner_did | TEXT | PRIMARY KEY (with `peer_did`) | Local DID that owns this session |
+| peer_did | TEXT | PRIMARY KEY (with `owner_did`) | Remote peer DID |
+| session_id | TEXT | NOT NULL, UNIQUE (with `owner_did`) | Active HPKE session identifier |
+| is_initiator | INTEGER | NOT NULL, DEFAULT `0` | Whether the owner initiated the current session |
+| send_chain_key | TEXT | NOT NULL | Base64-encoded send chain key |
+| recv_chain_key | TEXT | NOT NULL | Base64-encoded receive chain key |
+| send_seq | INTEGER | NOT NULL, DEFAULT `0` | Next outbound sequence number |
+| recv_seq | INTEGER | NOT NULL, DEFAULT `0` | Next expected inbound sequence number |
+| expires_at | REAL | | Unix timestamp when the session expires |
+| created_at | TEXT | NOT NULL | Session creation time |
+| active_at | TEXT | | Session activation time |
+| peer_confirmed | INTEGER | NOT NULL, DEFAULT `0` | Whether an `e2ee_ack` confirmed this session |
+| credential_name | TEXT | NOT NULL, DEFAULT `''` | Credential alias used for diagnostics |
+| updated_at | TEXT | NOT NULL | Last local mutation time |
+
+#### Indexes
+
+- `idx_e2ee_sessions_owner_updated`: `(owner_did, updated_at DESC)` — recent-session scans for one owner
+- `idx_e2ee_sessions_credential`: `(credential_name)` — credential-based diagnostics
+
 ### groups
 
-Stores the local snapshot of discovery groups for one local DID owner.
+Stores the local snapshot of discovery/chat groups for one local DID owner.
 
 | Column | Type | Constraint | Description |
 |--------|------|------------|-------------|
@@ -86,6 +114,7 @@ Stores the local snapshot of discovery groups for one local DID owner.
 | group_id | TEXT | PRIMARY KEY (with `owner_did`) | Group identifier |
 | group_did | TEXT | | Group DID if known locally |
 | name | TEXT | | Group display name |
+| group_mode | TEXT | NOT NULL, DEFAULT `discovery` | Remote group mode (`discovery` / `chat`) |
 | slug | TEXT | | Group slug |
 | description | TEXT | | Group description |
 | goal | TEXT | | Group goal |
@@ -201,7 +230,7 @@ Thread IDs are deterministic and symmetric:
 
 ## Schema Versioning
 
-Schema version tracked via `PRAGMA user_version`. Current version: **9**.
+Schema version tracked via `PRAGMA user_version`. Current version: **11**.
 
 Migration history:
 - v1 → v2: adds `credential_name TEXT` column and `idx_messages_credential` index
@@ -215,6 +244,9 @@ Migration history:
 - v7 → v8: extends `contacts` with source / follow-up fields and adds
   append-only `relationship_events`
 - v8 → v9: adds `profile_url` to local `group_members` snapshots
+- v9 → v10: adds `group_mode` to local `groups` snapshots
+- v10 → v11: adds disk-first `e2ee_sessions` and keeps legacy JSON E2EE state
+  only as a one-time migration source
 
 ## Querying with `query_db.py`
 
@@ -258,6 +290,22 @@ Useful starter queries:
   WHERE owner_did = 'did:me' AND group_id = 'grp_xxx' AND content_type = 'group_user'
   ORDER BY COALESCE(server_seq, 0), COALESCE(sent_at, stored_at);
   ```
+- Inspect one group's messages together with group name and best-effort sender handle:
+  ```sql
+  SELECT g.name AS group_name,
+         COALESCE(c.handle, m.sender_name, m.sender_did) AS sender,
+         m.content,
+         m.sent_at
+  FROM messages m
+  LEFT JOIN groups g
+    ON g.owner_did = m.owner_did AND g.group_id = m.group_id
+  LEFT JOIN contacts c
+    ON c.owner_did = m.owner_did AND c.did = m.sender_did
+  WHERE m.owner_did = 'did:me'
+    AND m.group_id = 'grp_xxx'
+    AND m.content_type = 'group_user'
+  ORDER BY COALESCE(m.server_seq, 0), COALESCE(m.sent_at, m.stored_at);
+  ```
 - Inspect one group's system events:
   ```sql
   SELECT msg_id, content_type, content, metadata, server_seq, sent_at
@@ -282,6 +330,9 @@ Useful starter queries:
   WHERE owner_did = 'did:me' AND event_type = 'ai_recommended' AND status = 'pending'
   ORDER BY created_at DESC;
   ```
+
+Common pitfall: `messages` does **not** expose `group_name`, `sender_handle`, or
+`type` columns. Use `groups.name`, `contacts.handle`, and `messages.content_type`.
 
 ## Safety Rules (execute_sql)
 

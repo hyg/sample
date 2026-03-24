@@ -27,6 +27,8 @@ EXPECTED_SCHEMA_INDEXES = {
     "idx_e2ee_outbox_owner_sent_msg",
     "idx_e2ee_outbox_owner_sent_seq",
     "idx_e2ee_outbox_credential",
+    "idx_e2ee_sessions_owner_updated",
+    "idx_e2ee_sessions_credential",
     "idx_groups_owner_status_last_message",
     "idx_groups_owner_slug",
     "idx_groups_owner_updated",
@@ -73,6 +75,7 @@ class TestSchema:
         assert "contacts" in tables
         assert "messages" in tables
         assert "e2ee_outbox" in tables
+        assert "e2ee_sessions" in tables
         assert "groups" in tables
         assert "group_members" in tables
         assert "relationship_events" in tables
@@ -89,14 +92,14 @@ class TestSchema:
 
     def test_schema_version(self, db):
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 9
+        assert version == 11
 
     def test_ensure_schema_idempotent(self, db):
         """Calling ensure_schema multiple times is safe."""
         local_store.ensure_schema(db)
         local_store.ensure_schema(db)
         version = db.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 9
+        assert version == 11
 
     def test_wal_mode(self, db):
         mode = db.execute("PRAGMA journal_mode").fetchone()[0]
@@ -113,6 +116,9 @@ class TestSchema:
         outbox_columns = {
             row[1] for row in db.execute("PRAGMA table_info(e2ee_outbox)").fetchall()
         }
+        session_columns = {
+            row[1] for row in db.execute("PRAGMA table_info(e2ee_sessions)").fetchall()
+        }
         group_columns = {
             row[1] for row in db.execute("PRAGMA table_info(groups)").fetchall()
         }
@@ -128,6 +134,8 @@ class TestSchema:
         assert "owner_did" in contact_columns
         assert "owner_did" in message_columns
         assert "owner_did" in outbox_columns
+        assert "session_id" in session_columns
+        assert "peer_confirmed" in session_columns
         assert "source_group_id" in contact_columns
         assert "recommended_reason" in contact_columns
         assert "followed" in contact_columns
@@ -165,7 +173,7 @@ class TestSchema:
         after_indexes = _schema_object_names(db, "index")
         version = db.execute("PRAGMA user_version").fetchone()[0]
 
-        assert version == 9
+        assert version == 11
         assert EXPECTED_SCHEMA_INDEXES <= after_indexes
 
 
@@ -468,6 +476,7 @@ class TestGroups:
             "SELECT * FROM groups WHERE owner_did='did:alice' AND group_id='grp_1'"
         ).fetchone()
         assert row["name"] == "OpenClaw Meetup"
+        assert row["group_mode"] == "general"
         assert row["my_role"] == "owner"
         assert row["join_enabled"] == 1
         assert row["join_code"] == "314159"
@@ -652,7 +661,7 @@ class TestE2eeOutbox:
         )
         assert record["local_status"] == "failed"
 
-    def test_clear_owner_e2ee_data_removes_outbox_records(self, db):
+    def test_clear_owner_e2ee_data_removes_session_and_outbox_records(self, db):
         outbox_id = local_store.queue_e2ee_outbox(
             db,
             owner_did="did:alice",
@@ -660,6 +669,33 @@ class TestE2eeOutbox:
             plaintext="secret",
             credential_name="alice",
         )
+        db.execute(
+            """
+            INSERT INTO e2ee_sessions
+            (owner_did, peer_did, session_id, is_initiator, send_chain_key,
+             recv_chain_key, send_seq, recv_seq, expires_at, created_at,
+             active_at, peer_confirmed, credential_name, updated_at)
+            VALUES
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "did:alice",
+                "did:b",
+                "sess-1",
+                1,
+                "send",
+                "recv",
+                1,
+                2,
+                None,
+                "2026-03-10T00:00:00+00:00",
+                "2026-03-10T00:00:00+00:00",
+                0,
+                "alice",
+                "2026-03-10T00:00:00+00:00",
+            ),
+        )
+        db.commit()
         summary = local_store.clear_owner_e2ee_data(
             db,
             owner_did="did:alice",
@@ -670,8 +706,14 @@ class TestE2eeOutbox:
             outbox_id=outbox_id,
             owner_did="did:alice",
         )
+        session = db.execute(
+            "SELECT * FROM e2ee_sessions WHERE owner_did = ?",
+            ("did:alice",),
+        ).fetchone()
         assert summary["e2ee_outbox"] == 1
+        assert summary["e2ee_sessions"] == 1
         assert record is None
+        assert session is None
 
 
 class TestViews:
@@ -747,6 +789,13 @@ class TestExecuteSql:
     def test_reject_drop(self, db):
         with pytest.raises(ValueError, match="Forbidden"):
             local_store.execute_sql(db, "DROP TABLE messages")
+
+    def test_reject_delete_without_where(self, db):
+        with pytest.raises(
+            ValueError,
+            match="Forbidden SQL operation: DELETE without WHERE clause is not allowed",
+        ):
+            local_store.execute_sql(db, "DELETE FROM messages")
 
     def test_allow_delete_with_where(self, db):
         local_store.store_message(
@@ -892,17 +941,23 @@ class TestMigration:
             for row in conn.execute(
                 """
                 SELECT name FROM sqlite_master
-                WHERE type='table' AND name IN ('groups', 'group_members', 'relationship_events')
+                WHERE type='table'
+                  AND name IN ('groups', 'group_members', 'relationship_events', 'e2ee_sessions')
                 """
             ).fetchall()
         }
         conn.close()
 
-        assert version == 9
+        assert version == 11
         assert migrated_message["owner_did"] == "did:alice"
         assert migrated_contact["owner_did"] == "did:alice"
         assert migrated_outbox["owner_did"] == "did:alice"
-        assert migrated_new_tables == {"groups", "group_members", "relationship_events"}
+        assert migrated_new_tables == {
+            "groups",
+            "group_members",
+            "relationship_events",
+            "e2ee_sessions",
+        }
 
     def test_migrate_real_v6_schema_to_v9_without_manual_contact_column_patch(
         self,

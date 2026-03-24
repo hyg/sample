@@ -64,6 +64,11 @@ class ServiceManager(ABC):
     def is_installed(self) -> bool:
         """Check if the service is installed."""
 
+    @staticmethod
+    def _user_path() -> str:
+        """Return the current user's PATH for service environment."""
+        return os.environ.get("PATH", "")
+
     def find_python(self) -> str:
         """Find the best Python interpreter path."""
         if sys.platform == "win32":
@@ -214,6 +219,7 @@ class MacOSServiceManager(ServiceManager):
     ) -> str:
         run_args = self._build_run_args(credential, config_path, mode)
         args_xml = "\n        ".join(f"<string>{a}</string>" for a in run_args)
+        user_path = self._user_path()
         return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -225,6 +231,12 @@ class MacOSServiceManager(ServiceManager):
     <array>
         {args_xml}
     </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{user_path}</string>
+    </dict>
 
     <key>RunAtLoad</key>
     <true/>
@@ -380,6 +392,7 @@ class LinuxServiceManager(ServiceManager):
     ) -> str:
         run_args = self._build_run_args(credential, config_path, mode)
         exec_start = " ".join(run_args)
+        user_path = self._user_path()
         return f"""[Unit]
 Description=awiki WebSocket Listener
 After=network-online.target
@@ -389,6 +402,7 @@ Wants=network-online.target
 Type=simple
 ExecStart={exec_start}
 WorkingDirectory={_PROJECT_ROOT}
+Environment=PATH={user_path}
 Restart=on-failure
 RestartSec=10
 StandardOutput=append:{logs / 'stdout.log'}

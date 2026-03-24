@@ -1,8 +1,9 @@
 """Local database migration helpers for owner_did-aware multi-identity storage.
 
-[INPUT]: local_store (SQLite schema management), SDKConfig (data_dir)
+[INPUT]: local_store (SQLite schema management), SDKConfig (data_dir),
+         service_manager (listener stop/start coordination for explicit upgrade flows)
 [OUTPUT]: detect_local_database_layout(), migrate_local_database(),
-          ensure_local_database_ready()
+          ensure_local_database_ready(), ensure_local_database_ready_for_upgrade()
 [POS]: Shared migration module used by check_status.py and the standalone
        migrate_local_database.py CLI, with idempotent self-healing for
        already-ready databases
@@ -21,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import local_store
+from service_manager import get_service_manager
 from utils.config import SDKConfig
 
 logger = logging.getLogger(__name__)
@@ -140,8 +142,140 @@ def ensure_local_database_ready(config: SDKConfig | None = None) -> dict[str, An
     return migrate_local_database(config)
 
 
+def _build_listener_upgrade_report() -> dict[str, Any]:
+    """Return the default listener-coordination report payload."""
+    return {
+        "checked": True,
+        "was_running": False,
+        "stop_attempted": False,
+        "stopped": False,
+        "restart_attempted": False,
+        "restarted": False,
+    }
+
+
+def _with_listener_restart(
+    operation,
+    *,
+    config: SDKConfig | None = None,
+) -> dict[str, Any]:
+    """Run one explicit database-upgrade operation with listener stop/restart."""
+    listener_report = _build_listener_upgrade_report()
+    service_manager = get_service_manager()
+    try:
+        before_status = service_manager.status()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Failed to inspect listener status before database upgrade")
+        return {
+            "status": "error",
+            "db_path": str(_database_path(config)),
+            "before_version": None,
+            "after_version": None,
+            "backup_path": None,
+            "error": f"listener_status_check_failed: {exc}",
+            "listener_service": {
+                **listener_report,
+                "status_error": str(exc),
+            },
+        }
+
+    listener_report["status_before"] = before_status
+    listener_report["was_running"] = bool(before_status.get("running", False))
+
+    if listener_report["was_running"]:
+        listener_report["stop_attempted"] = True
+        try:
+            service_manager.stop()
+            after_stop_status = service_manager.status()
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to stop listener before database upgrade")
+            return {
+                "status": "error",
+                "db_path": str(_database_path(config)),
+                "before_version": None,
+                "after_version": None,
+                "backup_path": None,
+                "error": f"listener_stop_failed: {exc}",
+                "listener_service": {
+                    **listener_report,
+                    "error": "listener_stop_failed",
+                    "stop_error": str(exc),
+                },
+            }
+
+        listener_report["status_after_stop"] = after_stop_status
+        listener_report["stopped"] = not bool(after_stop_status.get("running", False))
+        if not listener_report["stopped"]:
+            return {
+                "status": "error",
+                "db_path": str(_database_path(config)),
+                "before_version": None,
+                "after_version": None,
+                "backup_path": None,
+                "error": "listener_stop_failed: listener still running after stop",
+                "listener_service": {
+                    **listener_report,
+                    "error": "listener_stop_failed",
+                },
+            }
+
+    try:
+        result = operation(config)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Local database upgrade operation failed")
+        result = {
+            "status": "error",
+            "db_path": str(_database_path(config)),
+            "before_version": None,
+            "after_version": None,
+            "backup_path": None,
+            "error": f"database_upgrade_failed: {exc}",
+        }
+
+    if listener_report["was_running"]:
+        listener_report["restart_attempted"] = True
+        try:
+            service_manager.start()
+            after_restart_status = service_manager.status()
+            listener_report["status_after_restart"] = after_restart_status
+            listener_report["restarted"] = bool(after_restart_status.get("running", False))
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to restart listener after database upgrade")
+            listener_report["restart_error"] = str(exc)
+            listener_report["restarted"] = False
+
+        if not listener_report["restarted"]:
+            listener_report["error"] = "listener_restart_failed"
+            result = {
+                **result,
+                "status": "error",
+                "error": "listener_restart_failed",
+            }
+
+    result["listener_service"] = listener_report
+    return result
+
+
+def ensure_local_database_ready_for_upgrade(
+    config: SDKConfig | None = None,
+) -> dict[str, Any]:
+    """Ensure database readiness for explicit upgrade flows with listener restart.
+
+    This wrapper is intended for install / manual-upgrade commands. It stops the
+    WebSocket listener first when the service is currently running, performs the
+    database readiness check/migration, then restores the original running state.
+    """
+    detection = detect_local_database_layout(config)
+    if detection["status"] == "not_found":
+        result = ensure_local_database_ready(config)
+        result["listener_service"] = _build_listener_upgrade_report()
+        return result
+    return _with_listener_restart(ensure_local_database_ready, config=config)
+
+
 __all__ = [
     "detect_local_database_layout",
     "ensure_local_database_ready",
+    "ensure_local_database_ready_for_upgrade",
     "migrate_local_database",
 ]

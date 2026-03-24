@@ -1,11 +1,12 @@
 """Transparent E2EE handler for the WebSocket listener.
 
-[INPUT]: credential_store (E2EE keys), e2ee_store (state persistence), E2eeClient (encrypt/decrypt),
-         build_e2ee_error (error response builder)
+[INPUT]: credential_store (E2EE keys), SQLite-backed session store,
+         E2eeClient (encrypt/decrypt), build_e2ee_error (error response builder)
 [OUTPUT]: E2eeHandler class (protocol message handling + encrypted message decryption),
           DecryptResult NamedTuple (decrypted params + structured error responses)
-[POS]: E2EE processing module for ws_listener.py, intercepts E2EE messages before classify_message
-       and emits sender-facing e2ee_error notifications with failed message identifiers
+[POS]: E2EE processing module for ws_listener.py, intercepts E2EE messages before
+       classify_message, keeps SQLite as the single session truth source, and
+       emits sender-facing e2ee_error notifications with failed message identifiers
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -17,14 +18,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import time
 from typing import Any, NamedTuple
 
 from credential_store import load_identity
-from e2ee_store import load_e2ee_state, save_e2ee_state
+from e2ee_session_store import E2eeStateTransaction, load_e2ee_client
 from e2ee_outbox import record_remote_failure
 from utils.e2ee import (
-    E2eeClient,
     SUPPORTED_E2EE_VERSION,
     build_e2ee_error_content,
     build_e2ee_error_message,
@@ -62,13 +61,11 @@ class E2eeHandler:
         self._save_interval = save_interval
         self._decrypt_fail_action = decrypt_fail_action
 
-        self._client: E2eeClient | None = None
+        self._local_did: str | None = None
         self._lock = asyncio.Lock()
-        self._dirty = False
-        self._last_save_time = 0.0
 
     async def initialize(self, local_did: str) -> bool:
-        """Initialize: load E2EE keys from credential + restore session state from disk.
+        """Initialize: validate E2EE keys and ensure SQLite-backed state is loadable.
 
         Args:
             local_did: Local DID identifier.
@@ -88,19 +85,8 @@ class E2eeHandler:
                 logger.warning("Credential '%s' is missing E2EE keys", self._credential_name)
                 return False
 
-            state = load_e2ee_state(self._credential_name)
-            if state is not None and state.get("local_did") == local_did:
-                state["signing_pem"] = signing_pem
-                state["x25519_pem"] = x25519_pem
-                self._client = E2eeClient.from_state(state)
-            else:
-                self._client = E2eeClient(
-                    local_did,
-                    signing_pem=signing_pem,
-                    x25519_pem=x25519_pem,
-                )
-
-            self._last_save_time = time.monotonic()
+            load_e2ee_client(local_did, self._credential_name)
+            self._local_did = local_did
             logger.info("E2EE handler initialized successfully, DID=%s", local_did)
             return True
 
@@ -111,7 +97,7 @@ class E2eeHandler:
     @property
     def is_ready(self) -> bool:
         """Whether the E2EE client is ready."""
-        return self._client is not None
+        return self._local_did is not None
 
     def is_e2ee_type(self, msg_type: str) -> bool:
         """Check whether the message type belongs to the E2EE category."""
@@ -132,7 +118,7 @@ class E2eeHandler:
         Returns:
             List of responses to send (usually empty for the HPKE scheme).
         """
-        if self._client is None:
+        if self._local_did is None:
             return []
 
         msg_type = params.get("type", "")
@@ -144,19 +130,24 @@ class E2eeHandler:
         except (json.JSONDecodeError, TypeError):
             logger.warning("Failed to parse E2EE protocol message content: type=%s", msg_type)
             return []
+        if msg_type == "e2ee_error" and isinstance(content, dict) and sender_did:
+            content = dict(content)
+            content.setdefault("sender_did", sender_did)
 
         async with self._lock:
             try:
-                if msg_type == "e2ee_error":
-                    matched_outbox = record_remote_failure(
-                        credential_name=self._credential_name,
-                        peer_did=sender_did,
-                        content=content,
-                    )
-                    if matched_outbox:
-                        logger.info("Updated failed E2EE outbox record: %s", matched_outbox)
-                responses = await self._client.process_e2ee_message(msg_type, content)
-                self._dirty = True
+                with E2eeStateTransaction(self._local_did, self._credential_name) as state_tx:
+                    client = state_tx.client
+                    if msg_type == "e2ee_error":
+                        matched_outbox = record_remote_failure(
+                            credential_name=self._credential_name,
+                            peer_did=sender_did,
+                            content=content,
+                        )
+                        if matched_outbox:
+                            logger.info("Updated failed E2EE outbox record: %s", matched_outbox)
+                    responses = await client.process_e2ee_message(msg_type, content)
+                    state_tx.commit()
                 logger.info(
                     "E2EE protocol message processed: type=%s sender=%s responses=%d",
                     msg_type, sender_did[:20], len(responses),
@@ -184,7 +175,7 @@ class E2eeHandler:
         Returns:
             DecryptResult with decrypted params and error responses.
         """
-        if self._client is None:
+        if self._local_did is None:
             return DecryptResult(self._on_decrypt_fail(params), [])
 
         raw_content = params.get("content", "")
@@ -196,8 +187,10 @@ class E2eeHandler:
 
         async with self._lock:
             try:
-                original_type, plaintext = self._client.decrypt_message(content)
-                self._dirty = True
+                with E2eeStateTransaction(self._local_did, self._credential_name) as state_tx:
+                    client = state_tx.client
+                    original_type, plaintext = client.decrypt_message(content)
+                    state_tx.commit()
             except Exception as exc:
                 logger.exception(
                     "E2EE message decryption failed: sender=%s",
@@ -235,33 +228,16 @@ class E2eeHandler:
         return DecryptResult(decrypted_params, [])
 
     async def maybe_save_state(self) -> None:
-        """Periodic save: write to disk when dirty and save_interval has elapsed."""
-        if not self._dirty or self._client is None:
-            return
-        now = time.monotonic()
-        if now - self._last_save_time < self._save_interval:
-            return
-        await self._do_save()
+        """Compatibility no-op: state is persisted immediately after each mutation."""
+        return None
 
     async def force_save_state(self) -> None:
-        """Force save: used during shutdown and disconnection."""
-        if not self._dirty or self._client is None:
-            return
-        await self._do_save()
+        """Compatibility no-op: state is persisted immediately after each mutation."""
+        return None
 
     async def _do_save(self) -> None:
-        """Execute state save."""
-        if self._client is None:
-            return
-        try:
-            async with self._lock:
-                state = self._client.export_state()
-            save_e2ee_state(state, self._credential_name)
-            self._dirty = False
-            self._last_save_time = time.monotonic()
-            logger.debug("E2EE state saved")
-        except Exception:
-            logger.exception("E2EE state save failed")
+        """Compatibility no-op: state is persisted immediately after each mutation."""
+        return None
 
     @staticmethod
     def _classify_error(exc: BaseException) -> tuple[str, str]:

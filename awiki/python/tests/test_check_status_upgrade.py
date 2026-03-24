@@ -60,6 +60,51 @@ def test_ensure_local_upgrade_ready_reports_performed_migrations(
     assert result["performed"] == ["credential_layout", "local_database"]
 
 
+def test_ensure_local_upgrade_ready_can_coordinate_listener_for_explicit_upgrade(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Explicit upgrade mode should use the listener-aware database wrapper."""
+    monkeypatch.setattr(
+        check_status,
+        "ensure_credential_storage_ready",
+        lambda credential_name: {
+            "status": "ready",
+            "layout": "new",
+            "credential_ready": True,
+            "migration": {"status": "not_needed"},
+        },
+    )
+    monkeypatch.setattr(
+        check_status,
+        "ensure_local_database_ready",
+        lambda: pytest.fail("ensure_local_database_ready should not be used"),
+    )
+    monkeypatch.setattr(
+        check_status,
+        "ensure_local_database_ready_for_upgrade",
+        lambda: {
+            "status": "ready",
+            "db_path": "/tmp/awiki.db",
+            "before_version": 11,
+            "after_version": 11,
+            "backup_path": None,
+            "listener_service": {
+                "was_running": True,
+                "stopped": True,
+                "restarted": True,
+            },
+        },
+    )
+
+    result = check_status.ensure_local_upgrade_ready(
+        "alice",
+        coordinate_listener_during_database_upgrade=True,
+    )
+
+    assert result["status"] == "ready"
+    assert result["local_database"]["listener_service"]["restarted"] is True
+
+
 def test_check_status_stops_when_upgrade_cannot_prepare_credentials(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

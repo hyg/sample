@@ -812,6 +812,14 @@ class E2eeClient:
 
         # Auto re-handshake for recoverable errors
         _recoverable = {"session_not_found", "session_expired", "decryption_failed"}
+        if peer_did is None:
+            sender_did = content.get("sender_did", "")
+            if isinstance(sender_did, str) and sender_did:
+                peer_did = sender_did
+                logger.info(
+                    "E2EE error fallback using sender_did for re-handshake: %s",
+                    sender_did[:20],
+                )
         if error_code in _recoverable and peer_did is not None:
             try:
                 msg_type, init_content = await self.initiate_handshake(peer_did)

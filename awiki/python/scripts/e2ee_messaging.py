@@ -15,11 +15,12 @@ Supported workflows:
 2. Bob:   --process --peer <Alice's DID>        -> Process inbox, accept e2ee_init, then decrypt message
 3. Optional advanced: --handshake <Bob's DID>   -> Pre-warm a session for debugging or recovery
 
-[INPUT]: SDK (E2eeClient, RPC calls), credential_store (load identity credentials),
-         e2ee_store (E2EE state persistence), logging_config
+[INPUT]: SDK (E2eeClient, RPC calls), credential_store (authenticated identity
+         loading), SQLite-backed E2EE session store, logging_config
 [OUTPUT]: E2EE operation results with failure-aware inbox processing, sender-facing
-          e2ee_error notifications, and state persistence
-[POS]: End-to-end encrypted messaging script, integrates state persistence for cross-process E2EE communication (HPKE scheme)
+          e2ee_error notifications, and disk-first session persistence
+[POS]: End-to-end encrypted messaging script, integrates SQLite-backed session
+       persistence for cross-process E2EE communication (HPKE scheme)
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -32,7 +33,6 @@ import json
 import logging
 import sys
 import uuid
-from pathlib import Path
 from typing import Any
 
 from utils import SDKConfig, E2eeClient, create_molt_message_client, authenticated_rpc_call, resolve_to_did
@@ -42,8 +42,13 @@ from utils.e2ee import (
     build_e2ee_error_message,
 )
 from utils.logging_config import configure_logging
-from credential_store import create_authenticator, load_identity
-from e2ee_store import save_e2ee_state, load_e2ee_state
+from credential_store import create_authenticator
+from e2ee_session_store import (
+    E2eeStateTransaction,
+    load_e2ee_client,
+    save_e2ee_client,
+)
+from message_transport import is_websocket_mode, message_rpc_call
 from e2ee_outbox import (
     begin_send_attempt,
     get_record,
@@ -125,38 +130,16 @@ def _classify_decrypt_error(exc: BaseException) -> tuple[str, str]:
 def _load_or_create_e2ee_client(
     local_did: str, credential_name: str
 ) -> E2eeClient:
-    """Load existing E2EE client state from disk, or create a new client if absent.
-
-    Loads E2EE keys (signing_pem + x25519_pem) from credential.
-    """
-    # Load E2EE keys from credential
-    cred = load_identity(credential_name)
-    signing_pem: str | None = None
-    x25519_pem: str | None = None
-    if cred is not None:
-        signing_pem = cred.get("e2ee_signing_private_pem")
-        x25519_pem = cred.get("e2ee_agreement_private_pem")
-
-    if signing_pem is None or x25519_pem is None:
+    """Load the latest disk-first E2EE client state from SQLite."""
+    client = load_e2ee_client(local_did, credential_name)
+    if client._signing_key is None or client._x25519_key is None:  # noqa: SLF001
         print("Warning: Credential missing E2EE keys (key-2/key-3); please recreate identity to enable HPKE E2EE")
-
-    state = load_e2ee_state(credential_name)
-    if state is not None and state.get("local_did") == local_did:
-        # Override state keys with credential keys (ensure latest keys are used)
-        if signing_pem is not None:
-            state["signing_pem"] = signing_pem
-        if x25519_pem is not None:
-            state["x25519_pem"] = x25519_pem
-        client = E2eeClient.from_state(state)
-        return client
-
-    return E2eeClient(local_did, signing_pem=signing_pem, x25519_pem=x25519_pem)
+    return client
 
 
 def _save_e2ee_client(client: E2eeClient, credential_name: str) -> None:
-    """Save E2EE client state to disk."""
-    state = client.export_state()
-    save_e2ee_state(state, credential_name)
+    """Persist the latest E2EE client state into SQLite."""
+    save_e2ee_client(client, credential_name)
 
 
 async def _send_msg(
@@ -185,6 +168,12 @@ async def _send_msg(
     }
     if title is not None:
         params["title"] = title
+    if client is None:
+        return await message_rpc_call(
+            "send",
+            params=params,
+            credential_name=credential_name,
+        )
     return await authenticated_rpc_call(
         client, MESSAGE_RPC, "send",
         params=params,
@@ -205,16 +194,35 @@ async def initiate_handshake(
         sys.exit(1)
 
     auth, data = auth_result
-    e2ee_client = _load_or_create_e2ee_client(data["did"], credential_name)
-    msg_type, content = await e2ee_client.initiate_handshake(peer_did)
+    with E2eeStateTransaction(data["did"], credential_name) as state_tx:
+        e2ee_client = state_tx.client
+        msg_type, content = await e2ee_client.initiate_handshake(peer_did)
 
-    async with create_molt_message_client(config) as client:
-        await _send_msg(client, data["did"], peer_did, msg_type, content,
-                        auth=auth, credential_name=credential_name)
+        if is_websocket_mode(config):
+            await _send_msg(
+                None,
+                data["did"],
+                peer_did,
+                msg_type,
+                content,
+                auth=auth,
+                credential_name=credential_name,
+            )
+        else:
+            async with create_molt_message_client(config) as client:
+                await _send_msg(
+                    client,
+                    data["did"],
+                    peer_did,
+                    msg_type,
+                    content,
+                    auth=auth,
+                    credential_name=credential_name,
+                )
 
-    _save_e2ee_client(e2ee_client, credential_name)
+        state_tx.commit()
 
-    print(f"E2EE session established (one-step initialization)")
+    print("E2EE session established (one-step initialization)")
     print(f"  session_id: {content.get('session_id')}")
     print(f"  peer_did  : {peer_did}")
     print("Session is ACTIVE; you can send encrypted messages now")
@@ -237,20 +245,36 @@ async def send_encrypted(
         sys.exit(1)
 
     auth, data = auth_result
-    e2ee_client = _load_or_create_e2ee_client(data["did"], credential_name)
+    client = None
+    if not is_websocket_mode(config):
+        client = await create_molt_message_client(config).__aenter__()
+    try:
+        with E2eeStateTransaction(data["did"], credential_name) as state_tx:
+            e2ee_client = state_tx.client
 
-    # Auto-handshake if session is missing or expired
-    init_msgs = await e2ee_client.ensure_active_session(peer_did)
+            # Auto-handshake if session is missing or expired
+            init_msgs = await e2ee_client.ensure_active_session(peer_did)
+            enc_type, enc_content = e2ee_client.encrypt_message(
+                peer_did,
+                plaintext,
+                original_type,
+            )
+            session_id = enc_content.get("session_id")
+            state_tx.commit()
 
-    async with create_molt_message_client(config) as client:
         if init_msgs:
             print(_render_auto_session_notice(peer_did))
         for init_type, init_content in init_msgs:
-            await _send_msg(client, data["did"], peer_did, init_type, init_content,
-                            auth=auth, credential_name=credential_name)
+            await _send_msg(
+                client,
+                data["did"],
+                peer_did,
+                init_type,
+                init_content,
+                auth=auth,
+                credential_name=credential_name,
+            )
 
-        enc_type, enc_content = e2ee_client.encrypt_message(peer_did, plaintext, original_type)
-        session_id = enc_content.get("session_id")
         outbox_id = begin_send_attempt(
             peer_did=peer_did,
             plaintext=plaintext,
@@ -297,10 +321,9 @@ async def send_encrypted(
             client_msg_id=send_client_msg_id,
             title=title,
         )
-
-    # Save state (send_seq incremented)
-    _save_e2ee_client(e2ee_client, credential_name)
-
+    finally:
+        if client is not None:
+            await client.__aexit__(None, None, None)
     print("Encrypted message sent")
     print(f"  Plaintext: {plaintext}")
     print(f"  Receiver : {peer_did}")
@@ -316,6 +339,12 @@ async def process_inbox(
     auth_result = create_authenticator(credential_name, config)
     if auth_result is None:
         print(f"Credential '{credential_name}' unavailable; please create an identity first")
+        sys.exit(1)
+    if is_websocket_mode(config):
+        print(
+            "WebSocket receive mode is enabled; the background listener owns E2EE inbox processing. "
+            "Use check_status/check_inbox or switch to HTTP mode for manual --process."
+        )
         sys.exit(1)
 
     auth, data = auth_result

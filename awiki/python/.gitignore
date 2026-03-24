@@ -4,6 +4,9 @@
 # Local data (SQLite databases, settings)
 .data/
 
+# Temporary files
+tmp/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

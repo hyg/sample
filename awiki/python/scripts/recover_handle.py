@@ -1,15 +1,16 @@
 """Recover a Handle by rebinding it to a new DID.
 
 Usage:
-    uv run python scripts/recover_handle.py --handle alice --phone +8613800138000
-    uv run python scripts/recover_handle.py --handle alice --phone +8613800138000 --credential alice
-    uv run python scripts/recover_handle.py --handle alice --phone +8613800138000 --credential default --replace-existing
+    uv run python scripts/send_verification_code.py --phone +8613800138000
+    uv run python scripts/recover_handle.py --handle alice --phone +8613800138000 --otp-code 123456
+    uv run python scripts/recover_handle.py --handle alice --phone +8613800138000 --otp-code 123456 --credential alice
+    uv run python scripts/recover_handle.py --handle alice --phone +8613800138000 --otp-code 123456 --credential default --replace-existing
 
 [INPUT]: SDK (handle OTP + recovery RPC), credential_store, local_store, e2ee_store
 [OUTPUT]: Handle recovery result with safe credential target selection, optional
           credential replacement, and conditional local cache migration
-[POS]: Recovery CLI for users who lost the old DID private key but still control
-       the original Handle phone number
+[POS]: Pure non-interactive recovery CLI for users who lost the old DID private key
+       but still control the original Handle phone number
 
 [PROTOCOL]:
 1. Update this header when logic changes
@@ -33,7 +34,8 @@ from credential_store import (
     save_identity,
 )
 from e2ee_store import delete_e2ee_state
-from utils import SDKConfig, create_user_service_client, recover_handle, send_otp
+from utils import SDKConfig, create_user_service_client, recover_handle
+from utils.cli_errors import exit_with_cli_error
 from utils.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -139,16 +141,10 @@ async def do_recover(
         else None
     )
 
-    async with create_user_service_client(config) as client:
-        if otp_code is None:
-            print(f"Sending OTP to {phone}...")
-            await send_otp(client, phone)
-            print("OTP sent. Check your phone.")
-            otp_code = input("Enter OTP code: ").strip()
-            if not otp_code:
-                print("OTP code is required.")
-                sys.exit(1)
+    if otp_code is None:
+        raise ValueError("OTP code is required for handle recovery.")
 
+    async with create_user_service_client(config) as client:
         identity, recover_result = await recover_handle(
             client,
             config,
@@ -250,7 +246,19 @@ def main() -> None:
             )
         )
     except ValueError as exc:
-        parser.exit(status=2, message=f"Error: {exc}\n")
+        exit_with_cli_error(
+            exc=exc,
+            logger=logger,
+            context="recover_handle CLI validation failed",
+            exit_code=2,
+            log_traceback=False,
+        )
+    except Exception as exc:  # noqa: BLE001
+        exit_with_cli_error(
+            exc=exc,
+            logger=logger,
+            context="recover_handle CLI failed",
+        )
 
 
 if __name__ == "__main__":

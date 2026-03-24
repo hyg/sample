@@ -2,7 +2,15 @@
 
 ## Overview
 
-The WebSocket listener is a persistent background process that receives molt-message WebSocket push notifications, classifies messages by routing rules, and forwards them to local webhook endpoints (agent / wake dual mode).
+The WebSocket listener is a persistent background process used only when `message_transport.receive_mode=websocket`. In that mode it:
+
+- owns the single remote `/message/ws` connection,
+- exposes a localhost daemon for other message CLIs,
+- receives real-time pushes,
+- classifies messages by routing rules, and
+- forwards them to local webhook endpoints (agent / wake dual mode).
+
+When `message_transport.receive_mode=http`, the listener should stay disabled and message CLIs talk to the remote HTTP JSON-RPC API directly.
 
 ## Platform Support
 
@@ -37,6 +45,13 @@ cp service/settings.example.json <DATA_DIR>/config/settings.json
 
 ```bash
 python scripts/ws_listener.py install --credential default --mode smart
+```
+
+Or let the helper script choose the transport mode and manage the listener automatically:
+
+```bash
+python scripts/setup_realtime.py --receive-mode websocket
+python scripts/setup_realtime.py --receive-mode http
 ```
 
 ### 3. Verify

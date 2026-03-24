@@ -6,12 +6,16 @@ Usage:
     python scripts/check_status.py --upgrade-only       # Run local upgrade and exit
 
 [INPUT]: SDK (RPC calls, E2eeClient), credential_store (authenticator factory),
-         e2ee_store, credential_migration, database_migration, local_store,
+         SQLite-backed E2EE session store, credential_migration,
+         database_migration, local_store, listener recovery helpers,
          logging_config
 [OUTPUT]: Structured JSON status report (local upgrade + identity + inbox +
-          group_watch + e2ee_sessions), with automatic E2EE protocol handling,
-          plaintext delivery for unread encrypted messages, and incremental
-          group message fetching with classification (text / member events)
+          group_watch + e2ee_sessions + realtime listener runtime), with
+          automatic E2EE protocol handling, plaintext delivery for unread
+          encrypted messages, listener auto-restart backoff, and incremental
+          group message fetching with classification (text / member events),
+          plus listener-coordinated database upgrade support for explicit
+          ``--upgrade-only`` runs
 [POS]: Unified status check entry point for Agent session startup and heartbeat calls
        with mandatory, server_seq-aware E2EE auto-processing, plaintext
        delivery for unread encrypted messages, local discovery-group watch
@@ -46,10 +50,15 @@ from utils.e2ee import (
 from utils.logging_config import configure_logging
 import local_store
 from credential_migration import ensure_credential_storage_ready
-from database_migration import ensure_local_database_ready
+from database_migration import (
+    ensure_local_database_ready,
+    ensure_local_database_ready_for_upgrade,
+)
 from credential_store import load_identity, create_authenticator
-from e2ee_store import load_e2ee_state, save_e2ee_state
+from e2ee_session_store import load_e2ee_client, save_e2ee_client
 from e2ee_outbox import record_remote_failure
+from listener_recovery import ensure_listener_runtime, get_listener_runtime_report
+from message_transport import is_websocket_mode
 
 
 MESSAGE_RPC = "/message/rpc"
@@ -80,10 +89,17 @@ def _message_time_value(message: dict[str, Any]) -> str:
     return timestamp if isinstance(timestamp, str) else ""
 
 
-def ensure_local_upgrade_ready(credential_name: str = "default") -> dict[str, Any]:
+def ensure_local_upgrade_ready(
+    credential_name: str = "default",
+    *,
+    coordinate_listener_during_database_upgrade: bool = False,
+) -> dict[str, Any]:
     """Run local credential/database upgrades needed by the current skill version."""
     credential_layout = ensure_credential_storage_ready(credential_name)
-    local_database = ensure_local_database_ready()
+    if coordinate_listener_during_database_upgrade:
+        local_database = ensure_local_database_ready_for_upgrade()
+    else:
+        local_database = ensure_local_database_ready()
     ready = (
         credential_layout.get("credential_ready", False)
         and local_database.get("status") != "error"
@@ -211,8 +227,188 @@ def _build_visible_inbox_report(
     }
 
 
+def _message_id_value(message: dict[str, Any]) -> str | None:
+    """Return one stable message identifier when available."""
+    for key in ("id", "msg_id"):
+        value = message.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _message_dedup_key(message: dict[str, Any]) -> tuple[Any, ...]:
+    """Build a stable deduplication key for merged local/remote inbox results."""
+    message_id = _message_id_value(message)
+    if message_id:
+        return ("id", message_id)
+    return (
+        "fallback",
+        message.get("sender_did"),
+        message.get("receiver_did"),
+        message.get("group_id"),
+        message.get("type"),
+        message.get("content"),
+        _message_time_value(message),
+    )
+
+
+def _message_display_sort_key(message: dict[str, Any]) -> tuple[Any, ...]:
+    """Build a descending-friendly display key for merged visible inbox messages."""
+    server_seq = message.get("server_seq")
+    has_server_seq = 1 if isinstance(server_seq, int) else 0
+    server_seq_value = server_seq if isinstance(server_seq, int) else -1
+    return (
+        has_server_seq,
+        server_seq_value,
+        _message_time_value(message),
+        str(message.get("id") or message.get("msg_id") or ""),
+    )
+
+
+def _merge_visible_inbox_messages(
+    local_messages: list[dict[str, Any]],
+    remote_messages: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Merge visible local-cache and HTTP inbox messages with deduplication."""
+    merged_by_key: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for message in remote_messages:
+        merged_by_key[_message_dedup_key(message)] = dict(message)
+    for message in local_messages:
+        merged_by_key[_message_dedup_key(message)] = dict(message)
+    merged = list(merged_by_key.values())
+    merged.sort(key=_message_display_sort_key, reverse=True)
+    return merged[:limit]
+
+
+def _load_local_visible_inbox_messages(owner_did: str | None) -> list[dict[str, Any]]:
+    """Load visible unread inbox messages from local SQLite cache."""
+    if not owner_did:
+        return []
+    conn = local_store.get_connection()
+    try:
+        local_store.ensure_schema(conn)
+        rows = conn.execute(
+            """
+            SELECT
+                m.msg_id AS id,
+                m.sender_did,
+                m.sender_name,
+                m.receiver_did,
+                m.group_id,
+                m.group_did,
+                g.name AS group_name,
+                m.content_type AS type,
+                m.content,
+                m.server_seq,
+                m.sent_at,
+                m.stored_at AS created_at,
+                m.is_e2ee
+            FROM messages m
+            LEFT JOIN groups g
+              ON g.owner_did = m.owner_did
+             AND g.group_id = m.group_id
+            WHERE m.owner_did = ?
+              AND m.direction = 0
+              AND m.is_read = 0
+            ORDER BY COALESCE(m.server_seq, -1) DESC,
+                     COALESCE(m.sent_at, m.stored_at) DESC,
+                     m.stored_at DESC
+            LIMIT ?
+            """,
+            (owner_did, _INBOX_FETCH_LIMIT),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    visible_messages: list[dict[str, Any]] = []
+    for row in rows:
+        message = dict(row)
+        msg_type = str(message.get("type") or "")
+        if not _is_user_visible_message_type(msg_type):
+            continue
+        if int(message.get("is_e2ee") or 0):
+            message["is_e2ee"] = True
+            message["e2ee_notice"] = _E2EE_USER_NOTICE
+        visible_messages.append(message)
+    return visible_messages
+
+
+def _build_local_inbox_report(owner_did: str | None) -> dict[str, Any]:
+    """Build one inbox report from local SQLite cache only."""
+    if not owner_did:
+        return {
+            "status": "no_identity",
+            "total": 0,
+            "by_type": {},
+            "text_messages": 0,
+            "text_by_sender": {},
+            "messages": [],
+        }
+    try:
+        visible_messages = _load_local_visible_inbox_messages(owner_did)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "status": "error",
+            "error": str(exc),
+            "total": 0,
+            "by_type": {},
+            "text_messages": 0,
+            "text_by_sender": {},
+            "messages": [],
+        }
+    report = _build_visible_inbox_report(visible_messages)
+    report["source"] = "local_ws_cache"
+    return report
+
+
+async def _sync_remote_visible_inbox_messages(
+    *,
+    credential_name: str,
+    auth: Any,
+    owner_did: str,
+    config: SDKConfig,
+) -> dict[str, Any]:
+    """Best-effort HTTP inbox sync used while websocket local cache is active."""
+    result: dict[str, Any] = {
+        "attempted": True,
+        "status": "ok",
+        "messages": [],
+        "total": 0,
+    }
+    try:
+        async with create_molt_message_client(config) as client:
+            inbox = await authenticated_rpc_call(
+                client,
+                MESSAGE_RPC,
+                "get_inbox",
+                params={"user_did": owner_did, "limit": _INBOX_FETCH_LIMIT},
+                auth=auth,
+                credential_name=credential_name,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "HTTP inbox sync failed during status check credential=%s error=%s",
+            credential_name,
+            exc,
+        )
+        result["status"] = "error"
+        result["error"] = str(exc)
+        return result
+
+    visible_messages = [
+        _strip_hidden_user_fields(message)
+        for message in inbox.get("messages", [])
+        if _is_user_visible_message_type(str(message.get("type") or ""))
+    ]
+    result["messages"] = visible_messages
+    result["total"] = len(visible_messages)
+    return result
+
+
 def summarize_group_watch(owner_did: str | None) -> dict[str, Any]:
-    """Summarize locally tracked discovery groups for heartbeat decisions."""
+    """Summarize locally tracked groups for heartbeat decisions."""
     if not owner_did:
         return {"status": "no_identity", "active_groups": 0, "groups": []}
 
@@ -225,6 +421,7 @@ def summarize_group_watch(owner_did: str | None) -> dict[str, Any]:
                 SELECT
                     group_id,
                     name,
+                    group_mode,
                     slug,
                     my_role,
                     member_count,
@@ -310,6 +507,7 @@ def summarize_group_watch(owner_did: str | None) -> dict[str, Any]:
                     {
                         "group_id": group_id,
                         "name": row["name"],
+                        "group_mode": row["group_mode"],
                         "slug": row["slug"],
                         "my_role": row["my_role"],
                         "member_count": row["member_count"],
@@ -633,29 +831,13 @@ async def fetch_group_messages(
 
 
 def _load_or_create_e2ee_client(local_did: str, credential_name: str) -> E2eeClient:
-    """Load existing E2EE client state from disk, or create a new client if absent."""
-    # Load E2EE keys from credential
-    cred = load_identity(credential_name)
-    signing_pem: str | None = None
-    x25519_pem: str | None = None
-    if cred is not None:
-        signing_pem = cred.get("e2ee_signing_private_pem")
-        x25519_pem = cred.get("e2ee_agreement_private_pem")
-
-    state = load_e2ee_state(credential_name)
-    if state is not None and state.get("local_did") == local_did:
-        if signing_pem is not None:
-            state["signing_pem"] = signing_pem
-        if x25519_pem is not None:
-            state["x25519_pem"] = x25519_pem
-        return E2eeClient.from_state(state)
-
-    return E2eeClient(local_did, signing_pem=signing_pem, x25519_pem=x25519_pem)
+    """Load the latest disk-first E2EE state from SQLite."""
+    return load_e2ee_client(local_did, credential_name)
 
 
 def _save_e2ee_client(client: E2eeClient, credential_name: str) -> None:
-    """Save E2EE client state to disk."""
-    save_e2ee_state(client.export_state(), credential_name)
+    """Persist the latest E2EE state into SQLite."""
+    save_e2ee_client(client, credential_name)
 
 
 async def _send_msg(
@@ -782,8 +964,15 @@ async def summarize_inbox(
 
 async def _build_inbox_report_with_auto_e2ee(
     credential_name: str = "default",
+    *,
+    listener_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Fetch inbox, auto-handle E2EE, and return the surfaced messages."""
+    """Fetch inbox, auto-handle E2EE, and return the surfaced messages.
+
+    When the real-time WebSocket listener is running, E2EE processing is
+    skipped here to avoid state conflicts (the listener already handles
+    E2EE in real time and owns the session state file).
+    """
     config = SDKConfig()
     auth_result = create_authenticator(credential_name, config)
     if auth_result is None:
@@ -796,7 +985,40 @@ async def _build_inbox_report_with_auto_e2ee(
             "messages": [],
         }
 
+    websocket_mode = is_websocket_mode(config)
+    listener_owned_inbox = False
+    if websocket_mode:
+        resolved_listener_status = listener_status or ensure_listener_runtime(
+            credential_name,
+            config=config,
+        )
+        listener_owned_inbox = bool(resolved_listener_status.get("was_running", False))
+
     auth, data = auth_result
+    if websocket_mode and listener_owned_inbox:
+        report = _build_local_inbox_report(data["did"])
+        local_messages = list(report.get("messages", []))
+        remote_sync = await _sync_remote_visible_inbox_messages(
+            credential_name=credential_name,
+            auth=auth,
+            owner_did=str(data["did"]),
+            config=config,
+        )
+        merged_messages = _merge_visible_inbox_messages(
+            local_messages,
+            remote_sync.get("messages", []),
+            limit=_INBOX_FETCH_LIMIT,
+        )
+        report = _build_visible_inbox_report(merged_messages)
+        report["source"] = "local_ws_cache"
+        report["http_sync"] = {
+            "attempted": True,
+            "status": remote_sync.get("status", "error"),
+            "total": remote_sync.get("total", 0),
+        }
+        if isinstance(remote_sync.get("error"), str):
+            report["http_sync"]["error"] = remote_sync["error"]
+        return report
     try:
         async with create_molt_message_client(config) as client:
             inbox = await authenticated_rpc_call(
@@ -815,117 +1037,124 @@ async def _build_inbox_report_with_auto_e2ee(
             processed_id_set: set[str] = set()
             rendered_decrypted_messages: list[dict[str, Any]] = []
 
-            for message in messages:
-                msg_type = str(message.get("type") or "")
-                if msg_type not in _E2EE_MSG_TYPES:
-                    continue
+            if listener_owned_inbox:
+                # ws_listener owns E2EE state — skip processing to avoid
+                # state conflicts (race condition on session seq numbers).
+                logger.info(
+                    "ws_listener is running, skipping E2EE inbox processing"
+                )
+            else:
+                for message in messages:
+                    msg_type = str(message.get("type") or "")
+                    if msg_type not in _E2EE_MSG_TYPES:
+                        continue
 
-                sender_did = str(message.get("sender_did") or "")
-                try:
-                    content = (
-                        json.loads(message.get("content"))
-                        if isinstance(message.get("content"), str)
-                        else message.get("content", {})
-                    )
-                except (TypeError, json.JSONDecodeError):
-                    logger.warning(
-                        "Skipping malformed E2EE inbox payload type=%s sender=%s",
-                        msg_type,
-                        sender_did,
-                    )
-                    continue
-
-                if msg_type == "e2ee_msg":
+                    sender_did = str(message.get("sender_did") or "")
                     try:
-                        original_type, plaintext = e2ee_client.decrypt_message(content)
-                        rendered_decrypted_messages.append(
-                            _decorate_user_visible_e2ee_message(
-                                message,
-                                original_type=original_type,
-                                plaintext=plaintext,
-                            )
+                        content = (
+                            json.loads(message.get("content"))
+                            if isinstance(message.get("content"), str)
+                            else message.get("content", {})
                         )
-                        if isinstance(message.get("id"), str) and message["id"]:
-                            processed_ids.append(message["id"])
-                            processed_id_set.add(message["id"])
-                    except Exception as exc:  # noqa: BLE001
-                        error_code, retry_hint = _classify_decrypt_error(exc)
-                        error_content = build_e2ee_error_content(
-                            error_code=error_code,
-                            session_id=content.get("session_id"),
-                            failed_msg_id=message.get("id"),
-                            failed_server_seq=message.get("server_seq"),
-                            retry_hint=retry_hint,
-                            required_e2ee_version=(
-                                SUPPORTED_E2EE_VERSION
-                                if error_code == "unsupported_version"
-                                else None
-                            ),
-                            message=build_e2ee_error_message(
-                                error_code,
+                    except (TypeError, json.JSONDecodeError):
+                        logger.warning(
+                            "Skipping malformed E2EE inbox payload type=%s sender=%s",
+                            msg_type,
+                            sender_did,
+                        )
+                        continue
+
+                    if msg_type == "e2ee_msg":
+                        try:
+                            original_type, plaintext = e2ee_client.decrypt_message(content)
+                            rendered_decrypted_messages.append(
+                                _decorate_user_visible_e2ee_message(
+                                    message,
+                                    original_type=original_type,
+                                    plaintext=plaintext,
+                                )
+                            )
+                            if isinstance(message.get("id"), str) and message["id"]:
+                                processed_ids.append(message["id"])
+                                processed_id_set.add(message["id"])
+                        except Exception as exc:  # noqa: BLE001
+                            error_code, retry_hint = _classify_decrypt_error(exc)
+                            error_content = build_e2ee_error_content(
+                                error_code=error_code,
+                                session_id=content.get("session_id"),
+                                failed_msg_id=message.get("id"),
+                                failed_server_seq=message.get("server_seq"),
+                                retry_hint=retry_hint,
                                 required_e2ee_version=(
                                     SUPPORTED_E2EE_VERSION
                                     if error_code == "unsupported_version"
                                     else None
                                 ),
-                                detail=str(exc),
-                            ),
+                                message=build_e2ee_error_message(
+                                    error_code,
+                                    required_e2ee_version=(
+                                        SUPPORTED_E2EE_VERSION
+                                        if error_code == "unsupported_version"
+                                        else None
+                                    ),
+                                    detail=str(exc),
+                                ),
+                            )
+                            await _send_msg(
+                                client,
+                                data["did"],
+                                sender_did,
+                                "e2ee_error",
+                                error_content,
+                                auth=auth,
+                                credential_name=credential_name,
+                            )
+                            logger.warning(
+                                "Failed to auto-decrypt E2EE inbox message sender=%s error=%s",
+                                sender_did,
+                                exc,
+                            )
+                        continue
+
+                    try:
+                        if msg_type == "e2ee_error":
+                            record_remote_failure(
+                                credential_name=credential_name,
+                                peer_did=sender_did,
+                                content=content,
+                            )
+                        responses = await e2ee_client.process_e2ee_message(msg_type, content)
+                        session_ready = True
+                        terminal_error_notified = any(
+                            response_type == "e2ee_error"
+                            for response_type, _ in responses
                         )
-                        await _send_msg(
-                            client,
-                            data["did"],
-                            sender_did,
-                            "e2ee_error",
-                            error_content,
-                            auth=auth,
-                            credential_name=credential_name,
-                        )
+                        if msg_type in _E2EE_SESSION_SETUP_TYPES:
+                            session_ready = e2ee_client.has_session_id(
+                                content.get("session_id")
+                            )
+                        for response_type, response_content in responses:
+                            await _send_msg(
+                                client,
+                                data["did"],
+                                sender_did,
+                                response_type,
+                                response_content,
+                                auth=auth,
+                                credential_name=credential_name,
+                            )
+
+                        if session_ready or terminal_error_notified:
+                            if isinstance(message.get("id"), str) and message["id"]:
+                                processed_ids.append(message["id"])
+                                processed_id_set.add(message["id"])
+                    except Exception as exc:  # noqa: BLE001
                         logger.warning(
-                            "Failed to auto-decrypt E2EE inbox message sender=%s error=%s",
+                            "E2EE auto-processing failed type=%s sender=%s error=%s",
+                            msg_type,
                             sender_did,
                             exc,
                         )
-                    continue
-
-                try:
-                    if msg_type == "e2ee_error":
-                        record_remote_failure(
-                            credential_name=credential_name,
-                            peer_did=sender_did,
-                            content=content,
-                        )
-                    responses = await e2ee_client.process_e2ee_message(msg_type, content)
-                    session_ready = True
-                    terminal_error_notified = any(
-                        response_type == "e2ee_error"
-                        for response_type, _ in responses
-                    )
-                    if msg_type in _E2EE_SESSION_SETUP_TYPES:
-                        session_ready = e2ee_client.has_session_id(
-                            content.get("session_id")
-                        )
-                    for response_type, response_content in responses:
-                        await _send_msg(
-                            client,
-                            data["did"],
-                            sender_did,
-                            response_type,
-                            response_content,
-                            auth=auth,
-                            credential_name=credential_name,
-                        )
-
-                    if session_ready or terminal_error_notified:
-                        if isinstance(message.get("id"), str) and message["id"]:
-                            processed_ids.append(message["id"])
-                            processed_id_set.add(message["id"])
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning(
-                        "E2EE auto-processing failed type=%s sender=%s error=%s",
-                        msg_type,
-                        sender_did,
-                        exc,
-                    )
 
             if processed_ids:
                 await authenticated_rpc_call(
@@ -937,7 +1166,8 @@ async def _build_inbox_report_with_auto_e2ee(
                     credential_name=credential_name,
                 )
 
-            _save_e2ee_client(e2ee_client, credential_name)
+            if not listener_owned_inbox:
+                _save_e2ee_client(e2ee_client, credential_name)
 
         remaining_messages = [
             message
@@ -949,7 +1179,11 @@ async def _build_inbox_report_with_auto_e2ee(
             for message in remaining_messages
             if _is_user_visible_message_type(str(message.get("type") or ""))
         ]
-        return _build_visible_inbox_report(visible_messages)
+        report = _build_visible_inbox_report(visible_messages)
+        report["source"] = (
+            "remote_http_fallback" if websocket_mode else "remote_http"
+        )
+        return report
     except Exception as exc:  # noqa: BLE001
         return {
             "status": "error",
@@ -1025,17 +1259,57 @@ async def check_status(
             credential_name=credential_name,
         )
 
+    config = SDKConfig()
+    websocket_mode = is_websocket_mode(config)
+    if websocket_mode:
+        listener_runtime = ensure_listener_runtime(
+            credential_name,
+            config=config,
+        )
+    else:
+        listener_runtime = get_listener_runtime_report(
+            credential_name,
+            config=config,
+        )
+
     # 3. Inbox summary / delivery
-    report["inbox"] = await _build_inbox_report_with_auto_e2ee(credential_name)
+    report["inbox"] = await _build_inbox_report_with_auto_e2ee(
+        credential_name,
+        listener_status=listener_runtime,
+    )
 
     # 4. E2EE session status
-    e2ee_state = load_e2ee_state(credential_name)
-    if e2ee_state is not None:
-        sessions = e2ee_state.get("sessions", [])
-        active_count = len(sessions)
-        report["e2ee_sessions"] = {"active": active_count}
-    else:
+    try:
+        e2ee_client = load_e2ee_client(owner_did, credential_name)
+        report["e2ee_sessions"] = {
+            "active": len(e2ee_client.export_state().get("sessions", []))
+        }
+    except Exception:  # noqa: BLE001
         report["e2ee_sessions"] = {"active": 0}
+
+    # 5. Real-time listener status
+    report["realtime_listener"] = {
+        "mode": "websocket" if websocket_mode else "http",
+        "installed": listener_runtime.get("installed", False),
+        "running": listener_runtime.get("running", False),
+        "service_running": listener_runtime.get("service_running", False),
+        "daemon_available": listener_runtime.get("daemon_available", False),
+        "degraded": listener_runtime.get("degraded", False),
+        "auto_restart_paused": listener_runtime.get("auto_restart_paused", False),
+        "consecutive_restart_failures": listener_runtime.get(
+            "consecutive_restart_failures",
+            0,
+        ),
+        "last_restart_attempt_at": listener_runtime.get("last_restart_attempt_at"),
+        "last_restart_result": listener_runtime.get("last_restart_result"),
+    }
+    last_error = listener_runtime.get("last_error")
+    if isinstance(last_error, str) and last_error:
+        report["realtime_listener"]["last_error"] = last_error
+    if not listener_runtime.get("installed", False):
+        report["realtime_listener"]["hint"] = (
+            "Run: python scripts/setup_realtime.py --credential " + credential_name
+        )
 
     return report
 
@@ -1065,7 +1339,10 @@ def main() -> None:
     if args.upgrade_only:
         report = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "local_upgrade": ensure_local_upgrade_ready(args.credential),
+            "local_upgrade": ensure_local_upgrade_ready(
+                args.credential,
+                coordinate_listener_during_database_upgrade=True,
+            ),
         }
         report["credential_layout"] = report["local_upgrade"]["credential_layout"]
         report["local_database"] = report["local_upgrade"]["local_database"]

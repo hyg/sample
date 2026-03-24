@@ -1,8 +1,9 @@
 """Tests for check_status inbox surfacing and automatic E2EE delivery.
 
 [INPUT]: check_status inbox helpers with monkeypatched RPC/auth/E2EE dependencies
-[OUTPUT]: Regression coverage for plaintext delivery, handshake summaries, and
-          auto-E2EE metrics in check_status.py
+[OUTPUT]: Regression coverage for plaintext delivery, handshake summaries,
+          listener degraded-mode fallback, and auto-E2EE metrics in
+          check_status.py
 [POS]: Unit tests for user-visible inbox reporting in the unified status CLI
 
 [PROTOCOL]:
@@ -238,6 +239,7 @@ def test_auto_e2ee_builds_plaintext_inbox_report(
     monkeypatch.setattr(
         check_status, "authenticated_rpc_call", _fake_authenticated_rpc_call
     )
+    monkeypatch.setattr(check_status, "is_websocket_mode", lambda config: False)
     monkeypatch.setattr(
         check_status,
         "_load_or_create_e2ee_client",
@@ -261,7 +263,283 @@ def test_auto_e2ee_builds_plaintext_inbox_report(
     assert inbox_report["messages"][1]["content"] == "Hello"
 
     assert marked_read == ["init-1", "cipher-1"]
-    assert sent_calls == [("e2ee_ack", {"session_id": "sess-1"})]
+
+
+def test_auto_e2ee_uses_local_cache_when_websocket_mode_is_active(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """WebSocket receive mode should surface local cache instead of remote inbox."""
+    remote_calls: list[str] = []
+
+    monkeypatch.setattr(
+        check_status, "create_authenticator", lambda credential_name, config: (
+            object(),
+            {"did": "did:alice"},
+        )
+    )
+    monkeypatch.setattr(check_status, "is_websocket_mode", lambda config: True)
+    monkeypatch.setattr(
+        check_status,
+        "ensure_listener_runtime",
+        lambda credential_name, config=None: {"was_running": True},
+    )
+    monkeypatch.setattr(
+        check_status,
+        "create_molt_message_client",
+        lambda config: _DummyAsyncClient(),
+    )
+
+    async def _fake_authenticated_rpc_call(
+        client,
+        endpoint: str,
+        method: str,
+        params: dict[str, Any],
+        *,
+        auth: Any,
+        credential_name: str,
+    ) -> dict[str, Any]:
+        del client, endpoint, params, auth, credential_name
+        remote_calls.append(method)
+        assert method == "get_inbox"
+        return {
+            "messages": [
+                {
+                    "id": "remote-1",
+                    "type": "text",
+                    "sender_did": "did:carol",
+                    "content": "remote hello",
+                    "created_at": "2026-03-11T10:30:00Z",
+                }
+            ]
+        }
+
+    monkeypatch.setattr(
+        check_status,
+        "authenticated_rpc_call",
+        _fake_authenticated_rpc_call,
+    )
+    monkeypatch.setattr(
+        check_status,
+        "_build_local_inbox_report",
+        lambda owner_did: {
+            "status": "ok",
+            "source": "local_ws_cache",
+            "total": 1,
+            "by_type": {"text": 1},
+            "text_messages": 1,
+            "text_by_sender": {"did:bob": {"count": 1, "latest": "2026-03-11T10:00:00Z"}},
+            "messages": [
+                {
+                    "id": "local-1",
+                    "type": "text",
+                    "sender_did": "did:bob",
+                    "content": "local hello",
+                    "created_at": "2026-03-11T10:00:00Z",
+                }
+            ],
+        },
+    )
+
+    report = asyncio.run(check_status._build_inbox_report_with_auto_e2ee("alice"))
+
+    assert report["source"] == "local_ws_cache"
+    assert report["http_sync"]["status"] == "ok"
+    assert remote_calls == ["get_inbox"]
+    assert report["total"] == 2
+    assert {message["content"] for message in report["messages"]} == {
+        "local hello",
+        "remote hello",
+    }
+
+
+def test_auto_e2ee_keeps_local_cache_when_websocket_http_sync_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Healthy websocket mode should keep local unread messages even if HTTP sync fails."""
+
+    monkeypatch.setattr(
+        check_status, "create_authenticator", lambda credential_name, config: (
+            object(),
+            {"did": "did:alice"},
+        )
+    )
+    monkeypatch.setattr(check_status, "is_websocket_mode", lambda config: True)
+    monkeypatch.setattr(
+        check_status,
+        "ensure_listener_runtime",
+        lambda credential_name, config=None: {"was_running": True},
+    )
+    monkeypatch.setattr(
+        check_status,
+        "create_molt_message_client",
+        lambda config: _DummyAsyncClient(),
+    )
+
+    async def _raise_sync_error(
+        client,
+        endpoint: str,
+        method: str,
+        params: dict[str, Any],
+        *,
+        auth: Any,
+        credential_name: str,
+    ) -> dict[str, Any]:
+        del client, endpoint, method, params, auth, credential_name
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(
+        check_status,
+        "authenticated_rpc_call",
+        _raise_sync_error,
+    )
+    monkeypatch.setattr(
+        check_status,
+        "_build_local_inbox_report",
+        lambda owner_did: {
+            "status": "ok",
+            "source": "local_ws_cache",
+            "total": 1,
+            "by_type": {"text": 1},
+            "text_messages": 1,
+            "text_by_sender": {"did:bob": {"count": 1, "latest": "2026-03-11T10:00:00Z"}},
+            "messages": [
+                {
+                    "id": "local-1",
+                    "type": "text",
+                    "sender_did": "did:bob",
+                    "content": "local hello",
+                    "created_at": "2026-03-11T10:00:00Z",
+                }
+            ],
+        },
+    )
+
+    report = asyncio.run(check_status._build_inbox_report_with_auto_e2ee("alice"))
+
+    assert report["source"] == "local_ws_cache"
+    assert report["http_sync"]["status"] == "error"
+    assert report["messages"][0]["content"] == "local hello"
+
+
+def test_auto_e2ee_uses_http_fallback_when_websocket_mode_is_degraded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Degraded WebSocket mode should keep heartbeat service alive over HTTP."""
+
+    monkeypatch.setattr(
+        check_status, "create_authenticator", lambda credential_name, config: (
+            object(),
+            {"did": "did:alice"},
+        )
+    )
+    monkeypatch.setattr(check_status, "is_websocket_mode", lambda config: True)
+    monkeypatch.setattr(
+        check_status,
+        "ensure_listener_runtime",
+        lambda credential_name, config=None: {
+            "was_running": False,
+            "running": False,
+            "auto_restart_paused": False,
+            "consecutive_restart_failures": 1,
+        },
+    )
+    monkeypatch.setattr(
+        check_status,
+        "create_molt_message_client",
+        lambda config: _DummyAsyncClient(),
+    )
+
+    async def _fake_authenticated_rpc_call(
+        client,
+        endpoint: str,
+        method: str,
+        params: dict[str, Any],
+        *,
+        auth: Any,
+        credential_name: str,
+    ) -> dict[str, Any]:
+        del client, endpoint, method, params, auth, credential_name
+        return {
+            "messages": [
+                {
+                    "id": "msg-1",
+                    "type": "text",
+                    "sender_did": "did:bob",
+                    "content": "hello",
+                    "created_at": "2026-03-11T10:00:00Z",
+                }
+            ]
+        }
+
+    monkeypatch.setattr(
+        check_status,
+        "authenticated_rpc_call",
+        _fake_authenticated_rpc_call,
+    )
+    monkeypatch.setattr(
+        check_status,
+        "_load_or_create_e2ee_client",
+        lambda local_did, credential_name: object(),
+    )
+    monkeypatch.setattr(
+        check_status,
+        "_save_e2ee_client",
+        lambda client, credential_name: None,
+    )
+
+    report = asyncio.run(check_status._build_inbox_report_with_auto_e2ee("alice"))
+
+    assert report["status"] == "ok"
+    assert report["source"] == "remote_http_fallback"
+    assert report["messages"][0]["content"] == "hello"
+
+
+def test_build_local_inbox_report_excludes_rows_marked_read(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Local websocket inbox summaries should only include unread incoming rows."""
+    monkeypatch.setenv("AWIKI_DATA_DIR", str(tmp_path))
+
+    conn = check_status.local_store.get_connection()
+    try:
+        check_status.local_store.ensure_schema(conn)
+        thread_id = check_status.local_store.make_thread_id(
+            "did:alice",
+            peer_did="did:bob",
+        )
+        check_status.local_store.store_message(
+            conn,
+            msg_id="unread-1",
+            owner_did="did:alice",
+            thread_id=thread_id,
+            direction=0,
+            sender_did="did:bob",
+            receiver_did="did:alice",
+            content_type="text",
+            content="hello",
+            credential_name="alice",
+        )
+        check_status.local_store.store_message(
+            conn,
+            msg_id="read-1",
+            owner_did="did:alice",
+            thread_id=thread_id,
+            direction=0,
+            sender_did="did:bob",
+            receiver_did="did:alice",
+            content_type="text",
+            content="old hello",
+            is_read=True,
+            credential_name="alice",
+        )
+    finally:
+        conn.close()
+
+    report = check_status._build_local_inbox_report("did:alice")
+
+    assert report["total"] == 1
+    assert [message["id"] for message in report["messages"]] == ["unread-1"]
 
 
 def test_check_status_uses_auto_e2ee_inbox_report(
@@ -292,7 +570,10 @@ def test_check_status_uses_auto_e2ee_inbox_report(
 
     async def _fake_auto_inbox(
         credential_name: str,
+        *,
+        listener_status: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        del listener_status
         assert credential_name == "alice"
         return {
             "status": "ok",
@@ -314,10 +595,38 @@ def test_check_status_uses_auto_e2ee_inbox_report(
         "_build_inbox_report_with_auto_e2ee",
         _fake_auto_inbox,
     )
-    monkeypatch.setattr(check_status, "load_e2ee_state", lambda credential_name: None)
+    monkeypatch.setattr(
+        check_status,
+        "is_websocket_mode",
+        lambda config: True,
+    )
+    monkeypatch.setattr(
+        check_status,
+        "ensure_listener_runtime",
+        lambda credential_name, config=None: {
+            "installed": True,
+            "running": False,
+            "service_running": False,
+            "daemon_available": False,
+            "degraded": True,
+            "auto_restart_paused": True,
+            "consecutive_restart_failures": 3,
+            "last_restart_attempt_at": "2026-03-11T09:00:00Z",
+            "last_restart_result": "failed",
+        },
+    )
+    monkeypatch.setattr(
+        check_status,
+        "load_e2ee_client",
+        lambda local_did, credential_name: _FakeE2eeClient(),
+    )
 
     report = asyncio.run(check_status.check_status("alice"))
 
     assert report["inbox"]["messages"][0]["content"] == "Secret hello"
     assert report["inbox"]["messages"][0]["is_e2ee"] is True
+    assert report["realtime_listener"]["mode"] == "websocket"
+    assert report["realtime_listener"]["degraded"] is True
+    assert report["realtime_listener"]["auto_restart_paused"] is True
+    assert report["realtime_listener"]["consecutive_restart_failures"] == 3
     assert "e2ee_auto" not in report

@@ -24,9 +24,10 @@ import logging
 import sys
 import uuid
 
-from utils import SDKConfig, create_molt_message_client, authenticated_rpc_call, resolve_to_did
+from utils import SDKConfig, resolve_to_did
 from utils.logging_config import configure_logging
 from credential_store import create_authenticator
+from message_transport import message_rpc_call
 import local_store
 
 
@@ -64,79 +65,76 @@ async def send_message(
         print(f"Credential '{credential_name}' unavailable; please create an identity first")
         sys.exit(1)
 
-    auth, data = auth_result
-    async with create_molt_message_client(config) as client:
-        result = await authenticated_rpc_call(
-            client,
-            MESSAGE_RPC,
-            "send",
-            params={
-                k: v for k, v in {
-                    "sender_did": data["did"],
-                    "receiver_did": receiver_did,
-                    "content": content,
-                    "title": title,
-                    "type": msg_type,
-                    "client_msg_id": str(uuid.uuid4()),
-                }.items() if v is not None
-            },
-            auth=auth,
+    _auth, data = auth_result
+    result = await message_rpc_call(
+        "send",
+        params={
+            k: v for k, v in {
+                "sender_did": data["did"],
+                "receiver_did": receiver_did,
+                "content": content,
+                "title": title,
+                "type": msg_type,
+                "client_msg_id": str(uuid.uuid4()),
+            }.items() if v is not None
+        },
+        credential_name=credential_name,
+        config=config,
+    )
+
+    # Store sent message locally
+    try:
+        conn = local_store.get_connection()
+        local_store.ensure_schema(conn)
+        local_store.store_message(
+            conn,
+            msg_id=result.get("id", str(uuid.uuid4())),
+            owner_did=data["did"],
+            thread_id=local_store.make_thread_id(
+                data["did"], peer_did=receiver_did,
+            ),
+            direction=1,
+            sender_did=data["did"],
+            receiver_did=receiver_did,
+            content_type=msg_type,
+            content=content,
+            title=title,
+            server_seq=result.get("server_seq"),
+            sent_at=result.get("sent_at"),
             credential_name=credential_name,
         )
-
-        # Store sent message locally
-        try:
-            conn = local_store.get_connection()
-            local_store.ensure_schema(conn)
-            local_store.store_message(
-                conn,
-                msg_id=result.get("id", str(uuid.uuid4())),
-                owner_did=data["did"],
-                thread_id=local_store.make_thread_id(
-                    data["did"], peer_did=receiver_did,
-                ),
-                direction=1,
-                sender_did=data["did"],
-                receiver_did=receiver_did,
-                content_type=msg_type,
-                content=content,
-                title=title,
-                server_seq=result.get("server_seq"),
-                sent_at=result.get("sent_at"),
-                credential_name=credential_name,
-            )
-            # Record receiver in contacts
-            contact_fields = {}
-            if receiver != receiver_did:
-                contact_fields["handle"] = receiver
-            local_store.upsert_contact(
-                conn,
-                owner_did=data["did"],
-                did=receiver_did,
-                messaged=True,
-                **contact_fields,
-            )
-            local_store.append_relationship_event(
-                conn,
-                owner_did=data["did"],
-                target_did=receiver_did,
-                target_handle=receiver if receiver != receiver_did else None,
-                event_type="messaged",
-                status="applied",
-                credential_name=credential_name,
-            )
-            conn.close()
-        except Exception:
-            logger.debug("Failed to persist sent message locally", exc_info=True)
-
-        print("Message sent successfully:", file=sys.stderr)
-        print(json.dumps(_strip_hidden_result_fields(result), indent=2, ensure_ascii=False))
-        logger.info(
-            "Message sent credential=%s msg_id=%s server_seq=%s",
-            credential_name,
-            result.get("id"),
-            result.get("server_seq"),
+        # Record receiver in contacts
+        contact_fields = {}
+        if receiver != receiver_did:
+            contact_fields["handle"] = receiver
+        local_store.upsert_contact(
+            conn,
+            owner_did=data["did"],
+            did=receiver_did,
+            messaged=True,
+            **contact_fields,
         )
+        local_store.append_relationship_event(
+            conn,
+            owner_did=data["did"],
+            target_did=receiver_did,
+            target_handle=receiver if receiver != receiver_did else None,
+            event_type="messaged",
+            status="applied",
+            credential_name=credential_name,
+        )
+        conn.close()
+    except Exception:
+        logger.debug("Failed to persist sent message locally", exc_info=True)
+
+    print("Message sent successfully:", file=sys.stderr)
+    print(json.dumps(_strip_hidden_result_fields(result), indent=2, ensure_ascii=False))
+    logger.info(
+        "Message sent credential=%s msg_id=%s server_seq=%s",
+        credential_name,
+        result.get("id"),
+        result.get("server_seq"),
+    )
 
 
 def main() -> None:

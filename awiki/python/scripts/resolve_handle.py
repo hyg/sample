@@ -23,6 +23,7 @@ import logging
 import sys
 
 from utils import SDKConfig, create_user_service_client, resolve_handle, lookup_handle
+from utils.cli_errors import exit_with_cli_error
 from utils.logging_config import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -35,10 +36,10 @@ async def do_resolve(handle: str | None, did: str | None) -> None:
 
     async with create_user_service_client(config) as client:
         if handle:
-            print(f"Resolving handle: {handle}")
+            logger.info("Resolving handle handle=%s", handle)
             result = await resolve_handle(client, handle)
         elif did:
-            print(f"Looking up handle for DID: {did}")
+            logger.info("Looking up handle for DID did=%s", did)
             result = await lookup_handle(client, did)
         else:
             print("Either --handle or --did is required.")
@@ -60,7 +61,14 @@ def main() -> None:
         "resolve_handle CLI started mode=%s",
         "handle" if args.handle else "did",
     )
-    asyncio.run(do_resolve(handle=args.handle, did=args.did))
+    try:
+        asyncio.run(do_resolve(handle=args.handle, did=args.did))
+    except Exception as exc:  # noqa: BLE001
+        exit_with_cli_error(
+            exc=exc,
+            logger=logger,
+            context="resolve_handle CLI failed",
+        )
 
 
 if __name__ == "__main__":

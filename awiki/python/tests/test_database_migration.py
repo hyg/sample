@@ -179,3 +179,64 @@ def test_migrate_local_database_treats_outdated_v6_database_as_legacy(
     assert result["after_version"] == local_store._SCHEMA_VERSION
     assert result["backup_path"] is not None
     assert Path(result["backup_path"]).exists()
+
+
+def test_ensure_local_database_ready_for_upgrade_stops_and_restarts_listener(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Explicit upgrade flow should stop a running listener and restore it after migration."""
+
+    class _FakeServiceManager:
+        def __init__(self) -> None:
+            self.running = True
+            self.calls: list[str] = []
+
+        def status(self) -> dict[str, object]:
+            self.calls.append("status")
+            return {
+                "installed": True,
+                "running": self.running,
+            }
+
+        def stop(self) -> None:
+            self.calls.append("stop")
+            self.running = False
+
+        def start(self) -> None:
+            self.calls.append("start")
+            self.running = True
+
+    fake_manager = _FakeServiceManager()
+    monkeypatch.setattr(
+        database_migration,
+        "detect_local_database_layout",
+        lambda config=None: {
+            "status": "ready",
+            "db_path": "/tmp/awiki.db",
+            "before_version": local_store._SCHEMA_VERSION,
+        },
+    )
+    monkeypatch.setattr(
+        database_migration,
+        "ensure_local_database_ready",
+        lambda config=None: {
+            "status": "ready",
+            "db_path": "/tmp/awiki.db",
+            "before_version": local_store._SCHEMA_VERSION,
+            "after_version": local_store._SCHEMA_VERSION,
+            "backup_path": None,
+        },
+    )
+    monkeypatch.setattr(
+        database_migration,
+        "get_service_manager",
+        lambda: fake_manager,
+    )
+
+    result = database_migration.ensure_local_database_ready_for_upgrade()
+
+    assert result["status"] == "ready"
+    assert result["listener_service"]["was_running"] is True
+    assert result["listener_service"]["stopped"] is True
+    assert result["listener_service"]["restarted"] is True
+    assert fake_manager.calls == ["status", "stop", "status", "start", "status"]
