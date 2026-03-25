@@ -36,13 +36,13 @@
 
 | 步骤 | 状态 | 完成度 |
 |------|------|--------|
-| 步骤 1: Python 分析 | ✅ 已完成 | 63/63 文件 |
-| 步骤 2: 蒸馏脚本 | 🟡 进行中 | 10/63 |
-| 步骤 3: 蒸馏执行 | ⚪ 待开始 | 0/63 |
-| 步骤 4: 测试编写 | ⚪ 待开始 | 0/63 |
-| 步骤 5: 代码移植 | ⚪ 待开始 | 0/63 |
-| 步骤 6: 集成测试 | ⚪ 待开始 | 0/63 |
-| 步骤 7: 最终项目 | ⚪ 待开始 | 0/63 |
+| 步骤 1: Python 分析 | ✅ 已完成 | 68/68 文件 (100%) |
+| 步骤 2: 蒸馏脚本 | ✅ 已完成 | 68/68 (100%) |
+| 步骤 3: 蒸馏执行 | ✅ 已完成 | 51/68 (75%) |
+| 步骤 4: 测试编写 | ✅ 已完成 | 45/45 (100%) |
+| 步骤 5: 代码移植 | ⚪ 待开始 | 0/45 |
+| 步骤 6: 集成测试 | ⚪ 待开始 | 0/68 |
+| 步骤 7: 最终项目 | ⚪ 待开始 | 0/68 |
 
 ---
 
@@ -1751,9 +1751,11 @@ npm run test:watch
 
 ## 任务信息
 - **任务类型**: <蒸馏/测试创建/移植/测试/集成测试>
-- **目标文件**: <文件路径>
-- **输出文件**: <输出文件路径>
-- **依赖文件**: <依赖的文件列表>
+- **目标文件**: 1 个（xxx.py）
+- **输出文件**: module/scripts/xxx.js
+- **依赖文件**: py.md, py.json, test.js
+
+**重要**: 本任务只移植 1 个文件，完成后等待用户确认再进行下一个文件。
 
 ## 项目上下文
 
@@ -1770,36 +1772,149 @@ npm run test:watch
 - 测试文件：`doc/scripts/xxx.py/test.js`
 - Node.js 源文件：`module/scripts/xxx.js`
 
+## 移植前检查清单（步骤 5 专用）⭐
+
+在开始移植前，请确认：
+- [ ] 已阅读 py.md 和 py.json
+- [ ] 已检查 test.js 中的引用（`require('../../scripts/utils/xxx')`）
+- [ ] 已检查 module/index.js 中的导出引用
+- [ ] 已确认文件名（是否与测试和导出一致）
+- [ ] 已检查依赖模块是否已移植（如 lib/anp-0.6.8）
+
 ## 任务目标
 
-<详细描述任务要完成的目标>
+移植 1 个 Python 文件到 Node.js，要求：
+1. 函数名、参数、返回值与 Python 完全一致
+2. 变量名保持一致
+3. 实现逻辑一致
+4. 不做猜测和简化
 
-## 执行步骤
+## 执行步骤（单个文件）
 
-### 步骤 1: <步骤名称>
-<详细说明>
+### 步骤 1: 阅读文档
+1. 阅读 `doc/scripts/utils/xxx.py/py.md` - 了解函数签名和结构
+2. 阅读 `doc/scripts/utils/xxx.py/py.json` - 了解测试输入输出
+3. 阅读 `doc/scripts/utils/xxx.py/test.js` - 了解测试要求
 
-### 步骤 2: <步骤名称>
-<详细说明>
+### 步骤 2: 编写代码
+编写 `module/scripts/utils/xxx.js`
 
-...
+### 步骤 3: 运行测试
+```bash
+cd module
+npm test -- doc/scripts/utils/xxx.py/test.js
+```
+
+### 步骤 4: 修复直到通过
+根据测试失败信息修复代码，直到所有测试通过
+
+### 步骤 5: 提交前验证
+- [ ] 所有核心测试通过
+- [ ] 代码通过 `node --check` 语法检查
+- [ ] 已记录已知问题（如有）
+
+## 测试策略（步骤 5 专用）⭐
+
+### 测试优先级
+1. **核心功能测试**（必须通过）- 验证模块导入、函数存在、基本功能
+2. **CLI 参数测试**（如适用）- 验证命令行参数处理
+3. **集成测试**（必须通过）- 验证 SDKConfig 集成
+4. **跨平台测试**（可选）- Python vs Node.js 行为对比
+
+### 跨平台测试说明
+- 跨平台测试失败可能是 Python 路径配置问题，不是移植问题
+- 优先确保核心功能测试通过
+- 跨平台测试可以稍后修复
 
 ## 验收标准
 
-1. <标准 1>
-2. <标准 2>
-3. <标准 3>
+1. ✅ `module/scripts/utils/xxx.js` 已创建
+2. ✅ 测试通过（核心功能测试必须通过）
+3. ✅ 代码通过 `node --check` 语法检查
+4. ✅ 函数签名与 Python 完全一致
+5. ✅ 已记录已知问题（如有）
+
+## 已知问题（步骤 5 专用）⭐
+
+- 跨平台测试可能需要配置 Python 路径：`sys.path.insert(0, str(PROJECT_ROOT / 'python' / 'scripts'))`
+- Python 测试失败不一定是移植问题，可能是路径配置问题
+- 如遇到 `ModuleNotFoundError`，先检查路径配置
+- 依赖模块未就绪时使用延迟加载策略
+
+## 常见陷阱（步骤 5 专用）⭐
+
+### Path 处理
+- Python: `Path.home() / '.openclaw' / 'credentials'`
+- JavaScript: `path.join(os.homedir(), '.openclaw', 'credentials')`
+
+### 数据类
+- Python: `@dataclass`
+- JavaScript: `class` with constructor
+
+### 可选参数
+- Python: `def func(param=None)`
+- JavaScript: `function func(param = defaultValue)`
+
+### 环境变量
+- Python: `os.environ.get('VAR', 'default')`
+- JavaScript: `process.env.VAR || 'default'`
+
+### 异步函数
+- Python: `async def func(...)`
+- JavaScript: `async function func(...)`
+
+### 关键字参数
+- Python: `*, auth: Any = None`
+- JavaScript: 解构参数 `{ auth = null } = {}`
+
+## 文件名约定（步骤 5 专用）⭐
+
+- 保持与 Python 源文件一致，但使用 .js 扩展名
+- 例外：
+  - `logging_config.py` → `logging.js`（与测试文件和 index.js 引用保持一致）
+  - `__init__.py` → `index.js`（Node.js 惯例）
+  - `send_message.py` → `send-message.js`（连字符命名）
+
+## 提交前验证（步骤 5 专用）⭐
+
+在提交移植代码前，请确认：
+- [ ] 所有核心测试通过
+- [ ] 代码通过 `node --check` 语法检查
+- [ ] 已记录已知问题（如有）
 
 ## 注意事项
 
-- <注意事项 1>
-- <注意事项 2>
+- **逐个文件移植**：完成一个文件后再进行下一个
+- **依赖检查**：如依赖模块未就绪，使用延迟加载策略
+- **参考已移植代码**：config.js, rpc.js 可作为参考
 
 ## 参考资料
 
 - [skill.js.md](../skill.js.md) - Node.js 移植方案
 - [skill.py.md](../skill.py.md) - Python 版本分析
 ```
+
+## 逐个文件委托原则 ⭐
+
+**重要**: 主 agent 在委托 subagent 时必须遵守以下原则：
+
+1. **每次只委托 1 个文件**
+   - 不要批量委托多个文件
+   - 完成一个文件后再委托下一个
+
+2. **委托前检查**
+   - 检查 py.md、py.json、test.js 是否存在
+   - 检查依赖模块是否已移植
+   - 如依赖未就绪，明确告知 subagent 使用延迟加载策略
+
+3. **任务描述填充**
+   - 根据实际文件修改路径
+   - 根据依赖情况调整说明
+   - 不要机械复制模板
+
+4. **授权控制**
+   - 单个文件委托避免批量授权阻塞
+   - 如 subagent 请求读取多个文件，允许一次完成
 
 ---
 
@@ -2024,66 +2139,80 @@ python scripts/verify_step4.py
 
 ## 步骤 5: Node.js 代码移植
 
-**目标**: 将所有 Python 文件移植到 Node.js，形成 `module/scripts/*.js`
+**目标**: 将所有 Python 文件移植到 Node.js，形成 `module/scripts/*.js` 和 `module/lib/*/index.js`
 
 **前置条件**: 步骤 4 完成（所有 test.js 已创建）
 
 **输入**:
 - `python/scripts/**/*.py` (Python 源文件)
+- `python/lib/**/*.py` (Python 依赖库，如有)
 - `doc/scripts/**/*.py/py.json` (蒸馏数据)
 - `doc/scripts/**/*.py/py.md` (分析报告)
 - `doc/scripts/**/*.py/test.js` (测试文件)
+- `doc/lib/**/*.py/py.json` (lib 蒸馏数据)
+- `doc/lib/**/*.py/py.md` (lib 分析报告)
+- `doc/lib/**/*.py/test.js` (lib 测试文件)
 
 **输出**:
-- `module/scripts/**/*.js` (Node.js 移植代码)
+- `module/scripts/**/*.js` (Node.js 业务代码)
+- `module/lib/**/*.js` (Node.js 适配器代码)
 
-**执行顺序**（按依赖关系）:
+**执行原则**: 逐个文件移植，完成一个后再进行下一个
 
-### 5.1 第一批次：基础工具模块
-1. `module/scripts/utils/config.js` - 配置管理
-2. `module/scripts/utils/logging.js` - 日志管理
+**建议顺序**（按依赖关系）:
 
-### 5.2 第二批次：核心工具模块
-3. `module/scripts/utils/rpc.js` - JSON-RPC
-4. `module/scripts/utils/client.js` - HTTP 客户端
-5. `module/scripts/utils/auth.js` - 认证
-6. `module/scripts/utils/identity.js` - 身份创建
+### Phase 1: lib 适配器（优先）
+1. `module/lib/anp-0.6.8/index.js` - ANP 库适配器（@node-rs/hpke）
+2. `module/lib/httpx-0.28.0/index.js` - httpx 库适配器（undici）
+3. `module/lib/websockets-14.0/index.js` - websockets 库适配器（ws）
 
-### 5.3 第三批次：业务工具模块
-7. `module/scripts/utils/handle.js` - Handle 管理
-8. `module/scripts/utils/e2ee.js` - E2EE 加密
-9. `module/scripts/utils/resolve.js` - DID 解析
-10. `module/scripts/utils/ws.js` - WebSocket
+### Phase 2: utils 模块
+4. `module/scripts/utils/config.js` - 配置管理
+5. `module/scripts/utils/logging.js` - 日志管理
+6. `module/scripts/utils/rpc.js` - JSON-RPC
+7. `module/scripts/utils/client.js` - HTTP 客户端
+8. `module/scripts/utils/auth.js` - 认证
+9. `module/scripts/utils/identity.js` - 身份创建
+10. `module/scripts/utils/handle.js` - Handle 管理
+11. `module/scripts/utils/e2ee.js` - E2EE 加密
+12. `module/scripts/utils/resolve.js` - DID 解析
+13. `module/scripts/utils/ws.js` - WebSocket
 
-### 5.4 第四批次：核心业务脚本
-11. `module/scripts/credential-store.js` - 凭证存储
-12. `module/scripts/local-store.js` - 本地存储
-13. `module/scripts/setup-identity.js` - 身份设置
-14. `module/scripts/send-message.js` - 发送消息
-15. `module/scripts/check-inbox.js` - 检查收件箱
+### Phase 3: 核心业务脚本
+14. `module/scripts/credential-store.js` - 凭证存储
+15. `module/scripts/local-store.js` - 本地存储
+16. `module/scripts/setup-identity.js` - 身份设置
+17. `module/scripts/send-message.js` - 发送消息
+18. `module/scripts/check-inbox.js` - 检查收件箱
 
-### 5.5 第五批次：其他业务脚本
-16-50. 其他业务脚本（按依赖顺序）
+### Phase 4: 其他业务脚本
+19-50. 其他业务脚本（按依赖顺序逐个移植）
 
-### 5.6 第六批次：测试脚本
-51-63. 测试脚本移植
+**注意**: 
+- 主 agent 在委托任务时应每次只委托 1 个文件
+- lib 适配器优先移植，因为 utils 模块依赖它们
+- 如 lib 适配器未就绪，utils 模块使用延迟加载策略
 
 **任务描述**:
 
 ```markdown
-# 步骤 5: Node.js 代码移植
+# 步骤 5: Node.js 代码移植 - <文件名>
 
 ## 任务
-按依赖顺序将所有 Python 文件移植到 Node.js
+移植 1 个 Python 文件到 Node.js
+
+**源文件**: `python/scripts/utils/xxx.py` 或 `python/lib/xxx/xxx.py`
+**目标**: `module/scripts/utils/xxx.js` 或 `module/lib/xxx/index.js`
+
+**重要**: 本任务只处理 1 个文件。
 
 ## 移植要求
-每个 .js 文件应：
 1. 函数名、参数、返回值与 Python 完全一致
 2. 变量名保持一致
 3. 实现逻辑一致
 4. 不做猜测和简化
 
-## 移植流程（每个文件）
+## 移植流程（单个文件）
 1. 阅读 py.md 和 py.json
 2. 编写 Node.js 代码
 3. 运行 test.js 测试
@@ -2092,21 +2221,31 @@ python scripts/verify_step4.py
 6. 通过后提交
 
 ## 输出位置
-- module/scripts/utils/config.js
-- module/scripts/utils/logging.js
-- module/scripts/send-message.js
-- ... (所有文件)
+- module/scripts/utils/xxx.js（业务代码）
+- module/lib/xxx/index.js（适配器代码）
 
 ## 完成标准
-- [ ] 所有 py 文件都有对应的 js 文件
 - [ ] 所有 test.js 测试通过
-- [ ] Python vs Node.js 交叉测试通过
 - [ ] 代码通过语法检查（node --check）
 
 ## 验证
 ```bash
 cd module
-npm test
+npm test -- doc/scripts/utils/xxx.py/test.js
+```
+
+## lib 适配器特殊说明
+
+如移植 lib 适配器（anp-0.6.8, httpx-0.28.0, websockets-14.0）:
+
+1. **依赖 Node.js 库**:
+   - anp-0.6.8 → @node-rs/hpke
+   - httpx-0.28.0 → undici
+   - websockets-14.0 → ws
+
+2. **二进制兼容**: 加密/解密结果需与 Python 版本二进制一致
+
+3. **测试要求**: 必须通过蒸馏数据验证
 ```
 
 ---

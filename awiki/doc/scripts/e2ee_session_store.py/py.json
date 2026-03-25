@@ -1,0 +1,103 @@
+Running e2ee_session_store.py distillation tests...
+Note: Full E2EE tests require valid credentials
+{
+  "file": "python/scripts/e2ee_session_store.py",
+  "doc_path": "doc/scripts/e2ee_session_store.py",
+  "version": "1.3.10",
+  "functions": [
+    {
+      "name": "Module Import",
+      "type": "module",
+      "description": "Module structure and available functions",
+      "tests": [
+        {
+          "scenario": "module_import",
+          "input": {},
+          "output": {
+            "module_imported": true,
+            "functions_available": [
+              "AbstractContextManager",
+              "Any",
+              "E2eeClient",
+              "E2eeStateTransaction",
+              "annotations",
+              "dataclass",
+              "datetime",
+              "delete_e2ee_state",
+              "load_e2ee_client",
+              "load_e2ee_state",
+              "load_identity",
+              "local_store",
+              "save_e2ee_client",
+              "sqlite3",
+              "timezone"
+            ]
+          },
+          "success": true
+        },
+        {
+          "scenario": "e2ee_store_module",
+          "input": {},
+          "output": {
+            "module_imported": true,
+            "functions_available": [
+              "Any",
+              "Path",
+              "annotations",
+              "delete_e2ee_state",
+              "has_legacy_layout",
+              "json",
+              "legacy_layout_hint",
+              "load_e2ee_state",
+              "logger",
+              "logging",
+              "resolve_credential_paths",
+              "save_e2ee_state",
+              "write_secure_json"
+            ]
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "load_e2ee_client",
+      "type": "function",
+      "signature": "(identity: dict, peer_did: str) -> E2eeClient | None",
+      "description": "Load E2EE client for a peer (returns None if no session or credential)",
+      "tests": [
+        {
+          "scenario": "no_credential",
+          "input": {
+            "peer_did": "did:wba:awiki.ai:user:k1_test",
+            "credential_name": "nonexistent_credential"
+          },
+          "output": {
+            "client_loaded": false,
+            "reason": "credential_not_found"
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "SDKConfig.load",
+      "type": "classmethod",
+      "signature": "() -> SDKConfig",
+      "description": "Load SDK configuration",
+      "tests": [
+        {
+          "scenario": "sdk_integration",
+          "input": {},
+          "output": {
+            "sdk_config_loaded": true,
+            "data_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message"
+          },
+          "success": true
+        }
+      ]
+    }
+  ],
+  "constants": {},
+  "classes": {}
+}

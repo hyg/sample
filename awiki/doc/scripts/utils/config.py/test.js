@@ -10,7 +10,7 @@ const assert = require('assert');
 const path = require('path');
 
 // 导入目标模块
-const { SDKConfig } = require('../../../module/scripts/utils/config.js');
+const { SDKConfig } = require(path.join(__dirname, '../../../../module/scripts/utils/config.js'));
 
 describe('SDKConfig - 配置管理', () => {
   

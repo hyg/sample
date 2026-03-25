@@ -20,9 +20,11 @@
     "lint": "eslint scripts/ tests/"
   },
   "dependencies": {
-    "@node-rs/hpke": "^1.0.0",
-    "better-sqlite3": "^9.0.0",
+    "@hpke/dhkem-x25519": "^1.8.0",
+    "better-sqlite3": "^12.8.0",
+    "hpke": "^1.0.6",
     "undici": "^6.0.0",
+    "uuid": "^13.0.0",
     "ws": "^8.14.0"
   },
   "devDependencies": {

@@ -11,7 +11,7 @@ from pathlib import Path
 # parents[1]: scripts dir (doc/scripts)
 # parents[2]: doc dir
 # parents[3]: project root (awiki)
-project_root = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(r"D:\\huangyg\\git\\sample\\awiki").resolve().parents[3]
 scripts_dir = project_root / "python" / "scripts"
 sys.path.insert(0, str(scripts_dir))
 
@@ -234,7 +234,7 @@ def main():
     failed = 0
     
     for result in results:
-        status_icon = "âœ“" if result["status"] == "PASS" else "âœ—"
+        status_icon = "âœ? if result["status"] == "PASS" else "âœ?
         print(f"\n{status_icon} {result['name']}")
         print(f"  Input: {result['input'][:100]}{'...' if len(result['input']) > 100 else ''}")
         print(f"  Output: {result['output'][:200]}{'...' if len(result['output']) > 200 else ''}")

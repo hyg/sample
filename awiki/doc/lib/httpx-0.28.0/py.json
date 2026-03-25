@@ -1,0 +1,590 @@
+{
+  "meta": {
+    "title": "httpx 库调用测试用例",
+    "version": "httpx==0.28.0",
+    "generated_at": "2026-03-25",
+    "python_version": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "httpx_version": "0.28.1"
+  },
+  "httpx_features_covered": [
+    "AsyncClient 创建与配置",
+    "base_url 配置",
+    "timeout 配置",
+    "trust_env 配置",
+    "verify (TLS/SSL) 配置",
+    "POST 请求 (json payload)",
+    "GET 请求",
+    "PUT 请求",
+    "DELETE 请求",
+    "通用 request 方法",
+    "响应状态码检查",
+    "响应 JSON 解析",
+    "响应头读取",
+    "Request 对象创建",
+    "HTTPStatusError 异常处理",
+    "TimeoutException 异常处理",
+    "RequestError 异常处理",
+    "401/404/500 状态码处理",
+    "自定义 CA 证书验证"
+  ],
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "name": "创建用户服务客户端 - 默认配置",
+      "category": "AsyncClient 创建",
+      "description": "测试创建指向 user-service 的 httpx.AsyncClient，使用默认配置",
+      "input": {
+        "base_url": "https://awiki.ai",
+        "timeout": 30.0
+      },
+      "expected_behavior": {
+        "client.base_url": "https://awiki.ai/"
+      },
+      "httpx_api": [
+        "httpx.AsyncClient(base_url, timeout, trust_env, verify)"
+      ],
+      "actual_output": {},
+      "error": "'AsyncConnectionPool' object has no attribute '_trust_env'"
+    },
+    {
+      "id": "TC-002",
+      "name": "创建消息服务客户端 - 自定义超时",
+      "category": "AsyncClient 创建",
+      "description": "测试创建指向 molt-message 的 httpx.AsyncClient，使用 10 秒超时",
+      "input": {
+        "base_url": "https://awiki.ai",
+        "timeout": 10.0,
+        "trust_env": false
+      },
+      "expected_behavior": {
+        "client.base_url": "https://awiki.ai/",
+        "client.timeout": 10.0
+      },
+      "httpx_api": [
+        "httpx.AsyncClient(base_url, timeout, trust_env)"
+      ],
+      "actual_output": {
+        "client.base_url": "https://awiki.ai",
+        "client.timeout": 10.0
+      }
+    },
+    {
+      "id": "TC-003",
+      "name": "GET 请求 - 带参数",
+      "category": "GET 请求",
+      "description": "测试发送 GET 请求并解析响应",
+      "input": {
+        "base_url": "https://httpbin.org",
+        "endpoint": "/get",
+        "params": {
+          "key": "value"
+        }
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "args": {
+          "key": "value"
+        }
+      },
+      "httpx_api": [
+        "client.get(endpoint, params)",
+        "response.status_code",
+        "response.json()"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "url": "https://httpbin.org/get?key=value",
+        "args": {
+          "key": "value"
+        }
+      }
+    },
+    {
+      "id": "TC-004",
+      "name": "POST 请求 - JSON payload",
+      "category": "POST 请求",
+      "description": "测试发送 JSON-RPC 风格的 POST 请求",
+      "input": {
+        "base_url": "https://httpbin.org",
+        "endpoint": "/post",
+        "json": {
+          "jsonrpc": "2.0",
+          "method": "test",
+          "params": {
+            "key": "value"
+          }
+        }
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "json_method": "test",
+        "content_type": "application/json"
+      },
+      "httpx_api": [
+        "client.post(endpoint, json=payload)",
+        "response.json()",
+        "response.headers.get()"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "json_method": "test",
+        "content_type": "application/json"
+      }
+    },
+    {
+      "id": "TC-005",
+      "name": "PUT 请求",
+      "category": "PUT 请求",
+      "description": "测试发送 PUT 请求",
+      "input": {
+        "base_url": "https://httpbin.org",
+        "endpoint": "/put",
+        "json": {
+          "name": "updated",
+          "value": 123
+        }
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "json_data": {
+          "name": "updated",
+          "value": 123
+        }
+      },
+      "httpx_api": [
+        "client.put(endpoint, json=payload)",
+        "response.json()"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "json_data": {
+          "name": "updated",
+          "value": 123
+        }
+      }
+    },
+    {
+      "id": "TC-006",
+      "name": "DELETE 请求",
+      "category": "DELETE 请求",
+      "description": "测试发送 DELETE 请求",
+      "input": {
+        "base_url": "https://httpbin.org",
+        "endpoint": "/delete"
+      },
+      "expected_behavior": {
+        "status_code": 200
+      },
+      "httpx_api": [
+        "client.delete(endpoint)",
+        "response.status_code"
+      ],
+      "actual_output": {
+        "status_code": 200
+      }
+    },
+    {
+      "id": "TC-007",
+      "name": "通用 request 方法 - build_request + send",
+      "category": "通用请求",
+      "description": "测试使用 build_request 和 send 发送 PATCH 请求",
+      "input": {
+        "base_url": "https://httpbin.org",
+        "method": "PATCH",
+        "endpoint": "/patch",
+        "json": {
+          "patched": true
+        }
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "json_data": {
+          "patched": true
+        }
+      },
+      "httpx_api": [
+        "client.build_request(method, url, json)",
+        "client.send(request)"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "json_data": {
+          "patched": true
+        }
+      }
+    },
+    {
+      "id": "TC-008",
+      "name": "Request 对象创建",
+      "category": "Request",
+      "description": "测试创建 HTTP 请求对象",
+      "input": {
+        "method": "POST",
+        "url": "https://awiki.ai/rpc",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer token"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "method": "test"
+        }
+      },
+      "expected_behavior": {
+        "method": "POST",
+        "url": "https://awiki.ai/rpc",
+        "headers.Content-Type": "application/json",
+        "headers.Authorization": "Bearer token"
+      },
+      "httpx_api": [
+        "httpx.Request(method, url, headers, json)"
+      ],
+      "actual_output": {
+        "method": "POST",
+        "url": "https://awiki.ai/rpc",
+        "headers": {
+          "host": "awiki.ai",
+          "content-type": "application/json",
+          "authorization": "Bearer token",
+          "content-length": "33"
+        },
+        "content_present": true
+      }
+    },
+    {
+      "id": "TC-009",
+      "name": "Response 属性访问",
+      "category": "Response",
+      "description": "测试访问 HTTP 响应的各种属性",
+      "input": {
+        "url": "https://httpbin.org/status/200"
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "is_success": true,
+        "is_error": false
+      },
+      "httpx_api": [
+        "response.status_code",
+        "response.headers",
+        "response.text",
+        "response.is_success",
+        "response.is_error"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "headers_content_type": "text/html; charset=utf-8",
+        "text_length": 0,
+        "is_success": true,
+        "is_error": false
+      }
+    },
+    {
+      "id": "TC-010",
+      "name": "Response.json() 解析",
+      "category": "Response",
+      "description": "测试解析 JSON 响应",
+      "input": {
+        "url": "https://httpbin.org/json"
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "has_slideshow": true,
+        "content_type": "application/json"
+      },
+      "httpx_api": [
+        "response.json()"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "has_slideshow": true,
+        "content_type": "application/json"
+      }
+    },
+    {
+      "id": "TC-011",
+      "name": "Response.headers 访问",
+      "category": "Response",
+      "description": "测试访问响应头（注意：httpx 响应头键是小写的）",
+      "input": {
+        "url": "https://httpbin.org/headers"
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "content_type_present": true,
+        "note": "httpx response header keys are lowercase"
+      },
+      "httpx_api": [
+        "response.headers.get(key)",
+        "response.headers.items()"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "content_type": "application/json",
+        "server": "gunicorn/19.9.0",
+        "all_headers_count": 7
+      }
+    },
+    {
+      "id": "ERR-001",
+      "name": "HTTPStatusError - 404 Not Found",
+      "category": "异常处理",
+      "description": "测试 404 状态码时 raise_for_status() 抛出 HTTPStatusError",
+      "input": {
+        "url": "https://httpbin.org/status/404"
+      },
+      "expected_behavior": {
+        "exception": "httpx.HTTPStatusError",
+        "status_code": 404
+      },
+      "httpx_api": [
+        "response.raise_for_status()",
+        "httpx.HTTPStatusError"
+      ],
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "HTTPStatusError",
+        "status_code": 404,
+        "request_method": "GET"
+      }
+    },
+    {
+      "id": "ERR-002",
+      "name": "HTTPStatusError - 500 Internal Server Error",
+      "category": "异常处理",
+      "description": "测试 500 状态码时 raise_for_status() 抛出 HTTPStatusError",
+      "input": {
+        "url": "https://httpbin.org/status/500"
+      },
+      "expected_behavior": {
+        "exception": "httpx.HTTPStatusError",
+        "status_code": 500
+      },
+      "httpx_api": [
+        "response.raise_for_status()",
+        "httpx.HTTPStatusError"
+      ],
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "HTTPStatusError",
+        "status_code": 500
+      }
+    },
+    {
+      "id": "ERR-003",
+      "name": "TimeoutException - 请求超时",
+      "category": "异常处理",
+      "description": "测试超时异常（使用极短超时时间触发）",
+      "input": {
+        "url": "https://httpbin.org/delay/1",
+        "timeout": 0.001
+      },
+      "expected_behavior": {
+        "exception": "httpx.TimeoutException"
+      },
+      "httpx_api": [
+        "httpx.TimeoutException"
+      ],
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "ConnectTimeout"
+      }
+    },
+    {
+      "id": "ERR-004",
+      "name": "RequestError - DNS 解析失败",
+      "category": "异常处理",
+      "description": "测试 DNS 解析失败时的 RequestError",
+      "input": {
+        "url": "https://nonexistent.invalid.domain.xyz/test"
+      },
+      "expected_behavior": {
+        "exception": "httpx.RequestError"
+      },
+      "httpx_api": [
+        "httpx.RequestError"
+      ],
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "ConnectError",
+        "has_request": true
+      }
+    },
+    {
+      "id": "ERR-005",
+      "name": "401 Unauthorized - 认证失败",
+      "category": "异常处理",
+      "description": "测试 401 状态码（认证失败）的响应属性",
+      "input": {
+        "url": "https://httpbin.org/status/401"
+      },
+      "expected_behavior": {
+        "status_code": 401,
+        "is_client_error": true,
+        "is_success": false
+      },
+      "httpx_api": [
+        "response.status_code",
+        "response.is_client_error",
+        "response.is_success"
+      ],
+      "actual_output": {
+        "status_code": 401,
+        "is_client_error": true,
+        "is_success": false
+      }
+    },
+    {
+      "id": "TC-012",
+      "name": "TLS 验证 - 默认系统证书",
+      "category": "TLS 配置",
+      "description": "测试使用默认系统证书进行 TLS 验证",
+      "input": {
+        "base_url": "https://httpbin.org",
+        "verify": true
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "verify_enabled": true
+      },
+      "httpx_api": [
+        "httpx.AsyncClient(verify=True)"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "verify_enabled": true
+      }
+    },
+    {
+      "id": "TC-013",
+      "name": "TLS 验证 - 自定义 SSL 上下文",
+      "category": "TLS 配置",
+      "description": "测试使用自定义 SSL 上下文进行 TLS 验证",
+      "input": {
+        "base_url": "https://httpbin.org",
+        "verify": "ssl.SSLContext"
+      },
+      "expected_behavior": {
+        "status_code": 200,
+        "custom_ssl_context": true
+      },
+      "httpx_api": [
+        "ssl.create_default_context()",
+        "httpx.AsyncClient(verify=ssl_context)"
+      ],
+      "actual_output": {
+        "status_code": 200,
+        "custom_ssl_context": true
+      }
+    }
+  ],
+  "error_scenarios": [
+    {
+      "id": "ERR-001",
+      "type": "httpx.HTTPStatusError",
+      "description": "测试 404 状态码时 raise_for_status() 抛出 HTTPStatusError",
+      "input": {
+        "url": "https://httpbin.org/status/404"
+      },
+      "expected_exception": "httpx.HTTPStatusError",
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "HTTPStatusError",
+        "status_code": 404,
+        "request_method": "GET"
+      }
+    },
+    {
+      "id": "ERR-002",
+      "type": "httpx.HTTPStatusError",
+      "description": "测试 500 状态码时 raise_for_status() 抛出 HTTPStatusError",
+      "input": {
+        "url": "https://httpbin.org/status/500"
+      },
+      "expected_exception": "httpx.HTTPStatusError",
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "HTTPStatusError",
+        "status_code": 500
+      }
+    },
+    {
+      "id": "ERR-003",
+      "type": "httpx.TimeoutException",
+      "description": "测试超时异常（使用极短超时时间触发）",
+      "input": {
+        "url": "https://httpbin.org/delay/1",
+        "timeout": 0.001
+      },
+      "expected_exception": "httpx.TimeoutException",
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "ConnectTimeout"
+      }
+    },
+    {
+      "id": "ERR-004",
+      "type": "httpx.RequestError",
+      "description": "测试 DNS 解析失败时的 RequestError",
+      "input": {
+        "url": "https://nonexistent.invalid.domain.xyz/test"
+      },
+      "expected_exception": "httpx.RequestError",
+      "actual_output": {
+        "exception_raised": true,
+        "exception_type": "ConnectError",
+        "has_request": true
+      }
+    },
+    {
+      "id": "ERR-005",
+      "type": "Unknown",
+      "description": "测试 401 状态码（认证失败）的响应属性",
+      "input": {
+        "url": "https://httpbin.org/status/401"
+      },
+      "expected_exception": "",
+      "actual_output": {
+        "status_code": 401,
+        "is_client_error": true,
+        "is_success": false
+      }
+    }
+  ],
+  "summary": {
+    "total_test_cases": 18,
+    "categories": {
+      "AsyncClient 创建": 2,
+      "GET 请求": 1,
+      "POST 请求": 1,
+      "PUT 请求": 1,
+      "DELETE 请求": 1,
+      "通用请求": 1,
+      "Request": 1,
+      "Response": 3,
+      "异常处理": 5,
+      "TLS 配置": 2
+    },
+    "httpx_apis_tested": [
+      "httpx.AsyncClient",
+      "httpx.Request",
+      "client.get",
+      "client.post",
+      "client.put",
+      "client.delete",
+      "client.build_request",
+      "client.send",
+      "response.status_code",
+      "response.headers",
+      "response.json()",
+      "response.text",
+      "response.is_success",
+      "response.is_error",
+      "response.is_client_error",
+      "response.raise_for_status()",
+      "httpx.HTTPStatusError",
+      "httpx.TimeoutException",
+      "httpx.RequestError"
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Distillation script for listener_recovery.py.
 
-[INPUT]: SDKConfig, service_manager, ws_listener runtime state
-[OUTPUT]: Listener runtime status and auto-recovery actions
+[INPUT]: SDKConfig, listener runtime state
+[OUTPUT]: Listener runtime status and health checks
 [POS]: WebSocket listener runtime monitoring and recovery
 
 [PROTOCOL]:
@@ -13,8 +13,8 @@
 import sys
 from pathlib import Path
 
-# Project root: 5 levels up from distill.py
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+# Use absolute path for project root
+PROJECT_ROOT = Path(r"D:\huangyg\git\sample\awiki")
 PYTHON_SCRIPTS = PROJECT_ROOT / 'python' / 'scripts'
 
 sys.path.insert(0, str(PYTHON_SCRIPTS))
@@ -22,14 +22,13 @@ sys.path.insert(0, str(PYTHON_SCRIPTS))
 from listener_recovery import (
     ensure_listener_runtime,
     get_listener_runtime_report,
-    _listener_status_path,
-    _load_listener_status,
-    _save_listener_status
+    get_listener_recovery_state,
+    probe_listener_runtime,
+    note_listener_healthy,
+    is_local_daemon_available,
 )
-from service_manager import get_service_manager
 from utils.config import SDKConfig
 import json
-import os
 
 
 def record_result(scenario: str, input_args: dict, output_data: dict, success: bool, error: str = None) -> dict:
@@ -45,170 +44,92 @@ def record_result(scenario: str, input_args: dict, output_data: dict, success: b
     return result
 
 
-def test_listener_status_path() -> dict:
-    """Test listener status path resolution."""
-    input_args = {}
-    output_data = {
-        "path": str(_listener_status_path()),
-        "parent_exists": False,
-        "is_absolute": False
-    }
-    
-    try:
-        output_data["parent_exists"] = _listener_status_path().parent.exists()
-        output_data["is_absolute"] = _listener_status_path().is_absolute()
-        
-        return record_result("status_path", input_args, output_data, True)
-    except Exception as e:
-        return record_result("status_path", input_args, output_data, False, str(e))
-
-
-def test_load_listener_status_missing() -> dict:
-    """Test loading listener status when file is missing."""
-    input_args = {"config_missing": True}
-    output_data = {
-        "status_loaded": False,
-        "running": False
-    }
-    
-    try:
-        status = _load_listener_status()
-        
-        output_data["status_loaded"] = status is not None
-        if status:
-            output_data["running"] = status.get("running", False)
-        
-        return record_result("load_missing", input_args, output_data, True)
-    except Exception as e:
-        return record_result("load_missing", input_args, output_data, False, str(e))
-
-
-def test_save_and_load_listener_status() -> dict:
-    """Test saving and loading listener status."""
-    input_args = {
-        "running": True,
-        "pid": 12345,
-        "mode": "websocket"
-    }
-    output_data = {
-        "saved": False,
-        "loaded": False,
-        "matches": False
-    }
-    
-    try:
-        # Save status
-        _save_listener_status(input_args)
-        output_data["saved"] = True
-        
-        # Load status
-        loaded = _load_listener_status()
-        output_data["loaded"] = loaded is not None
-        
-        if loaded:
-            output_data["matches"] = (
-                loaded.get("running") == input_args["running"] and
-                loaded.get("pid") == input_args["pid"] and
-                loaded.get("mode") == input_args["mode"]
-            )
-        
-        return record_result("save_and_load", input_args, output_data, True)
-    except Exception as e:
-        return record_result("save_and_load", input_args, output_data, False, str(e))
-
-
 def test_get_listener_runtime_report() -> dict:
     """Test getting listener runtime report."""
     input_args = {}
     output_data = {
-        "report_generated": False,
-        "running": False,
-        "pid": None,
-        "mode": None
+        "report": None,
+        "running": False
     }
     
     try:
         report = get_listener_runtime_report()
-        
-        output_data["report_generated"] = report is not None
-        if report:
-            output_data["running"] = report.get("running", False)
-            output_data["pid"] = report.get("pid")
-            output_data["mode"] = report.get("mode")
+        output_data["report"] = report
+        output_data["running"] = report.get("running", False) if report else False
         
         return record_result("runtime_report", input_args, output_data, True)
     except Exception as e:
         return record_result("runtime_report", input_args, output_data, False, str(e))
 
 
-def test_ensure_listener_runtime_stopped() -> dict:
-    """Test ensure_listener_runtime when listener is stopped."""
-    input_args = {"listener_stopped": True}
-    output_data = {
-        "was_running": False,
-        "auto_restart_attempted": False,
-        "now_running": False
-    }
-    
-    try:
-        # Get initial status
-        initial_report = get_listener_runtime_report()
-        output_data["was_running"] = initial_report.get("running", False) if initial_report else False
-        
-        # Ensure runtime (should attempt restart if stopped)
-        result = ensure_listener_runtime()
-        
-        output_data["auto_restart_attempted"] = result is not None
-        output_data["now_running"] = result.get("running", False) if result else False
-        
-        return record_result("ensure_stopped", input_args, output_data, True)
-    except Exception as e:
-        return record_result("ensure_stopped", input_args, output_data, False, str(e))
-
-
-def test_ensure_listener_runtime_running() -> dict:
-    """Test ensure_listener_runtime when listener is already running."""
-    input_args = {"listener_running": True}
-    output_data = {
-        "was_running": False,
-        "no_restart_needed": True,
-        "still_running": False
-    }
-    
-    try:
-        # Get initial status
-        initial_report = get_listener_runtime_report()
-        output_data["was_running"] = initial_report.get("running", False) if initial_report else False
-        
-        # Ensure runtime (should not restart if already running)
-        result = ensure_listener_runtime()
-        
-        output_data["no_restart_needed"] = result is not None
-        output_data["still_running"] = result.get("running", False) if result else False
-        
-        return record_result("ensure_running", input_args, output_data, True)
-    except Exception as e:
-        return record_result("ensure_running", input_args, output_data, False, str(e))
-
-
-def test_service_manager_integration() -> dict:
-    """Test service manager integration."""
+def test_probe_listener_runtime() -> dict:
+    """Test probing listener runtime."""
     input_args = {}
     output_data = {
-        "service_manager_available": False,
-        "platform": None
+        "probe_result": None,
+        "daemon_available": False
     }
     
     try:
-        manager = get_service_manager()
+        result = probe_listener_runtime()
+        output_data["probe_result"] = result
+        output_data["daemon_available"] = is_local_daemon_available()
         
-        output_data["service_manager_available"] = manager is not None
-        if manager:
-            output_data["platform"] = manager.platform
-        
-        return record_result("service_manager", input_args, output_data, True)
+        return record_result("probe_runtime", input_args, output_data, True)
     except Exception as e:
-        return record_result("service_manager", input_args, output_data, False, str(e))
+        return record_result("probe_runtime", input_args, output_data, False, str(e))
+
+
+def test_ensure_listener_runtime() -> dict:
+    """Test ensuring listener runtime."""
+    input_args = {}
+    output_data = {
+        "result": None,
+        "running": False
+    }
+    
+    try:
+        result = ensure_listener_runtime()
+        output_data["result"] = result
+        output_data["running"] = result.get("running", False) if result else False
+        
+        return record_result("ensure_runtime", input_args, output_data, True)
+    except Exception as e:
+        return record_result("ensure_runtime", input_args, output_data, False, str(e))
+
+
+def test_get_listener_recovery_state() -> dict:
+    """Test getting listener recovery state."""
+    input_args = {}
+    output_data = {
+        "state": None,
+        "restart_failures": 0
+    }
+    
+    try:
+        state = get_listener_recovery_state()
+        output_data["state"] = state
+        output_data["restart_failures"] = state.get("restart_failures", 0) if state else 0
+        
+        return record_result("recovery_state", input_args, output_data, True)
+    except Exception as e:
+        return record_result("recovery_state", input_args, output_data, False, str(e))
+
+
+def test_is_local_daemon_available() -> dict:
+    """Test checking local daemon availability."""
+    input_args = {}
+    output_data = {
+        "available": False
+    }
+    
+    try:
+        available = is_local_daemon_available()
+        output_data["available"] = available
+        
+        return record_result("daemon_available", input_args, output_data, True)
+    except Exception as e:
+        return record_result("daemon_available", input_args, output_data, False, str(e))
 
 
 def test_sdk_config_integration() -> dict:
@@ -216,56 +137,17 @@ def test_sdk_config_integration() -> dict:
     input_args = {}
     output_data = {
         "sdk_config_loaded": False,
-        "listener_config_path": None
+        "data_dir": None
     }
     
     try:
-        config = SDKConfig()
-        
+        config = SDKConfig.load()
         output_data["sdk_config_loaded"] = config is not None
-        output_data["listener_config_path"] = str(_listener_status_path())
+        output_data["data_dir"] = str(config.data_dir)
         
         return record_result("sdk_integration", input_args, output_data, True)
     except Exception as e:
         return record_result("sdk_integration", input_args, output_data, False, str(e))
-
-
-def test_status_update_flow() -> dict:
-    """Test complete status update flow."""
-    input_args = {
-        "flow": "save_status -> load_status -> verify"
-    }
-    output_data = {
-        "initial_status": None,
-        "updated_status": None,
-        "flow_success": False
-    }
-    
-    try:
-        # Save initial status
-        initial_status = {
-            "running": True,
-            "pid": 99999,
-            "mode": "websocket",
-            "last_check": "2026-03-24T00:00:00Z"
-        }
-        _save_listener_status(initial_status)
-        output_data["initial_status"] = initial_status
-        
-        # Load and verify
-        loaded = _load_listener_status()
-        output_data["updated_status"] = loaded
-        
-        if loaded:
-            output_data["flow_success"] = (
-                loaded.get("running") == initial_status["running"] and
-                loaded.get("pid") == initial_status["pid"] and
-                loaded.get("mode") == initial_status["mode"]
-            )
-        
-        return record_result("status_flow", input_args, output_data, True)
-    except Exception as e:
-        return record_result("status_flow", input_args, output_data, False, str(e))
 
 
 def distill():
@@ -281,39 +163,7 @@ def distill():
     
     print("Running listener_recovery.py distillation tests...", file=sys.stderr)
     
-    # Test status path
-    results["functions"].append({
-        "name": "_listener_status_path",
-        "type": "function",
-        "signature": "() -> Path",
-        "description": "Resolve listener status file path",
-        "tests": [test_listener_status_path()]
-    })
-    
-    # Test status load/save
-    results["functions"].append({
-        "name": "_load_listener_status",
-        "type": "function",
-        "signature": "() -> dict | None",
-        "description": "Load listener status from file",
-        "tests": [
-            test_load_listener_status_missing(),
-            test_save_and_load_listener_status()
-        ]
-    })
-    
-    results["functions"].append({
-        "name": "_save_listener_status",
-        "type": "function",
-        "signature": "(status: dict) -> None",
-        "description": "Save listener status to file",
-        "tests": [
-            test_save_and_load_listener_status(),
-            test_status_update_flow()
-        ]
-    })
-    
-    # Test runtime report
+    # Test get_listener_runtime_report
     results["functions"].append({
         "name": "get_listener_runtime_report",
         "type": "function",
@@ -322,31 +172,48 @@ def distill():
         "tests": [test_get_listener_runtime_report()]
     })
     
-    # Test ensure runtime
+    # Test probe_listener_runtime
+    results["functions"].append({
+        "name": "probe_listener_runtime",
+        "type": "function",
+        "signature": "() -> dict | None",
+        "description": "Probe listener runtime status",
+        "tests": [test_probe_listener_runtime()]
+    })
+    
+    # Test ensure_listener_runtime
     results["functions"].append({
         "name": "ensure_listener_runtime",
         "type": "function",
         "signature": "() -> dict | None",
         "description": "Ensure listener is running, auto-restart if stopped",
-        "tests": [
-            test_ensure_listener_runtime_stopped(),
-            test_ensure_listener_runtime_running()
-        ]
+        "tests": [test_ensure_listener_runtime()]
     })
     
-    # Test integrations
+    # Test get_listener_recovery_state
     results["functions"].append({
-        "name": "get_service_manager",
+        "name": "get_listener_recovery_state",
         "type": "function",
-        "signature": "() -> ServiceManager",
-        "description": "Get service manager for platform",
-        "tests": [test_service_manager_integration()]
+        "signature": "() -> dict | None",
+        "description": "Get listener recovery state including restart failures",
+        "tests": [test_get_listener_recovery_state()]
     })
     
+    # Test is_local_daemon_available
     results["functions"].append({
-        "name": "SDKConfig",
-        "type": "class",
-        "description": "SDK configuration integration",
+        "name": "is_local_daemon_available",
+        "type": "function",
+        "signature": "() -> bool",
+        "description": "Check if local daemon is configured and available",
+        "tests": [test_is_local_daemon_available()]
+    })
+    
+    # Test SDK integration
+    results["functions"].append({
+        "name": "SDKConfig.load",
+        "type": "classmethod",
+        "signature": "() -> SDKConfig",
+        "description": "Load SDK configuration",
         "tests": [test_sdk_config_integration()]
     })
     

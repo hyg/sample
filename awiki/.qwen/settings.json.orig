@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir *)",
+      "Bash(dir *)",
+      "Bash(findstr *)",
+      "Bash(python *)",
+      "Bash(type *)",
+      "Bash(tee *)",
+      "Bash(powershell *)",
+      "Bash(echo *)",
+      "Bash(npm test *)",
+      "Bash(npx *)"
+    ]
+  }
+}

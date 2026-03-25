@@ -11,8 +11,8 @@ const path = require('path');
 const fs = require('fs');
 
 // 导入目标模块
-const logging = require('../../../module/scripts/utils/logging.js');
-const { defaultDataDir } = require('../../../module/scripts/utils/config.js');
+const logging = require(path.join(__dirname, '../../../../module/scripts/utils/logging.js'));
+const { defaultDataDir } = require(path.join(__dirname, '../../../../module/scripts/utils/config.js'));
 
 describe('logging_config - 日志管理', () => {
   
@@ -77,19 +77,18 @@ describe('logging_config - 日志管理', () => {
     });
     
     it('should write log message', () => {
-      logging.configureLogging();
-      
+      const logFilePath = logging.configureLogging();
+
       // 写入测试消息
       global.log.info('Test info message');
       global.log.warn('Test warn message');
       global.log.error('Test error message');
-      
+
       // 验证日志文件存在
-      const logFile = logging.getLogFilePath();
-      assert.ok(fs.existsSync(logFile));
-      
+      assert.ok(fs.existsSync(logFilePath));
+
       // 验证日志内容
-      const content = fs.readFileSync(logFile, 'utf8');
+      const content = fs.readFileSync(logFilePath, 'utf8');
       assert.ok(content.includes('Test info message'));
       assert.ok(content.includes('Test warn message'));
       assert.ok(content.includes('Test error message'));

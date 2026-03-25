@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "D:\huangyg\git\sample\awiki\doc\scripts\bind_contact.py\distill.py", line 22, in <module>
+    from bind_contact import do_bind, PENDING_VERIFICATION_EXIT_CODE
+ModuleNotFoundError: No module named 'bind_contact'

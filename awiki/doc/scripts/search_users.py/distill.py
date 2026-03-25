@@ -9,8 +9,7 @@ from pathlib import Path
 from io import StringIO
 from contextlib import redirect_stdout
 
-# 添加 python/scripts 目录到路径
-SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "python" / "scripts"
+# 添加 python/scripts 目录到路�?SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "python" / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from utils import SDKConfig, create_user_service_client, authenticated_rpc_call
@@ -40,7 +39,7 @@ async def search_users(query: str, credential_name: str = "default") -> dict:
 
 
 def distill(query: str, credential_name: str = "default") -> dict:
-    """执行 search_users 并记录输入输出作为黄金标准."""
+    """执行 search_users 并记录输入输出作为黄金标�?"""
     # 捕获标准输出
     stdout_capture = StringIO()
     
@@ -50,8 +49,7 @@ def distill(query: str, credential_name: str = "default") -> dict:
         "credential_name": credential_name
     }
     
-    # 执行并捕获输出
-    try:
+    # 执行并捕获输�?    try:
         result = asyncio.run(search_users(query, credential_name))
         output_record = {
             "result": result,
@@ -84,19 +82,17 @@ def main() -> None:
     # 执行蒸馏
     golden_record = distill(args.query, args.credential)
     
-    # 输出黄金标准（JSON 格式）
-    print(json.dumps(golden_record, indent=2, ensure_ascii=False))
+    # 输出黄金标准（JSON 格式�?    print(json.dumps(golden_record, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
     main()
 
 # =============================================================================
-# 附录：补充场景测试 - 无结果、部分匹配、空搜索词
-# =============================================================================
+# 附录：补充场景测�?- 无结果、部分匹配、空搜索�?# =============================================================================
 
 def test_search_no_results(query='nonexistent_user_xyz123', credential_name='default'):
-    """测试搜索无结果场景"""
+    """测试搜索无结果场�?""
     input_data = {'scenario': 'search_no_results', 'query': query, 'credential_name': credential_name}
     output_data = {'results': None, 'total': None, 'error': None}
     try:

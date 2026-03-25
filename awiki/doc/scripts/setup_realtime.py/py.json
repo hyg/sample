@@ -1,0 +1,151 @@
+Running setup_realtime.py distillation tests...
+{
+  "file": "python/scripts/setup_realtime.py",
+  "doc_path": "doc/scripts/setup_realtime.py",
+  "version": "1.3.10",
+  "functions": [
+    {
+      "name": "Constants",
+      "type": "constants",
+      "description": "Module constants",
+      "tests": [
+        {
+          "scenario": "constants",
+          "input": {},
+          "output": {
+            "DEFAULT_LOCAL_DAEMON_HOST": "127.0.0.1",
+            "DEFAULT_LOCAL_DAEMON_PORT": 18790,
+            "RECEIVE_MODE_HTTP": "http",
+            "RECEIVE_MODE_WEBSOCKET": "websocket"
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "_generate_token",
+      "type": "function",
+      "signature": "() -> str",
+      "description": "Generate secure webhook token with awiki_ prefix",
+      "tests": [
+        {
+          "scenario": "generate_token",
+          "input": {},
+          "output": {
+            "token_generated": true,
+            "token_prefix": "awiki_",
+            "token_length": 70
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "_generate_local_daemon_token",
+      "type": "function",
+      "signature": "() -> str",
+      "description": "Generate secure token for localhost daemon requests",
+      "tests": [
+        {
+          "scenario": "generate_local_daemon_token",
+          "input": {},
+          "output": {
+            "token_generated": true,
+            "token_prefix": "awiki_local_9",
+            "token_length": 60
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "_is_placeholder_token",
+      "type": "function",
+      "signature": "(token: str) -> bool",
+      "description": "Check if token is a template placeholder",
+      "tests": {
+        "batch_tests": [
+          {
+            "scenario": "is_placeholder: Empty string",
+            "input": {
+              "token": "",
+              "desc": "Empty string"
+            },
+            "output": {
+              "is_placeholder": true
+            },
+            "success": true
+          },
+          {
+            "scenario": "is_placeholder: Angle brackets",
+            "input": {
+              "token": "<placeholder>",
+              "desc": "Angle brackets"
+            },
+            "output": {
+              "is_placeholder": true
+            },
+            "success": true
+          },
+          {
+            "scenario": "is_placeholder: Changeme",
+            "input": {
+              "token": "changeme",
+              "desc": "Changeme"
+            },
+            "output": {
+              "is_placeholder": true
+            },
+            "success": true
+          },
+          {
+            "scenario": "is_placeholder: Real token",
+            "input": {
+              "token": "awiki_abc123",
+              "desc": "Real token"
+            },
+            "output": {
+              "is_placeholder": false
+            },
+            "success": true
+          },
+          {
+            "scenario": "is_placeholder: Local daemon token",
+            "input": {
+              "token": "awiki_local_xyz",
+              "desc": "Local daemon token"
+            },
+            "output": {
+              "is_placeholder": false
+            },
+            "success": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "SDKConfig.load",
+      "type": "classmethod",
+      "signature": "() -> SDKConfig",
+      "description": "Load SDK configuration",
+      "tests": [
+        {
+          "scenario": "sdk_integration",
+          "input": {},
+          "output": {
+            "sdk_config_loaded": true,
+            "data_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message"
+          },
+          "success": true
+        }
+      ]
+    }
+  ],
+  "constants": {
+    "DEFAULT_LOCAL_DAEMON_HOST": "127.0.0.1",
+    "DEFAULT_LOCAL_DAEMON_PORT": 18790,
+    "RECEIVE_MODE_HTTP": "http",
+    "RECEIVE_MODE_WEBSOCKET": "websocket"
+  },
+  "classes": {}
+}

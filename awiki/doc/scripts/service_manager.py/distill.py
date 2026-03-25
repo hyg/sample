@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 # Add scripts directory to path for imports (service_manager.py and utils are siblings)
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_PROJECT_ROOT = Path(r"D:\\huangyg\\git\\sample\\awiki").resolve().parent.parent.parent.parent
 _SCRIPTS_DIR = _PROJECT_ROOT / "python" / "scripts"
 sys.path.insert(0, str(_SCRIPTS_DIR))
 

@@ -12,16 +12,15 @@ const { configureLogging, getLogFile } = require('./scripts/utils/logging.js');
 
 // HTTP 客户端
 const {
-  createUserServiceClient,
-  createMoltMessageClient,
-  createHttpClient
+  create_user_service_client,
+  create_molt_message_client
 } = require('./scripts/utils/client.js');
 
 // RPC
 const {
   JsonRpcError,
-  rpcCall,
-  authenticatedRpcCall
+  rpc_call,
+  authenticated_rpc_call
 } = require('./scripts/utils/rpc.js');
 
 // 认证
@@ -69,6 +68,13 @@ const {
   connectToWs
 } = require('./scripts/utils/ws.js');
 
+// Profile
+const {
+  get_my_profile,
+  get_public_profile,
+  resolve_did
+} = require('./scripts/get-profile.js');
+
 module.exports = {
   // 配置
   SDKConfig,
@@ -78,14 +84,13 @@ module.exports = {
   getLogFile,
   
   // HTTP 客户端
-  createUserServiceClient,
-  createMoltMessageClient,
-  createHttpClient,
+  create_user_service_client,
+  create_molt_message_client,
   
   // RPC
   JsonRpcError,
-  rpcCall,
-  authenticatedRpcCall,
+  rpc_call,
+  authenticated_rpc_call,
   
   // 认证
   generateWbaAuthHeader,
@@ -118,5 +123,10 @@ module.exports = {
   
   // WebSocket
   createWebSocketClient,
-  connectToWs
+  connectToWs,
+
+  // Profile
+  get_my_profile,
+  get_public_profile,
+  resolve_did
 };

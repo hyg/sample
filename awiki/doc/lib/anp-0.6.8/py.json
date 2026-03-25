@@ -1,0 +1,409 @@
+{
+  "meta": {
+    "anp_version": "0.6.8+",
+    "generated_date": "2026-03-25T08:25:42Z",
+    "source_file": "doc/lib/anp-0.6.8/distill.py",
+    "description": "anp 库蒸馏数据 - 基于可执行测试用例生成的黄金标准"
+  },
+  "modules_covered": [
+    "anp.authentication",
+    "anp.e2e_encryption_hpke"
+  ],
+  "test_cases": [
+    {
+      "id": "TC-AUTH-001",
+      "module": "anp.authentication",
+      "function": "generate_auth_header",
+      "business_scenario": "生成 DID WBA 认证头用于 JSON-RPC 请求认证",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "did_document_id": "did:wba:awiki.ai:user:k1_J9u8aYORiw0yjW3KqtqkqsHZth9i5lAkwxjJBN5jagw",
+        "service_domain": "awiki.ai",
+        "sign_callback": "function(content: bytes, vm_fragment: str) -> bytes (R|S format)"
+      },
+      "output": {
+        "type": "str",
+        "format": "DIDWba <base64url_encoded_token>",
+        "example": "DIDWba v=\"1.1\", did=\"did:wba:awiki.ai:user:k1_J9u8aYORiw0yjW...",
+        "success": true
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-AUTH-001-ERR",
+      "module": "anp.authentication",
+      "function": "generate_auth_header",
+      "business_scenario": "测试错误场景处理",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "error_tests": [
+        {
+          "condition": "did_document 缺少 authentication 字段",
+          "expected": "ValueError",
+          "actual": "ValueError: DID document is missing authentication methods.",
+          "status": "PASS"
+        },
+        {
+          "condition": "service_domain 为空字符串",
+          "expected": "ValueError",
+          "actual": "ValueError: Invalid signature format: Invalid R|S signature fo",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "TC-AUTH-002",
+      "module": "anp.authentication",
+      "function": "create_did_wba_document_with_key_binding",
+      "business_scenario": "创建带密钥绑定的 DID WBA 身份文档（注册新用户）",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "hostname": "awiki.ai",
+        "path_prefix": [
+          "user"
+        ],
+        "proof_purpose": "authentication",
+        "domain": "awiki.ai",
+        "challenge": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+        "services": null
+      },
+      "output": {
+        "type": "tuple",
+        "structure": "(did_document: dict, keys: dict)",
+        "did_document": {
+          "id": "did:wba:awiki.ai:user:k1_31PFQluIy2tq2qqdcuwipu0KBPmBR5eFZWs3gJQRC-8",
+          "verificationMethod_count": 3,
+          "authentication_present": true,
+          "proof_present": true,
+          "proof_type": "EcdsaSecp256k1Signature2019"
+        },
+        "keys": {
+          "key-1_present": true,
+          "key-1_key_count": 2
+        },
+        "success": true
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-AUTH-003",
+      "module": "anp.authentication",
+      "function": "create_did_wba_document_with_key_binding",
+      "business_scenario": "创建带 E2EE 密钥的 DID 身份（支持端到端加密）",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "hostname": "awiki.ai",
+        "path_prefix": [
+          "user"
+        ],
+        "proof_purpose": "authentication",
+        "domain": "awiki.ai",
+        "challenge": "e2ee_challenge_hex",
+        "services": [
+          {
+            "id": "#messaging",
+            "type": "MessagingService"
+          }
+        ]
+      },
+      "output": {
+        "type": "tuple",
+        "did_document": {
+          "id": "did:wba:awiki.ai:user:k1__YJ2zn8sqP7-R4OuDI08woqjGvSI_0yV6Z2xtdhkpj8",
+          "verificationMethod_count": 3,
+          "key_types": [
+            "secp256k1",
+            "P-256",
+            "unknown"
+          ],
+          "authentication_present": true,
+          "keyAgreement_present": true,
+          "service_present": true
+        },
+        "keys": {
+          "keys_present": [
+            "key-1",
+            "key-2",
+            "key-3"
+          ]
+        },
+        "success": true
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-AUTH-004",
+      "module": "anp.authentication",
+      "function": "resolve_did_wba_document",
+      "business_scenario": "解析远程 DID 文档用于 E2EE 会话建立",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "did": "did:wba:awiki.ai:user:k1_test_resolve"
+      },
+      "output": {
+        "type": "dict | None",
+        "resolved": false,
+        "content": null
+      },
+      "status": "INFO_DID_NOT_FOUND",
+      "error_scenarios": [
+        {
+          "condition": "DID 格式无效",
+          "expected": "Exception",
+          "actual": "ValueError: Invalid DID format: must start with 'did:wba:'",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "TC-E2EE-001",
+      "module": "anp.e2e_encryption_hpke",
+      "class": "E2eeHpkeSession",
+      "method": "initiate_session",
+      "business_scenario": "发起 E2EE 会话（发送 e2ee_init）",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "local_did": "did:wba:awiki.ai:user:k1_UCRXYMN4FDhu_uBDJulPnpTNPkeOQIAV_Wo9Yu_xnEY",
+        "peer_did": "did:wba:awiki.ai:user:k1_r2TZgkwGyybdS-uI5MJP65cK97l4eATXsd9oSe_6iVI",
+        "local_x25519_key_id": "did:wba:awiki.ai:user:k1_UCRXYMN4FDhu_uBDJulPnpTNPkeOQIAV_Wo9Yu_xnEY#key-3",
+        "peer_key_id": "did:wba:awiki.ai:user:k1_r2TZgkwGyybdS-uI5MJP65cK97l4eATXsd9oSe_6iVI#key-3"
+      },
+      "output": {
+        "type": "tuple",
+        "structure": "(msg_type: str, content: dict)",
+        "msg_type": "e2ee_init",
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "f8dde3ba7f4e06b72181...",
+          "sender_did": "did:wba:awiki.ai:user:k1_UCRXYMN4FDhu_uBDJulPnpTNPkeOQIAV_Wo9Yu_xnEY",
+          "recipient_did": "did:wba:awiki.ai:user:k1_r2TZgkwGyybdS-uI5MJP65cK97l4eATXsd9oSe_6iVI",
+          "has_proof": true
+        },
+        "session_state": "SessionState.ACTIVE"
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-E2EE-002",
+      "module": "anp.e2e_encryption_hpke",
+      "class": "E2eeHpkeSession",
+      "method": "process_init",
+      "business_scenario": "处理收到的 e2ee_init 消息（接收方建立会话）",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "output": {
+        "error": "ValueError",
+        "message": "e2ee_init proof verification failed: proof_signature_invalid"
+      },
+      "status": "ERROR"
+    },
+    {
+      "id": "TC-E2EE-003-004",
+      "module": "anp.e2e_encryption_hpke",
+      "class": "E2eeHpkeSession",
+      "methods": [
+        "encrypt_message",
+        "decrypt_message"
+      ],
+      "business_scenario": "使用 HPKE 加密和解密消息（Chain Ratchet 前向安全）",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "output": {
+        "error": "ValueError",
+        "message": "e2ee_init proof verification failed: proof_signature_invalid"
+      },
+      "status": "ERROR"
+    },
+    {
+      "id": "TC-E2EE-006",
+      "module": "anp.e2e_encryption_hpke",
+      "function": "generate_proof",
+      "business_scenario": "为 E2EE 消息生成签名证明（用于 e2ee_ack）",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "test_session_123",
+          "sender_did": "did:wba:awiki.ai:user:k1_sender",
+          "recipient_did": "did:wba:awiki.ai:user:k1_receiver",
+          "expires": 86400
+        },
+        "private_key": "<ECPrivateKey>",
+        "verification_method": "did:wba:awiki.ai:user:k1_sender#key-2"
+      },
+      "output": {
+        "type": "dict",
+        "structure": "content with added 'proof' field",
+        "has_proof": true,
+        "proof_type": "EcdsaSecp256r1Signature2019",
+        "proof_verification_method": "N/A",
+        "proof_has_created": true,
+        "proof_has_proof_value": false
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-E2EE-007",
+      "module": "anp.e2e_encryption_hpke",
+      "function": "validate_proof",
+      "business_scenario": "验证 E2EE 消息的签名证明",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "content": {
+          "e2ee_version": "1.1",
+          "session_id": "test_session_456",
+          "sender_did": "did:wba:awiki.ai:user:k1_sender",
+          "recipient_did": "did:wba:awiki.ai:user:k1_receiver",
+          "expires": 86400,
+          "proof": {
+            "type": "EcdsaSecp256r1Signature2019",
+            "created": "2026-03-25T08:25:42Z",
+            "verification_method": "did:wba:awiki.ai:user:k1_sender#key-2",
+            "proof_value": "PnUDMkgwoTQUEAmFWVEQsMR3TOIEQCdfbU7yhTIPgaAsuYwoQqB9epvaLdm3EUo2SIPB-trv-et8MlX_W6Iw_w"
+          }
+        },
+        "public_key": "<ECPublicKey>",
+        "max_past_age_seconds": 86400
+      },
+      "output": {
+        "type": "None",
+        "success": "无异常抛出（证明有效）"
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-E2EE-007-ERR",
+      "module": "anp.e2e_encryption_hpke",
+      "function": "validate_proof",
+      "business_scenario": "测试证明验证错误场景",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "error_tests": [
+        {
+          "condition": "签名验证失败（错误的公钥）",
+          "expected": "ValueError",
+          "actual": "ValueError: Proof signature verification failed",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "TC-E2EE-008",
+      "module": "anp.e2e_encryption_hpke",
+      "function": "detect_message_type",
+      "business_scenario": "检测 E2EE 消息类型",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "test_cases": [
+        {
+          "input": {
+            "type_field": "e2ee_init"
+          },
+          "output": "MessageType.E2EE_INIT",
+          "expected": "MessageType.E2EE_INIT",
+          "match": true
+        },
+        {
+          "input": {
+            "type_field": "e2ee_ack"
+          },
+          "output": "MessageType.E2EE_ACK",
+          "expected": "MessageType.E2EE_ACK",
+          "match": true
+        },
+        {
+          "input": {
+            "type_field": "e2ee_msg"
+          },
+          "output": "MessageType.E2EE_MSG",
+          "expected": "MessageType.E2EE_MSG",
+          "match": true
+        },
+        {
+          "input": {
+            "type_field": "e2ee_rekey"
+          },
+          "output": "MessageType.E2EE_REKEY",
+          "expected": "MessageType.E2EE_REKEY",
+          "match": true
+        },
+        {
+          "input": {
+            "type_field": "e2ee_error"
+          },
+          "output": "MessageType.E2EE_ERROR",
+          "expected": "MessageType.E2EE_ERROR",
+          "match": true
+        },
+        {
+          "input": {
+            "type_field": "unknown_type"
+          },
+          "output": "None",
+          "expected": "None",
+          "match": true
+        }
+      ],
+      "status": "PASS"
+    },
+    {
+      "id": "TC-E2EE-009",
+      "module": "anp.e2e_encryption_hpke",
+      "function": "extract_x25519_public_key_from_did_document",
+      "business_scenario": "从 DID 文档提取 X25519 公钥用于 HPKE 密钥协商",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "doc_id": "did:wba:awiki.ai:user:k1_ldDCj3Zn3SvbecLGw95_1y39Ro2wEX-AgIPSklLUJyc",
+        "key_id": "did:wba:awiki.ai:user:k1_ldDCj3Zn3SvbecLGw95_1y39Ro2wEX-AgIPSklLUJyc#key-3"
+      },
+      "output": {
+        "type": "tuple",
+        "structure": "(public_key: X25519PublicKey, key_id: str)",
+        "public_key": "<X25519PublicKey>",
+        "key_id": "did:wba:awiki.ai:user:k1_ldDCj3Zn3SvbecLGw95_1y39Ro2wEX-AgIPSklLUJyc#key-3",
+        "key_id_match": true
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-E2EE-010",
+      "module": "anp.e2e_encryption_hpke",
+      "function": "extract_signing_public_key_from_did_document",
+      "business_scenario": "从 DID 文档提取 secp256r1 签名公钥用于证明验证",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "doc_id": "did:wba:awiki.ai:user:k1_FrD9wa4MW8CjUH_AC6U9MLdoDdOarn_T5f_8gd5Rz8g",
+        "vm_id": "did:wba:awiki.ai:user:k1_FrD9wa4MW8CjUH_AC6U9MLdoDdOarn_T5f_8gd5Rz8g#key-2"
+      },
+      "output": {
+        "type": "object",
+        "public_key": "<ECPublicKey>"
+      },
+      "status": "PASS"
+    },
+    {
+      "id": "TC-E2EE-011-012",
+      "module": "anp.e2e_encryption_hpke",
+      "class": "HpkeKeyManager",
+      "methods": [
+        "register_session",
+        "cleanup_expired",
+        "get_active_session"
+      ],
+      "business_scenario": "注册和管理 E2EE 会话",
+      "timestamp": "2026-03-25T08:25:42Z",
+      "input": {
+        "session_state": "SessionState.ACTIVE"
+      },
+      "output": {
+        "register_session": {
+          "success": true,
+          "side_effect": "会话可通过 get_active_session 获取"
+        },
+        "get_active_session": {
+          "session_found": true
+        },
+        "cleanup_expired": {
+          "success": true,
+          "side_effect": "过期会话从内部存储中移除"
+        }
+      },
+      "status": "PASS"
+    }
+  ]
+}

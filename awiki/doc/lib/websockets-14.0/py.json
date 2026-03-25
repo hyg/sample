@@ -1,0 +1,295 @@
+============================================================
+  websockets-14.0 蒸馏脚本
+  生成时间: 2026-03-25 18:01:40
+============================================================
+
+【元数据】
+{
+  "library": "websockets",
+  "version": "14.0",
+  "distill_date": "2026-03-25T18:01:40.929806",
+  "covered_apis": [
+    "websockets.connect()",
+    "WebSocketClientProtocol",
+    "send()",
+    "recv()",
+    "close()",
+    "ConnectionClosed"
+  ],
+  "use_cases": [
+    "WebSocket 连接管理",
+    "发送/接收消息",
+    "JSON-RPC 通信",
+    "推送通知接收",
+    "异常处理"
+  ]
+}
+
+============================================================
+  测试 1: websockets.connect() 基本连接
+============================================================
+
+【测试】connect()
+  描述：创建 WebSocket 连接（异步上下文管理器）
+  状态：成功
+  数据：{
+    "function": "websockets.connect",
+    "signature": "async with websockets.connect(uri, **kwargs) as websocket",
+    "parameters": {
+        "uri": "WebSocket 服务器地址 (ws:// 或 wss://)",
+        "ssl": "SSL 上下文（可选，用于 wss 连接）",
+        "extra_headers": "额外的 HTTP 请求头（可选）",
+        "timeout": "连接超时时间（秒）",
+        "ping_interval": "心跳间隔（秒）",
+        "ping_timeout": "心跳超时时间（秒）"
+    },
+    "return_type": "WebSocketClientProtocol (异步上下文管理器)",
+    "example_input": {
+        "uri": "wss://awiki.ai/message/ws?token=<jwt_token>",
+        "ssl": "True (用于 wss 连接)",
+        "extra_headers": {
+            "Authorization": "Bearer <token>"
+        }
+    },
+    "example_output": {
+        "websocket": "WebSocketClientProtocol 对象",
+        "is_open": "连接是否打开",
+        "protocol": "协商的子协议（如果有）"
+    },
+    "notes": [
+        "使用 async with 自动管理连接生命周期",
+        "退出上下文时自动调用 close()",
+        "支持 JWT token 认证（通过查询参数或请求头）"
+    ]
+}
+
+【测试】connect() - 实际连接测试
+  描述：尝试连接到本地测试服务器
+  状态：失败
+  数据：{
+    "connected": false,
+    "error": "TypeError",
+    "message": "BaseEventLoop.create_connection() got an unexpected keyword argument 'timeout'"
+}
+
+============================================================
+  测试 2: websocket.send() 发送消息
+============================================================
+
+【测试】send()
+  描述：通过 WebSocket 连接发送消息
+  状态：成功
+  数据：{
+    "function": "websocket.send",
+    "signature": "await websocket.send(data)",
+    "parameters": {
+        "data": "要发送的数据（str 或 bytes）"
+    },
+    "return_type": "None",
+    "example_input": {
+        "text_message": "Hello, WebSocket!",
+        "json_message": "{\"jsonrpc\": \"2.0\", \"method\": \"send\", \"params\": {\"content\": \"Hello\", \"type\": \"text\", \"receiver_did\": \"did:wba:awiki.ai:user:k1_...\", \"client_msg_id\": \"uuid4-string\"}, \"id\": 1}"
+    },
+    "example_output": {
+        "return": "None",
+        "side_effect": "消息发送到服务器"
+    },
+    "notes": [
+        "发送文本消息使用 str 类型",
+        "发送二进制消息使用 bytes 类型",
+        "发送前确保连接已打开",
+        "发送失败会抛出异常"
+    ]
+}
+
+【测试】send() - JSON-RPC 消息示例
+  描述：发送 JSON-RPC 格式的消息
+  状态：示例
+  数据：{
+    "input": {
+        "jsonrpc": "2.0",
+        "method": "send",
+        "params": {
+            "content": "Hello from distill script",
+            "type": "text",
+            "receiver_did": "did:wba:awiki.ai:user:k1_example",
+            "client_msg_id": "550e8400-e29b-41d4-a716-446655440000"
+        },
+        "id": 1
+    },
+    "serialized": "{\"jsonrpc\": \"2.0\", \"method\": \"send\", \"params\": {\"content\": \"Hello from distill script\", \"type\": \"text\", \"receiver_did\": \"did:wba:awiki.ai:user:k1_example\", \"client_msg_id\": \"550e8400-e29b-41d4-a716-446655440000\"}, \"id\": 1}",
+    "send_code": "await websocket.send(json.dumps(message))"
+}
+
+============================================================
+  测试 3: websocket.recv() 接收消息
+============================================================
+
+【测试】recv()
+  描述：从 WebSocket 连接接收消息
+  状态：成功
+  数据：{
+    "function": "websocket.recv",
+    "signature": "data = await websocket.recv()",
+    "parameters": {},
+    "return_type": "str 或 bytes",
+    "example_input": "无参数（阻塞等待消息）",
+    "example_output": {
+        "text_message": "Hello, WebSocket!",
+        "json_message": "{\"method\": \"new_message\", \"params\": {...}}"
+    },
+    "notes": [
+        "阻塞直到收到消息或连接关闭",
+        "返回 str（文本消息）或 bytes（二进制消息）",
+        "连接关闭时抛出 ConnectionClosed 异常",
+        "可配合 asyncio.wait_for() 设置超时"
+    ]
+}
+
+【测试】recv() - 推送通知示例
+  描述：接收服务器推送的新消息通知
+  状态：示例
+  数据：{
+    "raw_data": "{\"method\": \"new_message\", \"params\": {\"id\": \"msg_123456\", \"sender_did\": \"did:wba:awiki.ai:user:k1_sender\", \"content\": \"Hello, this is a push notification\", \"type\": \"text\", \"server_seq\": 42, \"sent_at\": \"2026-03-25T10:00:00Z\"}}",
+    "parsed": {
+        "method": "new_message",
+        "params": {
+            "id": "msg_123456",
+            "sender_did": "did:wba:awiki.ai:user:k1_sender",
+            "content": "Hello, this is a push notification",
+            "type": "text",
+            "server_seq": 42,
+            "sent_at": "2026-03-25T10:00:00Z"
+        }
+    },
+    "recv_code": "data = await websocket.recv()\nmessage = json.loads(data)"
+}
+
+【测试】recv() - 带超时
+  描述：使用 asyncio.wait_for() 设置接收超时
+  状态：示例
+  数据：{
+    "code": "\nasync def receive_with_timeout(websocket, timeout: float = 10.0):\n    try:\n        data = await asyncio.wait_for(websocket.recv(), timeout=timeout)\n        return json.loads(data)\n    except asyncio.TimeoutError:\n        return None  # 超时返回 None\n",
+    "parameters": {
+        "timeout": "10.0 (秒)"
+    },
+    "return": "dict | None"
+}
+
+============================================================
+  测试 4: websocket.close() 关闭连接
+============================================================
+
+【测试】close()
+  描述：关闭 WebSocket 连接
+  状态：成功
+  数据：{
+    "function": "websocket.close",
+    "signature": "await websocket.close(code=1000, reason='')",
+    "parameters": {
+        "code": "关闭状态码（默认 1000 表示正常关闭）",
+        "reason": "关闭原因（可选字符串）"
+    },
+    "return_type": "None",
+    "example_input": {
+        "normal_close": {
+            "code": 1000,
+            "reason": "Normal closure"
+        },
+        "going_away": {
+            "code": 1001,
+            "reason": "Going away"
+        }
+    },
+    "example_output": {
+        "return": "None",
+        "side_effect": "连接关闭，触发 on_close 回调"
+    },
+    "notes": [
+        "使用 async with 时自动调用 close()",
+        "也可以手动调用 close() 提前关闭",
+        "关闭后不能再发送或接收消息",
+        "常见状态码：1000(正常), 1001(离开), 1006(异常)"
+    ]
+}
+
+【测试】close() - 常见关闭状态码
+  描述：WebSocket 标准关闭状态码
+  状态：示例
+  数据：{
+    "status_codes": {
+        "1000": "CLOSE_NORMAL - 正常关闭",
+        "1001": "CLOSE_GOING_AWAY - 端点离开",
+        "1002": "CLOSE_PROTOCOL_ERROR - 协议错误",
+        "1003": "CLOSE_UNSUPPORTED - 不支持的数据类型",
+        "1005": "CLOSE_NO_STATUS - 无状态码（保留）",
+        "1006": "CLOSE_ABNORMAL - 异常关闭（无关闭帧）",
+        "1007": "CLOSE_INVALID_DATA - 无效数据",
+        "1008": "CLOSE_POLICY_VIOLATION - 违反策略",
+        "1009": "CLOSE_MESSAGE_TOO_BIG - 消息太大",
+        "1010": "CLOSE_MANDATORY_EXTENSION - 需要扩展",
+        "1011": "CLOSE_INTERNAL_ERROR - 内部错误",
+        "1015": "CLOSE_TLS_FAIL - TLS 握手失败"
+    },
+    "default": "1000 (正常关闭)",
+    "usage": "await websocket.close(code=1000, reason='Task complete')"
+}
+
+============================================================
+  测试 5: ConnectionClosed 异常处理
+============================================================
+
+【测试】ConnectionClosed
+  描述：连接关闭时抛出的异常
+  状态：成功
+  数据：{
+    "exception": "websockets.exceptions.ConnectionClosed",
+    "signature": "class ConnectionClosed(Exception)",
+    "attributes": {
+        "code": "关闭状态码（int）",
+        "reason": "关闭原因（str）",
+        "rcvd_then_sent": "接收和发送的关闭帧顺序"
+    },
+    "example_catch": "\nfrom websockets.exceptions import ConnectionClosed\n\ntry:\n    data = await websocket.recv()\nexcept ConnectionClosed as e:\n    print(f\"连接关闭：code={e.code}, reason={e.reason}\")\n",
+    "notes": [
+        "recv() 在连接关闭时抛出此异常",
+        "send() 在连接关闭时抛出此异常",
+        "可通过 code 判断关闭原因",
+        "code=1000 表示正常关闭",
+        "code=1006 表示异常断开"
+    ]
+}
+
+【测试】异常处理 - 完整示例
+  描述：捕获并处理各种 WebSocket 异常
+  状态：示例
+  数据：{
+    "imports": [
+        "from websockets.exceptions import ConnectionClosed, ConnectionClosedError",
+        "from websockets.exceptions import ConnectionClosedOK, InvalidStatusCode"
+    ],
+    "code": "\nasync def handle_websocket(uri: str):\n    try:\n        async with websockets.connect(uri) as ws:\n            # 发送消息\n            await ws.send(\"Hello\")\n            \n            # 接收消息\n            while True:\n                data = await ws.recv()\n                print(f\"收到：{data}\")\n                \n    except ConnectionClosedOK as e:\n        # 正常关闭\n        print(f\"连接正常关闭：{e.code} - {e.reason}\")\n        \n    except ConnectionClosed as e:\n        # 异常关闭\n        print(f\"连接异常关闭：{e.code} - {e.reason}\")\n        \n    except ConnectionRefusedError:\n        # 连接被拒绝\n        print(\"服务器拒绝连接\")\n        \n    except Exception as e:\n        # 其他异常\n        print(f\"发生错误：{type(e).__name__}: {e}\")\n",
+    "exception_types": {
+        "ConnectionClosedOK": "正常关闭（code=1000）",
+        "ConnectionClosed": "异常关闭（code!=1000）",
+        "ConnectionRefusedError": "连接被拒绝",
+        "InvalidStatusCode": "无效的 HTTP 状态码",
+        "TimeoutError": "超时"
+    }
+}
+
+============================================================
+  测试 6: 完整使用示例
+============================================================
+
+【测试】完整示例
+  描述：WebSocket 客户端完整使用流程
+  状态：示例
+  数据：{
+    "description": "完整的 WebSocket 客户端示例（基于 awiki-did 的 WsClient 封装）",
+    "code": "\nimport asyncio\nimport json\nimport websockets\nfrom websockets.exceptions import ConnectionClosed\nfrom datetime import datetime\n\nclass WsClient:\n    def __init__(self, uri: str, token: str):\n        self.uri = f\"{uri}?token={token}\"\n        self.token = token\n        self.websocket = None\n    \n    async def connect(self) -> None:\n        \"\"\"建立 WebSocket 连接\"\"\"\n        self.websocket = await websockets.connect(\n            self.uri,\n            ssl=True  # wss 连接需要 SSL\n        )\n        print(f\"已连接到 {self.uri}\")\n    \n    async def close(self) -> None:\n        \"\"\"关闭连接\"\"\"\n        if self.websocket:\n            await self.websocket.close()\n            print(\"连接已关闭\")\n    \n    async def send_rpc(self, method: str, params: dict) -> dict:\n        \"\"\"发送 JSON-RPC 请求\"\"\"\n        message = {\n            \"jsonrpc\": \"2.0\",\n            \"method\": method,\n            \"params\": params,\n            \"id\": int(datetime.now().timestamp())\n        }\n        await self.websocket.send(json.dumps(message))\n        response = await self.websocket.recv()\n        return json.loads(response)\n    \n    async def receive(self, timeout: float = 10.0) -> dict | None:\n        \"\"\"接收消息（带超时）\"\"\"\n        try:\n            data = await asyncio.wait_for(\n                self.websocket.recv(),\n                timeout=timeout\n            )\n            return json.loads(data)\n        except asyncio.TimeoutError:\n            return None\n        except ConnectionClosed:\n            return None\n    \n    async def receive_notification(self, timeout: float = 10.0) -> dict | None:\n        \"\"\"接收推送通知（跳过请求响应）\"\"\"\n        while True:\n            msg = await self.receive(timeout)\n            if msg is None:\n                return None\n            # 跳过 JSON-RPC 响应（有 \"id\" 字段）\n            if \"id\" in msg:\n                continue\n            return msg\n\nasync def main():\n    # 创建客户端\n    client = WsClient(\n        uri=\"wss://awiki.ai/message/ws\",\n        token=\"your-jwt-token\"\n    )\n    \n    try:\n        # 连接\n        await client.connect()\n        \n        # 发送消息\n        result = await client.send_rpc(\n            method=\"send\",\n            params={\n                \"content\": \"Hello\",\n                \"type\": \"text\",\n                \"receiver_did\": \"did:wba:awiki.ai:user:k1_...\",\n                \"client_msg_id\": \"uuid4-string\"\n            }\n        )\n        print(f\"发送结果：{result}\")\n        \n        # 接收推送通知\n        while True:\n            notification = await client.receive_notification(timeout=30)\n            if notification:\n                print(f\"收到通知：{notification}\")\n                \n    except ConnectionClosed as e:\n        print(f\"连接关闭：{e.code} - {e.reason}\")\n    except Exception as e:\n        print(f\"错误：{e}\")\n    finally:\n        await client.close()\n\nif __name__ == \"__main__\":\n    asyncio.run(main())\n"
+}
+
+============================================================
+  蒸馏完成
+============================================================

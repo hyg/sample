@@ -18,6 +18,16 @@ initEncoding();
 const CONCURRENCY = 4;
 const SEARCH_DELAY = 2000;
 
+// DDCL 专用配置
+const DDCL_CONCURRENCY = 1; // DDCL 只能单线程访问
+const DDCL_REAL_DOMAIN_CACHE = {
+    domain: null,
+    updatedAt: null,
+    isRefreshing: false,
+    refreshFailures: 0
+};
+const DDCL_MAX_REFRESH_FAILURES = 3; // 最多允许刷新失败次数
+
 let collectedMagnets = [];
 let profileData = null;
 let profileFile = null;
@@ -72,6 +82,286 @@ function cleanup() {
 
 process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
+
+async function refreshDdclDomain(browser) {
+    // 防止并发刷新
+    if (DDCL_REAL_DOMAIN_CACHE.isRefreshing) {
+        // 等待刷新完成
+        while (DDCL_REAL_DOMAIN_CACHE.isRefreshing) {
+            await new Promise(r => setTimeout(r, 500));
+        }
+        return DDCL_REAL_DOMAIN_CACHE.domain !== null;
+    }
+
+    DDCL_REAL_DOMAIN_CACHE.isRefreshing = true;
+    console.log('    [DDCL] 检测到域名可能已变更，正在获取新域名...');
+
+    let page = null;
+    try {
+        page = await browser.newPage();
+        page.setDefaultTimeout(60000);
+        page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+        await page.goto('http://ddcl.me', { waitUntil: 'load', timeout: 60000 });
+        await new Promise(r => setTimeout(r, 3000));
+        const currentUrl = page.url();
+        const urlObj = new URL(currentUrl);
+        const newDomain = urlObj.protocol + '//' + urlObj.hostname;
+
+        DDCL_REAL_DOMAIN_CACHE.domain = newDomain;
+        DDCL_REAL_DOMAIN_CACHE.updatedAt = new Date();
+        DDCL_REAL_DOMAIN_CACHE.refreshFailures = 0;
+        console.log('    [DDCL] 获取到新域名：' + newDomain);
+
+        await page.close();
+        DDCL_REAL_DOMAIN_CACHE.isRefreshing = false;
+        return true;
+    } catch (e) {
+        DDCL_REAL_DOMAIN_CACHE.refreshFailures++;
+        console.error('    [DDCL] 获取新域名失败：' + e.message + ' (失败次数：' + DDCL_REAL_DOMAIN_CACHE.refreshFailures + '/' + DDCL_MAX_REFRESH_FAILURES + ')');
+        if (page) await page.close().catch(() => {});
+        DDCL_REAL_DOMAIN_CACHE.isRefreshing = false;
+        return false;
+    }
+}
+
+async function isDdclDomainValid(browser, testUrl) {
+    // 测试当前域名是否有效：访问搜索页，检查是否能正常返回
+    let page = null;
+    try {
+        page = await browser.newPage();
+        page.setDefaultTimeout(30000);
+        page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+        // 访问首页测试连通性
+        await page.goto(testUrl, { waitUntil: 'load', timeout: 30000 });
+        await new Promise(r => setTimeout(r, 2000));
+
+        // 检查页面是否包含 DDCL 的特征（比如搜索框或 footer）
+        const isValid = await page.evaluate(() => {
+            const bodyText = document.body.innerText;
+            // 检查是否包含 DDCL 的特征文本
+            const hasDdclFeature = bodyText.includes('DDCL') || 
+                                   bodyText.includes('搜索') || 
+                                   bodyText.includes('Search') ||
+                                   document.querySelector('table') !== null;
+            // 检查是否是错误页面
+            const isErrorPage = bodyText.includes('无法访问') || 
+                               bodyText.includes('Error') ||
+                               bodyText.includes('404') ||
+                               bodyText.includes('502') ||
+                               bodyText.includes('503');
+            return hasDdclFeature && !isErrorPage;
+        });
+
+        await page.close();
+        return isValid;
+    } catch (e) {
+        if (page) await page.close().catch(() => {});
+        return false;
+    }
+}
+
+async function searchDdcl(browser, code) {
+    const siteConfig = {
+        name: 'DDCL (ddcl.me)',
+        realDomain: DDCL_REAL_DOMAIN_CACHE.domain,
+        pageLoadWait: 3000,
+        detailPageLoadWait: 3000,
+        pageDelay: 2000
+    };
+
+    // 如果没有真实域名，尝试刷新
+    if (!siteConfig.realDomain) {
+        const refreshed = await refreshDdclDomain(browser);
+        if (!refreshed) {
+            console.log('    [DDCL] 真实域名不可用，跳过搜索');
+            return { site: siteConfig.name, magnet: null };
+        }
+        siteConfig.realDomain = DDCL_REAL_DOMAIN_CACHE.domain;
+    }
+
+    let page = null;
+    let domainRefreshed = false; // 标记是否已刷新过域名
+
+    try {
+        page = await browser.newPage();
+        page.setDefaultTimeout(60000);
+
+        // 设置随机 User-Agent
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ];
+        const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
+        await page.setUserAgent(randomUA);
+
+        // 逐页搜索，直到找到文件名含番号的页面
+        let found = false;
+        let magnet = null;
+        let pageNum = 1;
+        const maxPages = 10; // 最多搜索 10 页
+
+        // 规范化番号：转为大写，移除连字符，用于模糊匹配
+        const normalizedCode = code.toUpperCase().replace(/-/g, '');
+        console.log('    [DDCL] 搜索 ' + code);
+
+        while (!found && pageNum <= maxPages) {
+            // 构建搜索 URL: https://realDomain/search/SSIS-471_click_1.html
+            const searchUrl = siteConfig.realDomain + '/search/' + code + '_click_' + pageNum + '.html';
+
+            await page.goto(searchUrl, { waitUntil: 'load', timeout: 60000 });
+            await new Promise(r => setTimeout(r, siteConfig.pageLoadWait));
+
+            // 检查页面是否有效（域名是否已切换）
+            const pageValid = await page.evaluate(() => {
+                const bodyText = document.body.innerText;
+                // 检查是否是错误页面或重定向页面
+                const isErrorPage = bodyText.includes('无法访问') || 
+                                   bodyText.includes('Error') ||
+                                   bodyText.includes('404') ||
+                                   bodyText.includes('502') ||
+                                   bodyText.includes('503') ||
+                                   bodyText.includes('504') ||
+                                   bodyText.includes('Bad Gateway') ||
+                                   bodyText.includes('Service Unavailable');
+                return !isErrorPage;
+            });
+
+            // 如果页面无效且尚未刷新过域名，尝试刷新
+            if (!pageValid && !domainRefreshed && DDCL_REAL_DOMAIN_CACHE.refreshFailures < DDCL_MAX_REFRESH_FAILURES) {
+                console.log('    [DDCL] 当前域名可能已失效，尝试刷新域名...');
+                const refreshed = await refreshDdclDomain(browser);
+                if (refreshed) {
+                    siteConfig.realDomain = DDCL_REAL_DOMAIN_CACHE.domain;
+                    domainRefreshed = true;
+                    console.log('    [DDCL] 使用新域名继续搜索：' + siteConfig.realDomain);
+                    // 刷新后重新加载当前搜索页
+                    await page.goto(searchUrl, { waitUntil: 'load', timeout: 60000 });
+                    await new Promise(r => setTimeout(r, siteConfig.pageLoadWait));
+                } else {
+                    console.log('    [DDCL] 刷新域名失败，使用旧域名继续尝试');
+                }
+            }
+
+            // 检查是否有搜索结果 - 通过表格数量判断
+            // 有结果的页面会有多个表格（每个结果项一个表格），无结果的页面表格数为 0
+            const tableCount = await page.evaluate(() => {
+                return document.querySelectorAll('table').length;
+            });
+
+            // 检查是否显示"没有找到"提示（辅助判断）
+            const noResultsMessage = await page.evaluate(() => {
+                const bodyText = document.body.innerText;
+                if (bodyText.includes('抱歉') && bodyText.includes('没有找到')) {
+                    const match = bodyText.match(/抱歉 [，,]?没有找到 [^"'<>\n]*/i);
+                    return match ? match[0] : '没有找到相关结果';
+                }
+                return null;
+            });
+
+            if (noResultsMessage) {
+                console.log('    [DDCL] ' + noResultsMessage);
+                break;
+            }
+
+            // 如果没有表格，说明没有搜索结果
+            if (tableCount === 0) {
+                break;
+            }
+
+            // 获取搜索结果条目列表
+            // 根据分析，每个结果项是 div.panel.panel-default，链接在 h5.item-title a 中
+            const items = await page.evaluate(() => {
+                const result = [];
+                const panels = document.querySelectorAll('div.panel.panel-default');
+                
+                for (const panel of panels) {
+                    const linkEl = panel.querySelector('h5.item-title a');
+                    if (linkEl) {
+                        const name = linkEl.textContent ? linkEl.textContent.trim() : '';
+                        const link = linkEl.href || '';
+                        if (name && link) {
+                            result.push({ name, link });
+                        }
+                    }
+                }
+                
+                return result;
+            });
+
+            console.log('    [DDCL] 第 ' + pageNum + ' 页找到 ' + items.length + ' 个条目');
+
+            // 逐个条目进入详情页，检查文件列表
+            for (const item of items) {
+                // 点击进入详情页
+                await page.goto(item.link, { waitUntil: 'load', timeout: 60000 });
+                await new Promise(r => setTimeout(r, siteConfig.detailPageLoadWait));
+
+                // 获取文件列表 - 使用正确的选择器：table.table-striped tr
+                const files = await page.evaluate(() => {
+                    const table = document.querySelector('table.table-striped');
+                    if (!table) return [];
+
+                    const rows = table.querySelectorAll('tbody tr');
+                    const result = [];
+                    for (const row of rows) {
+                        const td = row.querySelector('td');
+                        if (td) {
+                            result.push(td.textContent.trim());
+                        }
+                    }
+                    return result;
+                });
+
+                // 检查文件列表中是否有文件名包含番号
+                for (const fileName of files) {
+                    const normalizedFileName = fileName.toUpperCase().replace(/[-.]/g, '');
+
+                    if (normalizedFileName.includes(normalizedCode)) {
+                        // 在当前详情页提取磁链
+                        magnet = await page.$('textarea#MagnetLink')
+                            .then(el => el ? el.evaluate(e => e.value) : null)
+                            .catch(() => null);
+
+                        if (!magnet) {
+                            magnet = await page.$('a[href^="magnet:"]')
+                                .then(el => el ? el.evaluate(e => e.href) : null)
+                                .catch(() => null);
+                        }
+
+                        if (magnet) {
+                            console.log('    [DDCL] 找到磁链');
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (found) break;
+
+                // 返回搜索结果页继续检查下一个条目
+                await page.goto(searchUrl, { waitUntil: 'load', timeout: 60000 });
+                await new Promise(r => setTimeout(r, siteConfig.pageLoadWait));
+            }
+
+            if (!found) {
+                // 等待后进入下一页
+                await new Promise(r => setTimeout(r, siteConfig.pageDelay));
+                pageNum++;
+            }
+        }
+
+        await page.close();
+        return { site: siteConfig.name, magnet };
+
+    } catch (e) {
+        console.error('    [DDCL] 失败：' + e.message);
+        if (page) await page.close().catch(() => {});
+        return { site: siteConfig.name, magnet: null };
+    }
+}
 
 async function searchMagnetWithSite(browser, code, site) {
     const siteConfig = site;
@@ -199,16 +489,26 @@ async function searchMagnetWithSite(browser, code, site) {
 
 async function searchMagnet(browser, code) {
     const sites = getMagnetSites();
-    
+
     for (const site of sites) {
         console.log('    -> [' + site.name + '] 搜索 ' + code);
-        const result = await searchMagnetWithSite(browser, code, site);
-        if (result.magnet) {
-            console.log('    -> [' + result.site + '] 找到磁链');
-            return result.magnet;
+        
+        // DDCL 使用专门的搜索函数
+        if (site.name && site.name.includes('DDCL')) {
+            const result = await searchDdcl(browser, code);
+            if (result.magnet) {
+                console.log('    -> [' + result.site + '] 找到磁链');
+                return result.magnet;
+            }
+        } else {
+            const result = await searchMagnetWithSite(browser, code, site);
+            if (result.magnet) {
+                console.log('    -> [' + result.site + '] 找到磁链');
+                return result.magnet;
+            }
         }
     }
-    
+
     return null;
 }
 
@@ -307,10 +607,31 @@ async function main() {
                 '--log-level=3',
                 '--silent',
                 '--disable-gpu',
-                '--disable-software-rasterizer'
+                '--disable-software-rasterizer',
+                '--disable-features=HttpsFirstBalancedModeAutoEnable'
             ]
         });
+
+        // 预先获取 DDCL 真实域名（避免并发访问导致被阻止）
+        console.log('[*] 正在获取 DDCL 真实域名...');
+        const initPage = await browser.newPage();
+        initPage.setDefaultTimeout(60000);
+        initPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
+        try {
+            await initPage.goto('http://ddcl.me', { waitUntil: 'load', timeout: 60000 });
+            await new Promise(r => setTimeout(r, 3000));
+            const currentUrl = initPage.url();
+            const urlObj = new URL(currentUrl);
+            DDCL_REAL_DOMAIN_CACHE.domain = urlObj.protocol + '//' + urlObj.hostname;
+            DDCL_REAL_DOMAIN_CACHE.updatedAt = new Date();
+            console.log('[*] DDCL 真实域名：' + DDCL_REAL_DOMAIN_CACHE.domain);
+        } catch (e) {
+            console.error('[*] 获取 DDCL 真实域名失败：' + e.message);
+        } finally {
+            await initPage.close().catch(() => {});
+        }
+
         const total = worksWithoutMagnet.length;
         let workIndex = 0;
         const running = [];
@@ -343,9 +664,10 @@ async function main() {
             }
         }
     }
-    
+
     saveCache();
     outputMagnets();
+    process.exit(0);
 }
 
 main();

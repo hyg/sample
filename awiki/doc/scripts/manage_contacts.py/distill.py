@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 """Distill script for manage_contacts.py
 
-执行 manage_contacts.py 的核心功能，记录输入输出作为"黄金标准"。
-"""
+执行 manage_contacts.py 的核心功能，记录输入输出作为"黄金标准"�?"""
 
 from __future__ import annotations
 
@@ -304,8 +303,7 @@ def main() -> None:
     parser.add_argument('--test', action='store_true', help='Run test scenarios')
     args = parser.parse_args()
     
-    # 如果指定--test，执行测试场景
-    if args.test:
+    # 如果指定--test，执行测试场�?    if args.test:
         print("Running test scenarios...")
         r1 = test_save_from_group_duplicate_contact(group_id='1', credential_name='huangyg.default')
         print(f"test_save_from_group_duplicate_contact: {'PASS' if r1['success'] else 'FAIL'}")
@@ -343,26 +341,24 @@ if __name__ == "__main__":
     main()
 
 # =============================================================================
-# 附录：补充场景测试 - Profile 联动、群组批量保存、去重逻辑
+# 附录：补充场景测�?- Profile 联动、群组批量保存、去重逻辑
 # =============================================================================
 
 def test_profile_update_triggers_search_visibility(credential_name='default'):
-    """测试 Profile 更新后搜索可见性变化"""
+    """测试 Profile 更新后搜索可见性变�?""
     input_data = {'scenario': 'profile_update_triggers_search_visibility', 'credential_name': credential_name}
     output_data = {'search_before': 0, 'search_after': 0, 'visibility_changed': False, 'error': None}
     try:
         from search_users import search_users
         from update_profile import update_profile
         
-        # 步骤 1: 搜索前
-        before = search_users(query='AI 专家', credential_name=credential_name)
+        # 步骤 1: 搜索�?        before = search_users(query='AI 专家', credential_name=credential_name)
         output_data['search_before'] = len(before) if before else 0
         
         # 步骤 2: 更新 Profile
         update_profile(nick_name='AI 专家', tags='AI,ML', credential_name=credential_name)
         
-        # 步骤 3: 搜索后
-        after = search_users(query='AI 专家', credential_name=credential_name)
+        # 步骤 3: 搜索�?        after = search_users(query='AI 专家', credential_name=credential_name)
         output_data['search_after'] = len(after) if after else 0
         output_data['visibility_changed'] = output_data['search_after'] > output_data['search_before']
         
@@ -372,7 +368,7 @@ def test_profile_update_triggers_search_visibility(credential_name='default'):
         return {'input': input_data, 'output': output_data, 'success': False}
 
 def test_save_from_group_duplicate_contact(group_id='test_group', credential_name='default'):
-    """测试联系人去重场景"""
+    """测试联系人去重场�?""
     input_data = {'scenario': 'save_from_group_duplicate_contact', 'group_id': group_id, 'credential_name': credential_name}
     output_data = {'contact_count_before': 0, 'contact_count_after': 0, 'deduplicated': False, 'error': None}
     try:

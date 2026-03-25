@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 # Project root: 5 levels up from distill.py
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+PROJECT_ROOT = Path(r"D:\\huangyg\\git\\sample\\awiki").resolve().parent.parent.parent.parent.parent
 PYTHON_SCRIPTS = PROJECT_ROOT / 'python' / 'scripts'
 
 sys.path.insert(0, str(PYTHON_SCRIPTS))

@@ -1,0 +1,125 @@
+Running message_transport.py distillation tests...
+{
+  "file": "python/scripts/message_transport.py",
+  "doc_path": "doc/scripts/message_transport.py",
+  "version": "1.3.10",
+  "functions": [
+    {
+      "name": "RECEIVE_MODE_HTTP",
+      "type": "constant",
+      "value": "http",
+      "description": "HTTP polling receive mode",
+      "tests": [
+        {
+          "scenario": "constants",
+          "input": {},
+          "output": {
+            "RECEIVE_MODE_HTTP": "http",
+            "RECEIVE_MODE_WEBSOCKET": "websocket"
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "RECEIVE_MODE_WEBSOCKET",
+      "type": "constant",
+      "value": "websocket",
+      "description": "WebSocket push receive mode",
+      "tests": [
+        {
+          "scenario": "constants",
+          "input": {},
+          "output": {
+            "RECEIVE_MODE_HTTP": "http",
+            "RECEIVE_MODE_WEBSOCKET": "websocket"
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "write_receive_mode",
+      "type": "function",
+      "signature": "(mode: str) -> None",
+      "description": "Write message transport mode to settings.json",
+      "tests": [
+        {
+          "scenario": "write_websocket",
+          "input": {
+            "mode": "websocket"
+          },
+          "output": {
+            "config_written": true,
+            "mode": null
+          },
+          "success": true
+        },
+        {
+          "scenario": "write_http",
+          "input": {
+            "mode": "http"
+          },
+          "output": {
+            "config_written": true,
+            "mode": null
+          },
+          "success": true
+        },
+        {
+          "scenario": "mode_switch",
+          "input": {
+            "switch_from": "websocket",
+            "switch_to": "http"
+          },
+          "output": {
+            "initial_mode": "websocket",
+            "final_mode": "http",
+            "switched": true
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "load_receive_mode",
+      "type": "function",
+      "signature": "(config: SDKConfig | None = None) -> str",
+      "description": "Load message transport mode from settings.json (defaults to HTTP)",
+      "tests": [
+        {
+          "scenario": "load_mode",
+          "input": {},
+          "output": {
+            "mode_read": "websocket",
+            "default": "http"
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "is_websocket_mode",
+      "type": "function",
+      "signature": "(config: SDKConfig | None = None) -> bool",
+      "description": "Check if WebSocket mode is enabled",
+      "tests": [
+        {
+          "scenario": "is_websocket",
+          "input": {
+            "mode_to_set": "websocket"
+          },
+          "output": {
+            "is_websocket": true
+          },
+          "success": true
+        }
+      ]
+    }
+  ],
+  "constants": {
+    "RECEIVE_MODE_HTTP": "http",
+    "RECEIVE_MODE_WEBSOCKET": "websocket"
+  },
+  "classes": {}
+}

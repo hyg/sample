@@ -200,7 +200,7 @@ function cleanupLogFiles(
 class DailyRetentionFileHandler {
   /**
    * 创建日志处理器
-   * 
+   *
    * @param {Object} options - 配置选项
    * @param {string} options.logDir - 日志目录
    * @param {string} options.prefix - 文件前缀
@@ -224,18 +224,18 @@ class DailyRetentionFileHandler {
     this._cleanupInterval = Math.max(1, cleanupIntervalSeconds) * 1000; // 转换为毫秒
     this._encoding = encoding;
     this._currentPath = null;
-    this._stream = null;
+    this._fd = null; // 文件描述符
     this._nextCleanupAt = null;
-    
+
     // 确保目录存在
     if (!fs.existsSync(this._logDir)) {
       fs.mkdirSync(this._logDir, { recursive: true });
     }
-    
+
     this._openIfNeeded();
     this._runCleanup(true);
   }
-  
+
   /**
    * 获取当前日志文件路径
    */
@@ -243,73 +243,78 @@ class DailyRetentionFileHandler {
     this._openIfNeeded();
     return this._currentPath;
   }
-  
+
   /**
    * 写入日志记录
-   * 
+   *
    * @param {string} message - 日志消息
    * @param {string} level - 日志级别
    */
   emit(message, level = 'INFO') {
     try {
       this._openIfNeeded();
-      if (this._stream === null) return;
-      
+      if (this._fd === null) return;
+
       const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
       const logLine = `${timestamp} [${level}] awiki: ${message}\n`;
-      
-      this._stream.write(logLine);
+
+      fs.writeSync(this._fd, logLine);
       this._runCleanup();
     } catch (e) {
       console.error('Failed to write log:', e);
     }
   }
-  
+
   /**
    * 刷新流
    */
   flush() {
-    if (this._stream !== null) {
-      this._stream.flush();
+    if (this._fd !== null) {
+      fs.fsyncSync(this._fd);
     }
   }
-  
+
   /**
    * 关闭流
    */
   close() {
-    if (this._stream !== null) {
-      this._stream.end();
-      this._stream = null;
+    if (this._fd !== null) {
+      try {
+        fs.closeSync(this._fd);
+      } catch (e) {
+        // 忽略关闭错误
+      }
+      this._fd = null;
       this._currentPath = null;
     }
   }
-  
+
   /**
    * 打开或轮换日志文件
    */
   _openIfNeeded() {
     const nextPath = getLogFilePath(this._logDir, new Date(), this._prefix);
-    
-    if (nextPath === this._currentPath && this._stream !== null) {
+
+    if (nextPath === this._currentPath && this._fd !== null) {
       return;
     }
-    
-    if (this._stream !== null) {
-      this._stream.end();
+
+    if (this._fd !== null) {
+      try {
+        fs.closeSync(this._fd);
+      } catch (e) {
+        // 忽略关闭错误
+      }
     }
-    
+
     // 确保目录存在
     const dir = path.dirname(nextPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    
-    // 以追加模式打开
-    this._stream = fs.createWriteStream(nextPath, {
-      flags: 'a',
-      encoding: this._encoding
-    });
+
+    // 以追加模式打开文件
+    this._fd = fs.openSync(nextPath, 'a');
     this._currentPath = nextPath;
   }
   
@@ -339,7 +344,7 @@ class DailyRetentionFileHandler {
 
 /**
  * 配置日志
- * 
+ *
  * @param {Object} options - 配置选项
  * @param {string} options.level - 日志级别
  * @param {string} options.consoleLevel - 控制台日志级别
@@ -358,8 +363,7 @@ function configureLogging({
   mirrorStdio = false
 } = {}) {
   const logDir = getLogDir(config);
-  const logFilePath = getLogFilePath(logDir, new Date(), prefix);
-  
+
   // 创建文件处理器
   const fileHandler = new DailyRetentionFileHandler({
     logDir,
@@ -367,7 +371,7 @@ function configureLogging({
     maxRetentionDays: MAX_RETENTION_DAYS,
     maxTotalSizeBytes: MAX_TOTAL_SIZE_BYTES
   });
-  
+
   // 配置控制台输出
   const consoleHandler = {
     emit: (message, lvl) => {
@@ -380,28 +384,33 @@ function configureLogging({
       }
     }
   };
-  
+
   // 全局日志函数
   global.log = {
     info: (msg) => {
       fileHandler.emit(msg, 'INFO');
+      fileHandler.flush();
       consoleHandler.emit(msg, 'INFO');
     },
     warn: (msg) => {
       fileHandler.emit(msg, 'WARN');
+      fileHandler.flush();
       consoleHandler.emit(msg, 'WARN');
     },
     error: (msg) => {
       fileHandler.emit(msg, 'ERROR');
+      fileHandler.flush();
       consoleHandler.emit(msg, 'ERROR');
     },
     debug: (msg) => {
       fileHandler.emit(msg, 'DEBUG');
+      fileHandler.flush();
       consoleHandler.emit(msg, 'DEBUG');
     }
   };
-  
-  return logFilePath;
+
+  // 返回实际的文件处理器路径
+  return fileHandler.currentPath;
 }
 
 module.exports = {

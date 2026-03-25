@@ -8,15 +8,13 @@
 [PROTOCOL]:
 1. Update this header when logic changes
 2. Check the folder's CLAUDE.md after updating
-
-Idempotent design: safe to run multiple times. Existing config is merged, not overwritten.
 """
 
 import sys
 from pathlib import Path
 
-# Project root: 5 levels up from distill.py
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+# Use absolute path for project root
+PROJECT_ROOT = Path(r"D:\\huangyg\\git\\sample\\awiki")
 PYTHON_SCRIPTS = PROJECT_ROOT / 'python' / 'scripts'
 
 sys.path.insert(0, str(PYTHON_SCRIPTS))
@@ -25,14 +23,11 @@ from message_transport import (
     RECEIVE_MODE_HTTP,
     RECEIVE_MODE_WEBSOCKET,
     write_receive_mode,
-    read_receive_mode,
-    _settings_path,
-    _load_json,
-    _save_json
+    load_receive_mode,
+    is_websocket_mode,
 )
 from utils.config import SDKConfig
 import json
-import os
 
 
 def record_result(scenario: str, input_args: dict, output_data: dict, success: bool, error: str = None) -> dict:
@@ -57,10 +52,8 @@ def test_receive_mode_constants() -> dict:
     }
     
     try:
-        # Verify constants are defined
         assert RECEIVE_MODE_HTTP == "http"
         assert RECEIVE_MODE_WEBSOCKET == "websocket"
-        
         return record_result("constants", input_args, output_data, True)
     except Exception as e:
         return record_result("constants", input_args, output_data, False, str(e))
@@ -69,16 +62,17 @@ def test_receive_mode_constants() -> dict:
 def test_write_receive_mode_websocket() -> dict:
     """Test writing WebSocket receive mode."""
     input_args = {"mode": RECEIVE_MODE_WEBSOCKET}
-    output_data = {"config_written": False, "mode": None, "path": str(_settings_path())}
+    output_data = {"config_written": False, "mode": None}
     
     try:
         write_receive_mode(RECEIVE_MODE_WEBSOCKET)
+        config = SDKConfig.load()
+        settings_path = config.data_dir / "config" / "settings.json"
         
-        # Verify the config was written
-        if _settings_path.exists():
-            config = _load_json(_settings_path())
+        if settings_path.exists():
+            data = json.loads(settings_path.read_text(encoding="utf-8"))
             output_data["config_written"] = True
-            output_data["mode"] = config.get("receive_mode")
+            output_data["mode"] = data.get("receive_mode")
         
         return record_result("write_websocket", input_args, output_data, True)
     except Exception as e:
@@ -88,24 +82,25 @@ def test_write_receive_mode_websocket() -> dict:
 def test_write_receive_mode_http() -> dict:
     """Test writing HTTP receive mode."""
     input_args = {"mode": RECEIVE_MODE_HTTP}
-    output_data = {"config_written": False, "mode": None, "path": str(_settings_path())}
+    output_data = {"config_written": False, "mode": None}
     
     try:
         write_receive_mode(RECEIVE_MODE_HTTP)
+        config = SDKConfig.load()
+        settings_path = config.data_dir / "config" / "settings.json"
         
-        # Verify the config was written
-        if _settings_path.exists():
-            config = _load_json(_settings_path())
+        if settings_path.exists():
+            data = json.loads(settings_path.read_text(encoding="utf-8"))
             output_data["config_written"] = True
-            output_data["mode"] = config.get("receive_mode")
+            output_data["mode"] = data.get("receive_mode")
         
         return record_result("write_http", input_args, output_data, True)
     except Exception as e:
         return record_result("write_http", input_args, output_data, False, str(e))
 
 
-def test_read_receive_mode() -> dict:
-    """Test reading receive mode."""
+def test_load_receive_mode() -> dict:
+    """Test loading receive mode."""
     input_args = {}
     output_data = {"mode_read": None, "default": RECEIVE_MODE_HTTP}
     
@@ -114,62 +109,29 @@ def test_read_receive_mode() -> dict:
         write_receive_mode(RECEIVE_MODE_WEBSOCKET)
         
         # Then read it back
-        mode = read_receive_mode()
+        config = SDKConfig.load()
+        mode = load_receive_mode(config)
         output_data["mode_read"] = mode
         
-        return record_result("read_mode", input_args, output_data, True)
+        return record_result("load_mode", input_args, output_data, True)
     except Exception as e:
-        return record_result("read_mode", input_args, output_data, False, str(e))
+        return record_result("load_mode", input_args, output_data, False, str(e))
 
 
-def test_read_receive_mode_missing() -> dict:
-    """Test reading receive mode when config is missing."""
-    input_args = {"config_missing": True}
-    output_data = {"mode_read": None, "default": RECEIVE_MODE_HTTP}
+def test_is_websocket_mode() -> dict:
+    """Test is_websocket_mode check."""
+    input_args = {"mode_to_set": RECEIVE_MODE_WEBSOCKET}
+    output_data = {"is_websocket": None}
     
     try:
-        # Backup existing config
-        backup = None
-        if _settings_path.exists():
-            backup = _load_json(_settings_path())
-            _settings_path.unlink()
-        
-        # Read mode (should return default)
-        mode = read_receive_mode()
-        output_data["mode_read"] = mode
-        output_data["returned_default"] = mode == RECEIVE_MODE_HTTP
-        
-        # Restore backup
-        if backup:
-            _save_json(_settings_path(), backup)
-        
-        return record_result("read_missing", input_args, output_data, True)
-    except Exception as e:
-        return record_result("read_missing", input_args, output_data, False, str(e))
-
-
-def test_idempotent_write() -> dict:
-    """Test idempotent write (multiple writes should merge, not overwrite)."""
-    input_args = {"mode": RECEIVE_MODE_WEBSOCKET, "rerun": True}
-    output_data = {"first_write": None, "second_write": None, "unchanged": True}
-    
-    try:
-        # First write
         write_receive_mode(RECEIVE_MODE_WEBSOCKET)
-        config1 = _load_json(_settings_path()) if _settings_path.exists() else None
-        output_data["first_write"] = config1.get("receive_mode") if config1 else None
+        config = SDKConfig.load()
+        result = is_websocket_mode(config)
+        output_data["is_websocket"] = result
         
-        # Second write (same mode)
-        write_receive_mode(RECEIVE_MODE_WEBSOCKET)
-        config2 = _load_json(_settings_path()) if _settings_path.exists() else None
-        output_data["second_write"] = config2.get("receive_mode") if config2 else None
-        
-        # Verify unchanged
-        output_data["unchanged"] = output_data["first_write"] == output_data["second_write"]
-        
-        return record_result("idempotent_write", input_args, output_data, True)
+        return record_result("is_websocket", input_args, output_data, True, )
     except Exception as e:
-        return record_result("idempotent_write", input_args, output_data, False, str(e))
+        return record_result("is_websocket", input_args, output_data, False, str(e))
 
 
 def test_mode_switch() -> dict:
@@ -180,15 +142,13 @@ def test_mode_switch() -> dict:
     try:
         # Set initial mode
         write_receive_mode(RECEIVE_MODE_WEBSOCKET)
-        config1 = _load_json(_settings_path())
-        output_data["initial_mode"] = config1.get("receive_mode")
+        config = SDKConfig.load()
+        output_data["initial_mode"] = load_receive_mode(config)
         
         # Switch mode
         write_receive_mode(RECEIVE_MODE_HTTP)
-        config2 = _load_json(_settings_path())
-        output_data["final_mode"] = config2.get("receive_mode")
+        output_data["final_mode"] = load_receive_mode(config)
         
-        # Verify switch
         output_data["switched"] = (
             output_data["initial_mode"] == RECEIVE_MODE_WEBSOCKET and
             output_data["final_mode"] == RECEIVE_MODE_HTTP
@@ -197,24 +157,6 @@ def test_mode_switch() -> dict:
         return record_result("mode_switch", input_args, output_data, True)
     except Exception as e:
         return record_result("mode_switch", input_args, output_data, False, str(e))
-
-
-def test_settings_path_resolution() -> dict:
-    """Test settings path resolution."""
-    input_args = {}
-    output_data = {
-        "path": str(_settings_path()),
-        "parent_exists": False,
-        "is_absolute": False
-    }
-    
-    try:
-        output_data["parent_exists"] = _settings_path.parent.exists()
-        output_data["is_absolute"] = _settings_path.is_absolute()
-        
-        return record_result("path_resolution", input_args, output_data, True)
-    except Exception as e:
-        return record_result("path_resolution", input_args, output_data, False, str(e))
 
 
 def distill():
@@ -259,46 +201,26 @@ def distill():
         "tests": [
             test_write_receive_mode_websocket(),
             test_write_receive_mode_http(),
-            test_idempotent_write(),
             test_mode_switch()
         ]
     })
     
-    # Test read_receive_mode
+    # Test load_receive_mode
     results["functions"].append({
-        "name": "read_receive_mode",
+        "name": "load_receive_mode",
         "type": "function",
-        "signature": "() -> str",
-        "description": "Read message transport mode from settings.json (defaults to HTTP)",
-        "tests": [
-            test_read_receive_mode(),
-            test_read_receive_mode_missing()
-        ]
+        "signature": "(config: SDKConfig | None = None) -> str",
+        "description": "Load message transport mode from settings.json (defaults to HTTP)",
+        "tests": [test_load_receive_mode()]
     })
     
-    # Test internal helpers
+    # Test is_websocket_mode
     results["functions"].append({
-        "name": "_settings_path",
+        "name": "is_websocket_mode",
         "type": "function",
-        "signature": "() -> Path",
-        "description": "Resolve settings.json path",
-        "tests": [test_settings_path_resolution()]
-    })
-    
-    results["functions"].append({
-        "name": "_load_json",
-        "type": "function",
-        "signature": "(path: Path) -> dict",
-        "description": "Load JSON file, returns empty dict if missing",
-        "tests": []
-    })
-    
-    results["functions"].append({
-        "name": "_save_json",
-        "type": "function",
-        "signature": "(path: Path, data: dict) -> None",
-        "description": "Save JSON file, creates parent directories",
-        "tests": []
+        "signature": "(config: SDKConfig | None = None) -> bool",
+        "description": "Check if WebSocket mode is enabled",
+        "tests": [test_is_websocket_mode()]
     })
     
     return results

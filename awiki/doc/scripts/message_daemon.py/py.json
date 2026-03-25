@@ -1,0 +1,103 @@
+Running message_daemon.py distillation tests...
+{
+  "file": "python/scripts/message_daemon.py",
+  "doc_path": "doc/scripts/message_daemon.py",
+  "version": "1.3.10",
+  "functions": [
+    {
+      "name": "DEFAULT_LOCAL_DAEMON_HOST",
+      "type": "constant",
+      "value": "127.0.0.1",
+      "description": "Default host for local message daemon",
+      "tests": [
+        {
+          "scenario": "constants",
+          "input": {},
+          "output": {
+            "DEFAULT_LOCAL_DAEMON_HOST": "127.0.0.1",
+            "DEFAULT_LOCAL_DAEMON_PORT": 18790
+          },
+          "success": false
+        }
+      ]
+    },
+    {
+      "name": "DEFAULT_LOCAL_DAEMON_PORT",
+      "type": "constant",
+      "value": 18790,
+      "description": "Default port for local message daemon",
+      "tests": [
+        {
+          "scenario": "constants",
+          "input": {},
+          "output": {
+            "DEFAULT_LOCAL_DAEMON_HOST": "127.0.0.1",
+            "DEFAULT_LOCAL_DAEMON_PORT": 18790
+          },
+          "success": false
+        }
+      ]
+    },
+    {
+      "name": "load_local_daemon_settings",
+      "type": "function",
+      "signature": "(config: SDKConfig) -> dict | None",
+      "description": "Load local daemon settings from settings.json",
+      "tests": [
+        {
+          "scenario": "load_settings",
+          "input": {},
+          "output": {
+            "settings_loaded": true,
+            "host": null,
+            "port": null,
+            "token": null
+          },
+          "success": false,
+          "error": "'LocalDaemonSettings' object has no attribute 'get'"
+        }
+      ]
+    },
+    {
+      "name": "is_local_daemon_available",
+      "type": "function",
+      "signature": "() -> bool",
+      "description": "Check if local daemon is configured and available",
+      "tests": [
+        {
+          "scenario": "daemon_not_available",
+          "input": {
+            "daemon_not_configured": true
+          },
+          "output": {
+            "available": false,
+            "reason": "not_configured_or_running"
+          },
+          "success": true
+        }
+      ]
+    },
+    {
+      "name": "SDKConfig.load",
+      "type": "classmethod",
+      "signature": "() -> SDKConfig",
+      "description": "Load SDK configuration",
+      "tests": [
+        {
+          "scenario": "sdk_integration",
+          "input": {},
+          "output": {
+            "sdk_config_loaded": true,
+            "data_dir": "C:\\Users\\hyg\\.openclaw\\workspace\\data\\awiki-agent-id-message"
+          },
+          "success": true
+        }
+      ]
+    }
+  ],
+  "constants": {
+    "DEFAULT_LOCAL_DAEMON_HOST": "127.0.0.1",
+    "DEFAULT_LOCAL_DAEMON_PORT": 18790
+  },
+  "classes": {}
+}

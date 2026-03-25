@@ -1,0 +1,13 @@
+ERROR:root:Failed to encode signature: Invalid R|S signature format: length must be even
+ERROR:root:Failed to resolve DID document: 404, message='Not Found', url='https://awiki.ai/user/k1_test_resolve/did.json'
+Stack trace:
+Traceback (most recent call last):
+  File "C:\Users\hyg\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anp\authentication\did_wba.py", line 603, in resolve_did_wba_document
+    response.raise_for_status()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\hyg\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\aiohttp\client_reqrep.py", line 636, in raise_for_status
+    raise ClientResponseError(
+    ...<5 lines>...
+    )
+aiohttp.client_exceptions.ClientResponseError: 404, message='Not Found', url='https://awiki.ai/user/k1_test_resolve/did.json'
+
