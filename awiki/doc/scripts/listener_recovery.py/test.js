@@ -42,15 +42,15 @@ describe('listener_recovery', () => {
   });
 
   describe('ensure_listener_runtime', () => {
-    it('should ensure listener is running', () => {
+    it('should ensure listener is running', async () => {
       // Based on py.json scenario: ensure_runtime
       // Output: { result: {...}, running: false }
-      
-      const result = listenerRecovery.ensure_listener_runtime();
-      
+
+      const result = await listenerRecovery.ensure_listener_runtime('default');
+
       // Result should be an object with running status
       assert.ok(result === null || typeof result === 'object', 'Result should be object or null');
-      
+
       if (result) {
         assert.ok('running' in result, 'Result should have running property');
       }

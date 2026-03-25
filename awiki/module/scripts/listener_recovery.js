@@ -293,9 +293,9 @@ function get_listener_runtime_report(credentialName, { config = null } = {}) {
  * @param {string} credentialName - Credential name
  * @param {Object} options - Options
  * @param {SDKConfig|null} [options.config] - SDK configuration
- * @returns {Object} Runtime report
+ * @returns {Promise<Object>} Runtime report
  */
-function ensure_listener_runtime(credentialName, { config = null } = {}) {
+async function ensure_listener_runtime(credentialName, { config = null } = {}) {
   const resolved = config || SDKConfig.load();
   const initialProbe = probe_listener_runtime({ config: resolved });
   
@@ -356,14 +356,14 @@ function ensure_listener_runtime(credentialName, { config = null } = {}) {
       restartSucceeded: false
     });
   }
-  
+
   // Wait for service to start (up to 5 attempts, 200ms each)
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  
+
   for (let i = 0; i < 5; i++) {
-    sleep(200);
+    await sleep(200);
     const finalProbe = probe_listener_runtime({ config: resolved });
-    
+
     if (finalProbe.running) {
       const state = note_listener_healthy(credentialName, {
         config: resolved,

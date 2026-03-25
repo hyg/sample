@@ -22,10 +22,10 @@ describe('database_migration', () => {
     });
   });
 
-  describe('get_current_schema_version', () => {
+  describe('detect_local_database_layout', () => {
     it('should exist as a function', () => {
       const database_migration = require('../../scripts/database_migration');
-      assert.ok(typeof database_migration.get_current_schema_version === 'function');
+      assert.ok(typeof database_migration.detect_local_database_layout === 'function');
     });
   });
 

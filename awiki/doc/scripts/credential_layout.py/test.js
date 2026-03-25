@@ -15,17 +15,17 @@ describe('credential_layout', () => {
     });
   });
 
-  describe('ensure_credential_directory', () => {
+  describe('ensureCredentialDirectory', () => {
     it('should exist as a function', () => {
-      const credential_layout = require('../../scripts/credential_layout');
-      assert.ok(typeof credential_layout.ensure_credential_directory === 'function');
+      const credential_layout = require('../../scripts/credential-layout');
+      assert.ok(typeof credential_layout.ensureCredentialDirectory === 'function');
     });
   });
 
-  describe('resolve_credential_paths', () => {
+  describe('resolveCredentialPaths', () => {
     it('should exist as a function', () => {
-      const credential_layout = require('../../scripts/credential_layout');
-      assert.ok(typeof credential_layout.resolve_credential_paths === 'function');
+      const credential_layout = require('../../scripts/credential-layout');
+      assert.ok(typeof credential_layout.resolveCredentialPaths === 'function');
     });
   });
 
