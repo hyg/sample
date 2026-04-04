@@ -5,14 +5,36 @@ const path = require('path');
 const readline = require('readline');
 const yaml = require('js-yaml');
 
-// 获取目标路径（脚本所在目录）
-//const targetPath = __dirname;
-//const targetPath = "d:\\huangyg\\git\\ego\\data\\voucher\\2025\\";
-const targetPath = "d:\\huangyg\\git\\ego\\data\\voucher\\2026\\";
+// ego voucher目录路径（解析为绝对路径）
+const egoVoucherPath = path.resolve(__dirname, "..", "..", "..", "ego", "data", "voucher");
 
-// 查找最新的AVR ID
-function getLatestAvrId() {
-  const files = fs.readdirSync(targetPath);
+// 目标路径（写入staging目录）
+const targetPath = path.join(egoVoucherPath, "staging", "2026");
+
+// 确保目标目录存在
+if (!fs.existsSync(targetPath)) {
+  fs.mkdirSync(targetPath, { recursive: true });
+}
+
+// 获取ego voucher目录下所有文件（staging + archive）
+function getAllVoucherFiles(year) {
+  const files = [];
+  const subdirs = ['staging', 'archive'];
+  
+  for (const subdir of subdirs) {
+    const dirPath = path.join(egoVoucherPath, subdir, year);
+    if (fs.existsSync(dirPath)) {
+      const dirFiles = fs.readdirSync(dirPath).filter(f => f.endsWith('.yaml'));
+      files.push(...dirFiles);
+    }
+  }
+  
+  return files;
+}
+
+// 获取指定年份的最新AVR编号
+function getLatestAvrId(year) {
+  const files = getAllVoucherFiles(year);
   let maxId = 0;
   
   files.forEach(file => {
@@ -28,9 +50,9 @@ function getLatestAvrId() {
   return maxId;
 }
 
-// 查找最新的AER ID
-function getLatestAerId() {
-  const files = fs.readdirSync(targetPath);
+// 获取指定年份的最新AER编号
+function getLatestAerId(year) {
+  const files = getAllVoucherFiles(year);
   let maxId = 0;
   
   files.forEach(file => {
@@ -537,8 +559,8 @@ function generateAerFile(avrFilename) {
     return null;
   }
   
-  // 获取新ID
-  const latestId = getLatestAerId();
+  // 获取新ID（2026年）
+  const latestId = getLatestAerId('2026');
   const newId = latestId + 1;
   
   // 生成AER内容
@@ -609,19 +631,19 @@ function processUserInput(inputText, sourceFileName = null) {
     if (match) {
       avrId = parseInt(match[1]);
       // For AER, use the next available ID
-      aerId = getLatestAerId() + 1;
+      aerId = getLatestAerId('2026') + 1;
     } else {
       // Fallback if filename doesn't match expected pattern
-      const latestId = getLatestAvrId();
+      const latestId = getLatestAvrId('2026');
       avrId = latestId + 1;
-      aerId = getLatestAerId() + 1;
+      aerId = getLatestAerId('2026') + 1;
     }
   } else {
     // For regular vouchers without source file name (stdin input), use incremental IDs
-    const latestId = getLatestAvrId();
+    const latestId = getLatestAvrId('2026');
     avrId = latestId + 1;
     // For AER, use the next available ID
-    aerId = getLatestAerId() + 1;
+    aerId = getLatestAerId('2026') + 1;
   }
   
   // 生成YAML内容
