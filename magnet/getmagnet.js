@@ -592,6 +592,7 @@ async function main() {
     try {
         browser = await puppeteer.launch({
             headless: 'new',
+            executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
             dumpio: false,
             env: {
                 ...process.env,
