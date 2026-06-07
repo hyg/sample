@@ -1,0 +1,81 @@
+name: 桑葚干
+amount: 100
+unit: g
+element:
+  热量:
+    amount: 298
+    unit: kcal
+    nrv: 14.54
+  蛋白质:
+    amount: 21.1
+    unit: g
+    nrv: 23.53
+  脂肪:
+    amount: 6.1
+    unit: g
+    nrv: 10.71
+  碳水化合物:
+    amount: 54.2
+    unit: g
+    nrv: 18.39
+  VE(生育酚):
+    amount: 32.68
+    unit: mg
+    nrv: 233.43
+  VB1(硫胺素):
+    amount: 0.35
+    unit: mg
+    nrv: 25
+  VB2(核黄素):
+    amount: 0.61
+    unit: mg
+    nrv: 43.57
+  VB3(烟酸):
+    amount: 4.8
+    unit: mg
+    nrv: 32
+  VC(抗坏血酸):
+    amount: 7
+    unit: mg
+    nrv: 7
+  磷:
+    amount: 486
+    unit: mg
+    nrv: 68.45
+  钙:
+    amount: 622
+    unit: mg
+    nrv: 77.75
+  铁:
+    amount: 42.5
+    unit: mg
+    nrv: 354.17
+  钠:
+    amount: 28
+    unit: mg
+    nrv: 1.87
+  钾:
+    amount: 159
+    unit: mg
+    nrv: 7.95
+  镁:
+    amount: 332
+    unit: mg
+    nrv: 103.75
+  锌:
+    amount: 6.15
+    unit: mg
+    nrv: 51.25
+  硒:
+    amount: 34
+    unit: μg
+    nrv: 56.67
+  铜:
+    amount: 1.57
+    unit: mg
+    nrv: 196.25
+  锰:
+    amount: 3.81
+    unit: mg
+    nrv: 84.67
+comment: https://www.eshian.com/sat/yyss/detail/LXMjAyNi0wNi0wNw==/1120
