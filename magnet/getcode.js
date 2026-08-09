@@ -62,30 +62,79 @@ function extractProfileData(html, profileUrl, siteConfig) {
         profile_url: profileUrl,
     };
     
-    const tables = doc.querySelectorAll('table');
-    let infoText = '';
-    
-    for (const table of tables) {
-        const text = table.textContent;
-        if (text.includes('出生日期') || text.includes('身高') || text.includes('三围')) {
-            infoText = text;
-            break;
+    // 检查是否是theidolbase.com网站
+    if (siteConfig.key === 'theidolbase') {
+        // 使用CSS选择器提取数据
+        const infoItems = doc.querySelectorAll('.info-list .info-item');
+        
+        for (const item of infoItems) {
+            const label = item.querySelector('.info-label');
+            const value = item.querySelector('.info-value');
+            
+            if (!label || !value) continue;
+            
+            const labelText = label.textContent.trim();
+            const valueText = value.textContent.trim();
+            
+            // 根据标签提取对应字段
+            if (labelText === '中文名') {
+                data.name = valueText;
+            } else if (labelText === '外文名') {
+                data.english_name = valueText;
+            } else if (labelText === '出生日期') {
+                // 提取日期，格式：1998年5月4日
+                const dateMatch = valueText.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+                if (dateMatch) {
+                    data.birthday = dateMatch[1] + '-' + dateMatch[2].padStart(2, '0') + '-' + dateMatch[3].padStart(2, '0');
+                }
+            } else if (labelText === '身高') {
+                const heightMatch = valueText.match(/(\d+)cm/);
+                if (heightMatch) {
+                    data.height = parseInt(heightMatch[1]);
+                }
+            } else if (labelText === '三围') {
+                // 格式：B89-W54-H83
+                const bustMatch = valueText.match(/B(\d+)-W(\d+)-H(\d+)/);
+                if (bustMatch) {
+                    data.bust = parseInt(bustMatch[1]);
+                    data.waist = parseInt(bustMatch[2]);
+                    data.hip = parseInt(bustMatch[3]);
+                }
+            } else if (labelText === '血型') {
+                data.blood_type = valueText;
+            } else if (labelText === '出生地') {
+                data.birthplace = valueText;
+            } else if (labelText === '经纪公司') {
+                data.agency = valueText;
+            }
         }
-    }
-    
-    if (!infoText) {
-        infoText = doc.body.textContent;
-    }
-    
-    const fields = siteConfig.profile.fields;
-    
-    for (const [key, fieldConfig] of Object.entries(fields)) {
-        const value = extractByPattern(infoText, fieldConfig.pattern, fieldConfig);
-        if (value) {
-            if (fieldConfig.type === 'integer') {
-                data[key] = parseInt(value);
-            } else {
-                data[key] = value.trim();
+    } else {
+        // 原有的renwujidian.com逻辑
+        const tables = doc.querySelectorAll('table');
+        let infoText = '';
+        
+        for (const table of tables) {
+            const text = table.textContent;
+            if (text.includes('出生日期') || text.includes('身高') || text.includes('三围')) {
+                infoText = text;
+                break;
+            }
+        }
+        
+        if (!infoText) {
+            infoText = doc.body.textContent;
+        }
+        
+        const fields = siteConfig.profile.fields;
+        
+        for (const [key, fieldConfig] of Object.entries(fields)) {
+            const value = extractByPattern(infoText, fieldConfig.pattern, fieldConfig);
+            if (value) {
+                if (fieldConfig.type === 'integer') {
+                    data[key] = parseInt(value);
+                } else {
+                    data[key] = value.trim();
+                }
             }
         }
     }
@@ -98,23 +147,24 @@ function extractWorks(html, endDate, siteConfig) {
     const doc = dom.window.document;
     
     const works = [];
-    const tables = doc.querySelectorAll('table');
     
-    for (const table of tables) {
-        const text = table.textContent;
-        if (!text.includes('番号') || !text.includes('发行时间')) continue;
+    // 检查是否是theidolbase.com网站
+    if (siteConfig.key === 'theidolbase') {
+        // 使用CSS选择器提取作品
+        const workItems = doc.querySelectorAll('.works-table .work-item');
         
-        const rows = table.querySelectorAll('tr');
-        
-        for (let i = 1; i < rows.length; i++) {
-            const cells = rows[i].querySelectorAll('td');
-            if (cells.length < 4) continue;
+        for (const item of workItems) {
+            const codeElement = item.querySelector('.code');
+            const dateElement = item.querySelector('.date');
+            const runtimeElement = item.querySelector('.runtime');
+            const studioElement = item.querySelector('.studio');
             
-            const col = siteConfig.profile.works.columns;
-            const code = cells[col.code]?.textContent?.trim();
-            const dateStr = cells[col.date]?.textContent?.trim();
-            const duration = cells[col.duration]?.textContent?.trim();
-            const maker = cells[col.maker]?.textContent?.trim();
+            if (!codeElement || !dateElement) continue;
+            
+            const code = codeElement.textContent.trim();
+            const dateStr = dateElement.textContent.trim();
+            const duration = runtimeElement ? runtimeElement.textContent.trim() : '';
+            const maker = studioElement ? studioElement.textContent.trim() : '';
             
             if (!code || !dateStr) continue;
             
@@ -130,8 +180,43 @@ function extractWorks(html, endDate, siteConfig) {
                 });
             }
         }
+    } else {
+        // 原有的renwujidian.com逻辑
+        const tables = doc.querySelectorAll('table');
         
-        if (works.length > 0) break;
+        for (const table of tables) {
+            const text = table.textContent;
+            if (!text.includes('番号') || !text.includes('发行时间')) continue;
+            
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].querySelectorAll('td');
+                if (cells.length < 4) continue;
+                
+                const col = siteConfig.profile.works.columns;
+                const code = cells[col.code]?.textContent?.trim();
+                const dateStr = cells[col.date]?.textContent?.trim();
+                const duration = cells[col.duration]?.textContent?.trim();
+                const maker = cells[col.maker]?.textContent?.trim();
+                
+                if (!code || !dateStr) continue;
+                
+                const workDate = new Date(dateStr);
+                const end = new Date(endDate.substring(0, 4) + '-' + endDate.substring(4, 6) + '-' + endDate.substring(6, 8));
+                
+                if (workDate <= end) {
+                    works.push({
+                        code,
+                        date: dateStr,
+                        duration,
+                        maker
+                    });
+                }
+            }
+            
+            if (works.length > 0) break;
+        }
     }
     
     return works;
@@ -275,44 +360,56 @@ async function main() {
         console.error('[-] 未找到演员资料网站配置');
         process.exit(1);
     }
-    const siteConfig = profileSites[0];
-    console.log('[*] 使用演员资料网站: ' + siteConfig.name + '\n');
     
-    try {
-        const changes = await updateProfile(name, endDate, siteConfig);
+    let lastError = null;
+    for (const siteConfig of profileSites) {
+        console.log('[*] 尝试使用演员资料网站: ' + siteConfig.name + '\n');
         
-        console.log('\n========================================');
-        console.log('执行结果');
-        console.log('========================================');
-        
-        if (changes.created) {
-            console.log('[+] 新建profile文件');
-        }
-        
-        if (changes.updated.length > 0) {
-            console.log('\n[*] 更新了以下信息:');
-            for (const u of changes.updated) {
-                console.log('    - ' + u.field + ': ' + u.old + ' -> ' + u.new);
+        try {
+            const changes = await updateProfile(name, endDate, siteConfig);
+            
+            console.log('\n========================================');
+            console.log('执行结果');
+            console.log('========================================');
+            
+            if (changes.created) {
+                console.log('[+] 新建profile文件');
             }
-        }
-        
-        if (changes.newWorks.length > 0) {
-            console.log('\n[*] 新增作品 (' + changes.newWorks.length + '个):');
-            for (const w of changes.newWorks) {
-                console.log('    - ' + w.code + ' (' + w.date + ')');
+            
+            if (changes.updated.length > 0) {
+                console.log('\n[*] 更新了以下信息:');
+                for (const u of changes.updated) {
+                    console.log('    - ' + u.field + ': ' + u.old + ' -> ' + u.new);
+                }
             }
+            
+            if (changes.newWorks.length > 0) {
+                console.log('\n[*] 新增作品 (' + changes.newWorks.length + '个):');
+                for (const w of changes.newWorks) {
+                    console.log('    - ' + w.code + ' (' + w.date + ')');
+                }
+            }
+            
+            if (!changes.created && changes.updated.length === 0 && changes.newWorks.length === 0) {
+                console.log('[*] 没有需要更新的信息');
+            }
+            
+            await askSearchMagnets(name);
+            return;
+            
+        } catch (e) {
+            console.error('[-] 网站 ' + siteConfig.name + ' 搜索失败: ' + e.message);
+            lastError = e;
+            console.log('[*] 尝试下一个网站...\n');
+            continue;
         }
-        
-        if (!changes.created && changes.updated.length === 0 && changes.newWorks.length === 0) {
-            console.log('[*] 没有需要更新的信息');
-        }
-        
-        await askSearchMagnets(name);
-        
-    } catch (e) {
-        console.error('[-] 错误: ' + e.message);
-        process.exit(1);
     }
+    
+    console.error('[-] 所有网站都搜索失败');
+    if (lastError) {
+        console.error('[-] 最后一个错误: ' + lastError.message);
+    }
+    process.exit(1);
 }
 
 main();

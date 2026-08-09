@@ -69,6 +69,62 @@ profileSites:
     searchActorUrl: '{baseUrl}/search/{name}'
     profileUrlPrefix: 'https://www.renwujidian.com'
 
+  theidolbase:
+    name: The Idol Base (theidolbase.com)
+    baseUrl: https://www.theidolbase.com
+
+    # 搜索页面
+    search:
+      # URL 模板
+      url: /search/{name}
+      # 搜索结果中 profile 链接的 CSS 选择器
+      profileLinkSelector: 'a[href^="/actress/"]'
+
+    # Profile 页面字段提取
+    profile:
+      # 包含基本信息的区域的 CSS 选择器
+      infoListSelector: '.info-list .info-item'
+      # 作品表格的 CSS 选择器
+      worksSelector: '.works-table .work-item'
+
+      # 字段提取规则
+      fields:
+        name:
+          # 从页面标题或特定元素提取中文名
+          selector: '.info-item .info-label:contains("中文名") + .info-value'
+        english_name:
+          selector: '.info-item .info-label:contains("外文名") + .info-value'
+        birthday:
+          selector: '.info-item .info-label:contains("出生日期") + .info-value'
+        height:
+          selector: '.info-item .info-label:contains("身高") + .info-value'
+        bust:
+          selector: '.info-item .info-label:contains("三围") + .info-value'
+        waist:
+          selector: '.info-item .info-label:contains("三围") + .info-value'
+        hip:
+          selector: '.info-item .info-label:contains("三围") + .info-value'
+        debut_year:
+          selector: '.info-item .info-label:contains("出道时间") + .info-value'
+        blood_type:
+          selector: '.info-item .info-label:contains("血型") + .info-value'
+        birthplace:
+          selector: '.info-item .info-label:contains("出生地") + .info-value'
+        agency:
+          selector: '.info-item .info-label:contains("经纪公司") + .info-value'
+
+      # 作品表格提取
+      works:
+        itemSelector: '.work-item'
+        codeSelector: '.code'
+        dateSelector: '.date'
+        durationSelector: '.runtime'
+        makerSelector: '.studio'
+
+    # 搜索演员 profile URL
+    searchActorUrl: '{baseUrl}/search/{name}'
+    profileUrlPrefix: 'https://www.theidolbase.com'
+
 # 磁链搜索网站 (Magnet search website)
 # 用途：根据番号获得磁链
 magnetSites:
