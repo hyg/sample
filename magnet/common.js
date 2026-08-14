@@ -45,6 +45,17 @@ function formatString(template, params) {
     return result;
 }
 
+function safeWriteFile(filePath, data, options) {
+    const tmpPath = filePath + '.tmp';
+    try {
+        fs.writeFileSync(tmpPath, data, options);
+        fs.renameSync(tmpPath, filePath);
+    } catch (e) {
+        try { fs.unlinkSync(tmpPath); } catch (_) {}
+        throw e;
+    }
+}
+
 function ensureDir(dir) {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -69,6 +80,7 @@ module.exports = {
     getProfileSites,
     getMagnetSites,
     formatString,
+    safeWriteFile,
     ensureDir,
     encodeSearchName,
     initEncoding,

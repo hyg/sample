@@ -10,6 +10,7 @@ const {
     loadSitesConfig,
     getProfileSites,
     formatString,
+    safeWriteFile,
     ensureDir,
     encodeSearchName,
     initEncoding,
@@ -304,7 +305,7 @@ async function updateProfile(name, endDate, siteConfig) {
         profileData.works.sort((a, b) => new Date(b.date) - new Date(a.date));
     }
     
-    fs.writeFileSync(profileFile, yaml.dump(profileData, { allowUnicode: true }));
+    safeWriteFile(profileFile, yaml.dump(profileData, { allowUnicode: true }));
     console.log('[+] 已保存profile文件: ' + profileFile);
     
     return changes;

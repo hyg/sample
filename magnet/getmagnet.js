@@ -6,6 +6,7 @@ const puppeteer = require('puppeteer');
 const {
     getMagnetSites,
     formatString,
+    safeWriteFile,
     initEncoding,
     PROFILE_DIR
 } = require('./common');
@@ -55,7 +56,7 @@ function saveCache() {
             updated_at: new Date().toISOString(),
             magnets: magnetLines
         };
-        fs.writeFileSync(profileFile, yaml.dump(profileData, { 
+        safeWriteFile(profileFile, yaml.dump(profileData, { 
             allowUnicode: true, 
             lineWidth: -1, 
             noRefs: true,
@@ -527,7 +528,7 @@ async function processWork(work, browser, profileData, profileFile, newMagnets) 
             updated_at: new Date().toISOString(),
             magnets: magnetLines
         };
-        fs.writeFileSync(profileFile, yaml.dump(profileData, { 
+        safeWriteFile(profileFile, yaml.dump(profileData, { 
             allowUnicode: true, 
             lineWidth: -1, 
             noRefs: true,
