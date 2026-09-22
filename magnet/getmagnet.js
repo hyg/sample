@@ -246,10 +246,9 @@ async function searchDdcl(browser, code) {
                 }
             }
 
-            // 检查是否有搜索结果 - 通过表格数量判断
-            // 有结果的页面会有多个表格（每个结果项一个表格），无结果的页面表格数为 0
-            const tableCount = await page.evaluate(() => {
-                return document.querySelectorAll('table').length;
+            // 检查是否有搜索结果 - 通过 div.result 数量判断
+            const resultCount = await page.evaluate(() => {
+                return document.querySelectorAll('div.result').length;
             });
 
             // 检查是否显示"没有找到"提示（辅助判断）
@@ -267,19 +266,18 @@ async function searchDdcl(browser, code) {
                 break;
             }
 
-            // 如果没有表格，说明没有搜索结果
-            if (tableCount === 0) {
+            // 如果没有结果条目，说明没有搜索结果
+            if (resultCount === 0) {
                 break;
             }
 
             // 获取搜索结果条目列表
-            // 根据分析，每个结果项是 div.panel.panel-default，链接在 h5.item-title a 中
             const items = await page.evaluate(() => {
                 const result = [];
-                const panels = document.querySelectorAll('div.panel.panel-default');
+                const results = document.querySelectorAll('div.result');
                 
-                for (const panel of panels) {
-                    const linkEl = panel.querySelector('h5.item-title a');
+                for (const item of results) {
+                    const linkEl = item.querySelector('h3 a');
                     if (linkEl) {
                         const name = linkEl.textContent ? linkEl.textContent.trim() : '';
                         const link = linkEl.href || '';
@@ -300,17 +298,14 @@ async function searchDdcl(browser, code) {
                 await page.goto(item.link, { waitUntil: 'load', timeout: 60000 });
                 await new Promise(r => setTimeout(r, siteConfig.detailPageLoadWait));
 
-                // 获取文件列表 - 使用正确的选择器：table.table-striped tr
+                // 获取文件列表 - 使用 div.file-item 选择器
                 const files = await page.evaluate(() => {
-                    const table = document.querySelector('table.table-striped');
-                    if (!table) return [];
-
-                    const rows = table.querySelectorAll('tbody tr');
+                    const fileItems = document.querySelectorAll('div.file-item');
                     const result = [];
-                    for (const row of rows) {
-                        const td = row.querySelector('td');
-                        if (td) {
-                            result.push(td.textContent.trim());
+                    for (const item of fileItems) {
+                        const text = item.textContent ? item.textContent.trim() : '';
+                        if (text) {
+                            result.push(text);
                         }
                     }
                     return result;
