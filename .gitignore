@@ -39,3 +39,4 @@ Thumbs.db
 /xbrl/*.ofd
 /claudecode/node_modules/@anthropic-ai/claude-code/mycli.js
 /magnet/profile
+/magnet/.browser4-cli
