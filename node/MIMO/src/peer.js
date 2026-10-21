@@ -310,16 +310,31 @@ export class PeerManager extends EventEmitter {
   onData (buf, rinfo) {
     const candidates = []
     for (const [id, session] of this.sessions) {
-      candidates.push({ id, recvKey: session.recvKey, session })
+      candidates.push({ id, recvKey: session.recvKey, session, pending: null })
     }
     for (const [id, pending] of this.pendingInits) {
-      if (!this.sessions.has(id)) candidates.push({ id, recvKey: pending.recvKey, pending })
+      candidates.push({ id, recvKey: pending.recvKey, session: this.sessions.get(id) || null, pending })
     }
     for (const cand of candidates) {
       const dec = tryDecryptData(buf, cand.recvKey)
       if (!dec) continue
-      if (dec.counter <= (cand.session ? cand.session.lastRecvCtr : cand.pending.lastRecvCtr)) continue
       let session = cand.session
+      if (session && cand.recvKey === session.recvKey) {
+        if (dec.counter <= session.lastRecvCtr) continue
+      } else if (cand.pending) {
+        if (dec.counter <= cand.pending.lastRecvCtr) continue
+        if (session) {
+          session.sendKey = cand.pending.sendKey
+          session.recvKey = cand.pending.recvKey
+          session.sendCtr = 0n
+          session.lastRecvCtr = -1n
+          this.pendingInits.delete(cand.id)
+          this.stopPunch(cand.id)
+          this.debug(`[会话] ${session.name} 密钥已更新(对端重新握手)`)
+        }
+      } else {
+        continue
+      }
       if (!session) {
         const pending = cand.pending
         session = {
