@@ -6,23 +6,31 @@ import readline from 'node:readline'
 import crypto from 'node:crypto'
 import { BOOTSTRAP_NODES, STUN_SERVERS, STUN_REFRESH_JITTER, STUN_REFRESH_MIN } from './src/defaults.js'
 import { DhtService } from './src/dht.js'
+import { ensureFirewall } from './src/firewall.js'
 import { deriveRoomKeys } from './src/keys.js'
 import { PeerManager } from './src/peer.js'
 import { parseStunList, stunDiscover } from './src/stun.js'
 
-const USAGE = `用法: node index.js --room <共享密钥> [选项]
+const USAGE = `用法: node index.js [--room <共享密钥>] [选项]
+或直接双击 启动节点.bat (首次启动会交互询问口令和名字, 之后自动记住)
 
 选项:
-  --room <密钥>          必需。房间共享密钥(用于发现彼此、加密名单与握手认证)
-  --name <名字>          显示名(默认自动分配并持久化)
+  --room <密钥>          房间共享密钥(用于发现彼此、加密名单与握手认证); 未提供且非交互模式时必需
+  --name <名字>          显示名(如: 张三)
   --dht-port <端口>      DHT 监听端口(默认随机)
   --comm-port <端口>     通信(打洞)监听端口(默认随机)
   --bootstrap <列表/文件> DHT 引导节点, 逗号分隔 host:port, 或每行一个的文件路径
   --stun <列表>          STUN 服务器, 逗号分隔 stun:host:port
   --my-ip <地址>         手动指定公网地址(跳过 STUN)
   --state <文件>         状态文件路径(默认按 --name 自动区分: state-<名字>.json)
+  --no-firewall          跳过自动配置 Windows 防火墙
   --verbose              输出详细日志
   --help                 显示帮助
+
+首次运行(双击 bat 或命令行未给 --room)会交互询问:
+  - 房间口令 -> 保存到 room.txt, 下次自动读取
+  - 你的名字 -> 保存到 my-name.txt, 下次自动读取
+删除这两个文件即可重新设置
 
 启动后直接输入文字即可向所有在线节点广播; 命令: /peers /info /quit
 停止(Ctrl+C)时会打印当前可用的公网 ip:port, 可加入今后的 DHT BOOTSTRAPS
@@ -39,6 +47,7 @@ function parseArgs (argv) {
     stun: null,
     myIp: null,
     state: null,
+    noFirewall: false,
     verbose: false,
     help: false
   }
@@ -54,6 +63,7 @@ function parseArgs (argv) {
       case '--stun': args.stun = next(); break
       case '--my-ip': args.myIp = next(); break
       case '--state': args.state = next(); break
+      case '--no-firewall': args.noFirewall = true; break
       case '--verbose': args.verbose = true; break
       case '--help': case '-h': args.help = true; break
       default:
@@ -90,6 +100,41 @@ function loadStun (value) {
   const list = parseStunList(value)
   if (!list.length) throw new Error('STUN 服务器格式错误, 应为 stun:host:port,...')
   return list
+}
+
+const ROOM_FILE = 'room.txt'
+const NAME_FILE = 'my-name.txt'
+
+function readSavedText (file) {
+  try {
+    const v = fs.readFileSync(path.resolve(file), 'utf8').trim()
+    return v || null
+  } catch {
+    return null
+  }
+}
+
+function saveText (file, value) {
+  try { fs.writeFileSync(path.resolve(file), value + '\n') } catch {}
+}
+
+function askOnce (question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    rl.question(question, (answer) => {
+      try { rl.close() } catch {}
+      resolve(answer.trim())
+    })
+  })
+}
+
+async function firstRunWizard () {
+  if (!process.stdin.isTTY) return null
+  console.log('首次启动: 请设置房间口令和你的名字 (会记住, 下次直接启动)')
+  const room = await askOnce('房间口令 (同一房间才能互相发现, 简单好记的词, 不要空格): ')
+  if (!room) return null
+  const name = await askOnce('你的名字 (如: 张三, 直接回车则自动分配): ')
+  return { room, name: name || null }
 }
 
 function loadState (file) {
@@ -153,10 +198,19 @@ async function main () {
     console.log(USAGE)
     return
   }
+  if (!args.room) args.room = readSavedText(ROOM_FILE)
+  if (!args.name) args.name = readSavedText(NAME_FILE)
   if (!args.room) {
-    console.log(USAGE)
-    process.exitCode = 1
-    return
+    const answers = await firstRunWizard()
+    if (!answers) {
+      console.log(USAGE)
+      process.exitCode = 1
+      return
+    }
+    args.room = answers.room
+    if (!args.name) args.name = answers.name
+    saveText(ROOM_FILE, args.room)
+    if (args.name) saveText(NAME_FILE, args.name)
   }
 
   const stateName = args.state || (args.name ? `state-${args.name.replace(/[\\/:*?"<>|]/g, '_')}.json` : 'state.json')
@@ -181,6 +235,13 @@ async function main () {
   const roomFingerprint = crypto.createHash('sha1').update(roomKeys.publicKey).digest('hex').slice(0, 16)
   const bootstrap = loadBootstrap(args.bootstrap)
   const stunServers = loadStun(args.stun)
+
+  if (!args.noFirewall) {
+    await ensureFirewall({
+      log,
+      optoutFile: path.join(path.dirname(stateFile), 'state-firewall-optout')
+    })
+  }
 
   let shuttingDown = false
 

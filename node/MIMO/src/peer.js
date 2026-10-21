@@ -119,6 +119,8 @@ export class PeerManager extends EventEmitter {
     this.initiations = new Map()
     this.pendingInits = new Map()
     this.lastRespAt = new Map()
+    this.lastInitLogAt = new Map()
+    this.peerInboundAt = new Map()
     this.reassembly = new Map()
     this.publicInfo = null
     this.running = false
@@ -198,7 +200,7 @@ export class PeerManager extends EventEmitter {
     }
     this.initiations.set(id, { priv, pub: state.eph.pub, nonce: state.eph.nonce, name: this.name })
     this.punches.set(id, state)
-    this.debug(`[打洞] 发现节点 ${id.slice(0, 8)} 地址=${addrs.map((a) => `${a.via}:${a.host}:${a.port}`).join(' ')} NAT=${entry.nat || '未知'}`)
+    this.log(`[打洞] 开始连接节点 ${id.slice(0, 8)} 候选=${addrs.map((a) => `${a.via}:${a.host}:${a.port}`).join(' ')} NAT=${entry.nat || '未知'}`)
     state.timer = setTimeout(() => this.punchTick(state), 0)
   }
 
@@ -209,6 +211,12 @@ export class PeerManager extends EventEmitter {
     }
     const ts = tsNow()
     if (ts - state.startedAt > PUNCH_MAX_LIFETIME || ts - state.entry.ts > RECORD_TTL + 60000) {
+      const inbound = this.peerInboundAt.get(state.id)
+      const why = inbound
+        ? '双方数据可互通但握手未完成'
+        : '对方的数据包始终未能进入本机(通常是防火墙或云服务器安全组拦截了对方入站)'
+      this.log(`[打洞] 与 ${state.id.slice(0, 8)} 连接超时(已试 ${state.tries} 次) — ${why}`)
+      if (!inbound) this.log('[打洞]   提示: Windows 已自动请求授权放行; 云服务器需在控制台安全组放行 UDP 端口')
       this.stopPunch(state.id)
       return
     }
@@ -243,6 +251,7 @@ export class PeerManager extends EventEmitter {
     if (!msg) return
     if (msg.nodeId.equals(this.nodeId)) return
     const idHex = msg.nodeId.toString('hex')
+    this.peerInboundAt.set(idHex, tsNow())
     const lastResp = this.lastRespAt.get(idHex) || 0
     if (tsNow() - lastResp < RESP_MIN_INTERVAL && !this.sessions.has(idHex)) return
 
@@ -263,7 +272,11 @@ export class PeerManager extends EventEmitter {
       lastSendAt: 0
     })
     if (!this.sessions.has(idHex)) {
-      this.debug(`[打洞] 收到 ${idHex.slice(0, 8)}(${msg.name}) 的 INIT 来自 ${rinfo.address}:${rinfo.port} 已回复 RESP`)
+      const last = this.lastInitLogAt.get(idHex) || 0
+      if (tsNow() - last > 5000) {
+        this.lastInitLogAt.set(idHex, tsNow())
+        this.log(`[打洞] 收到 ${idHex.slice(0, 8)}(${msg.name}) 的 INIT 来自 ${rinfo.address}:${rinfo.port} 已回复 RESP`)
+      }
     }
   }
 

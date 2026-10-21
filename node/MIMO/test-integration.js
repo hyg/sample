@@ -5,7 +5,7 @@ const kids = []
 function start (name, dhtPort, commPort) {
   const child = spawn(process.execPath, [
     'index.js', '--room', 'PSMD-verify-9527', '--name', name,
-    '--dht-port', String(dhtPort), '--comm-port', String(commPort)
+    '--dht-port', String(dhtPort), '--comm-port', String(commPort), '--no-firewall'
   ], { stdio: ['pipe', 'pipe', 'pipe'] })
   const out = { name, buf: '', child, connected: false, gotMsg: null, nodeId: null, exit: undefined }
   child.stdout.on('data', (d) => {
