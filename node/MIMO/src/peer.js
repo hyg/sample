@@ -177,16 +177,24 @@ export class PeerManager extends EventEmitter {
 
   ensurePunch (id, entry) {
     let state = this.punches.get(id)
-    if (state) {
-      state.entry = entry
-      return
-    }
     const addrs = []
     if (entry.ip && entry.port) addrs.push({ host: entry.ip, port: entry.port, via: '公网' })
     for (const lan of entry.lan || []) {
       if (typeof lan === 'string' && lan !== entry.ip) addrs.push({ host: lan, port: entry.lport || entry.port, via: '内网' })
     }
     if (!addrs.length) return
+    if (state) {
+      const changed = JSON.stringify(addrs) !== JSON.stringify(state.addrs)
+      state.entry = entry
+      if (changed) {
+        state.addrs = addrs
+        state.addrIdx = 0
+        state.tries = 0
+        state.startedAt = tsNow()
+        this.debug(`[打洞] ${id.slice(0, 8)} 地址变更, 重置打洞: ${addrs.map((a) => `${a.via}:${a.host}:${a.port}`).join(' ')}`)
+      }
+      return
+    }
     const { priv, pub } = generateX25519()
     state = {
       id,
