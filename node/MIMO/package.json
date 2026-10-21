@@ -1,0 +1,24 @@
+{
+  "name": "dht-p2p-node",
+  "version": "1.0.0",
+  "description": "基于 DHT 发现 + UDP 打洞的局域网 NAT 穿透 P2P 节点",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "p2p",
+    "dht",
+    "nat",
+    "stun"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "bittorrent-dht": "^11.0.12",
+    "k-rpc-socket": "^1.11.1"
+  }
+}
