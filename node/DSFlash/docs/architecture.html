@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>p2pnode 架构与威胁模型</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#151b23; --panel2:#1b232d; --line:#2a3341;
+    --fg:#e6edf3; --muted:#93a1b1; --dim:#6b7887;
+    --accent:#4aa8ff; --accent2:#3ddc97; --warn:#ffb454; --danger:#ff6b6b;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:56px 28px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:44px}
+  .kicker{color:var(--accent);font:600 12px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase}
+  h1{font-size:34px;line-height:1.25;margin:14px 0 10px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:16px;max-width:70ch}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .badge{font:500 12px/1 var(--mono);color:var(--muted);background:var(--panel2);
+    border:1px solid var(--line);border-radius:999px;padding:7px 12px}
+  h2{font-size:21px;margin:56px 0 6px;letter-spacing:-.01em}
+  h2 .num{color:var(--dim);font:600 13px/1 var(--mono);margin-right:10px;vertical-align:2px}
+  h3{font-size:15px;margin:26px 0 8px;color:var(--fg)}
+  p{color:var(--muted);margin:10px 0}
+  .lead{color:var(--fg)}
+  code{font:13px/1.5 var(--mono);background:#1f2833;border:1px solid var(--line);
+    border-radius:5px;padding:2px 6px;color:#cfe3ff}
+  .grid{display:grid;gap:14px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  @media(max-width:820px){.g3,.g2{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card h4{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card p{margin:0;font-size:14px;line-height:1.65}
+  .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+  .c1{background:var(--accent)} .c2{background:var(--warn)} .c3{background:var(--accent2)}
+  figure{margin:26px 0 0;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:14px}
+  figcaption{color:var(--dim);font-size:13px;text-align:center;padding:10px 4px 2px}
+  svg{display:block;width:100%;height:auto}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--dim);font:600 12px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em}
+  td code{font-size:12.5px}
+  tbody tr:hover{background:#131922}
+  .ok{color:var(--accent2)} .no{color:var(--danger)} .mid{color:var(--warn)}
+  pre{background:#0b1017;border:1px solid var(--line);border-radius:10px;
+    padding:16px 18px;overflow:auto;font:13px/1.6 var(--mono);color:#b9cbdd;margin:14px 0}
+  pre .g{color:#5f7183;user-select:none}
+  pre .k{color:var(--accent)} pre .s{color:var(--accent2)} pre .n{color:var(--warn)}
+  .note{border-left:3px solid var(--warn);background:#1e1a12;border-radius:0 10px 10px 0;
+    padding:14px 18px;margin:18px 0;font-size:14px;color:#e8d6b8}
+  .note b{color:var(--warn)}
+  .flow{display:grid;gap:0;margin-top:16px}
+  .step{display:grid;grid-template-columns:44px 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:none}
+  .step .idx{font:600 13px/26px var(--mono);color:var(--accent);
+    background:#122033;border:1px solid #1d3550;border-radius:8px;text-align:center;height:26px}
+  .step .t{font-weight:600;font-size:15px}
+  .step .d{color:var(--muted);font-size:14px}
+  footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);
+    color:var(--dim);font-size:13px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">p2pnet / v1</div>
+  <h1>p2pnode：不用服务器的 P2P 节点</h1>
+  <p class="sub">
+    节点各自处在不同局域网、出口有 NAT。用 <b>DHT 公布公网地址</b>、用 <b>STUN 探测映射</b>、
+    <b>UDP 打洞直连</b>，连接建立后消息不经过任何服务器。DHT 上只写 <code>IP:port</code>，
+    内容端到端加密，长度定长分桶，时间加抖动与掩护流量。
+  </p>
+  <div class="badges">
+    <span class="badge">Node.js ≥ 18 · 零第三方依赖</span>
+    <span class="badge">Kademlia / BEP-5 兼容</span>
+    <span class="badge">X25519 + AES-256-GCM</span>
+    <span class="badge">固定 64/256/1024/4096 桶长</span>
+  </div>
+</header>
+
+<h2><span class="num">01</span>三条链路，各管一件事</h2>
+<p class="lead">把"找得到"和"连得上"彻底分开，是这个设计成立的前提。</p>
+
+<div class="grid g3" style="margin-top:16px">
+  <div class="card">
+    <h4><span class="dot c1"></span>发现 · DHT</h4>
+    <p>标准 <code>announce_peer</code> / <code>get_peers</code>：把自己观测到的公网 <code>IP:port</code>
+    登记到一个由「网络名 + 时间轮次」派生的主题下，其他人查同一主题即可取得地址列表。<b>只写地址，不写身份、不写内容。</b></p>
+  </div>
+  <div class="card">
+    <h4><span class="dot c2"></span>探测 · STUN</h4>
+    <p>仅用于开洞之前问一句"我出去后长什么样"。四台 STUN 并行探测，比对映射端口是否随目标变化，
+    判定 NAT 是锥形还是对称型，并据此生成候选端口。</p>
+  </div>
+  <div class="card">
+    <h4><span class="dot c3"></span>通信 · 直连 UDP</h4>
+    <p>双方同时向对方的候选地址发 16 字节探测包；收到即向<b>包的真实来源</b>回包。
+    洞打通后立刻握手、协商密钥，此后所有数据只在两端之间流动。</p>
+  </div>
+</div>
+
+<figure>
+<svg viewBox="0 0 1000 430" role="img" aria-label="架构图">
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
+      <path d="M0,0 L7.5,3 L0,6 z" fill="#4aa8ff"/>
+    </marker>
+    <marker id="ah2" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
+      <path d="M0,0 L7.5,3 L0,6 z" fill="#3ddc97"/>
+    </marker>
+    <marker id="ah3" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto">
+      <path d="M0,0 L7.5,3 L0,6 z" fill="#ffb454"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="430" fill="none"/>
+
+  <!-- LAN A -->
+  <rect x="18" y="120" width="236" height="240" rx="14" fill="#101822" stroke="#25303d"/>
+  <text x="34" y="146" fill="#6b7887" font-size="12" font-family="monospace">局域网 A</text>
+  <rect x="46" y="176" width="178" height="74" rx="10" fill="#16202c" stroke="#2f4a66"/>
+  <text x="135" y="204" fill="#e6edf3" font-size="14" text-anchor="middle" font-weight="600">p2pnode A</text>
+  <text x="135" y="226" fill="#7f8fa1" font-size="11.5" text-anchor="middle" font-family="monospace">udp 6881</text>
+
+  <rect x="46" y="272" width="178" height="58" rx="10" fill="#1a2330" stroke="#3a4658"/>
+  <text x="135" y="296" fill="#b9cbdd" font-size="13" text-anchor="middle">NAT A</text>
+  <text x="135" y="315" fill="#6b7887" font-size="11" text-anchor="middle" font-family="monospace">锥形 / 对称型</text>
+
+  <!-- LAN B -->
+  <rect x="746" y="120" width="236" height="240" rx="14" fill="#101822" stroke="#25303d"/>
+  <text x="762" y="146" fill="#6b7887" font-size="12" font-family="monospace">局域网 B</text>
+  <rect x="776" y="176" width="178" height="74" rx="10" fill="#16202c" stroke="#2f4a66"/>
+  <text x="865" y="204" fill="#e6edf3" font-size="14" text-anchor="middle" font-weight="600">p2pnode B</text>
+  <text x="865" y="226" fill="#7f8fa1" font-size="11.5" text-anchor="middle" font-family="monospace">udp 6881</text>
+
+  <rect x="776" y="272" width="178" height="58" rx="10" fill="#1a2330" stroke="#3a4658"/>
+  <text x="865" y="296" fill="#b9cbdd" font-size="13" text-anchor="middle">NAT B</text>
+  <text x="865" y="315" fill="#6b7887" font-size="11" text-anchor="middle" font-family="monospace">锥形 / 对称型</text>
+
+  <!-- public cloud -->
+  <rect x="330" y="26" width="340" height="96" rx="12" fill="#131a24" stroke="#2a3341" stroke-dasharray="5 4"/>
+  <text x="500" y="50" fill="#6b7887" font-size="11.5" text-anchor="middle" font-family="monospace">公共基础设施（只参与找地址）</text>
+  <rect x="352" y="62" width="140" height="44" rx="8" fill="#122033" stroke="#2f4a66"/>
+  <text x="422" y="80" fill="#cfe3ff" font-size="12.5" text-anchor="middle">公共 DHT</text>
+  <text x="422" y="96" fill="#6b7887" font-size="10.5" text-anchor="middle" font-family="monospace">只存 IP:port</text>
+  <rect x="508" y="62" width="140" height="44" rx="8" fill="#231d12" stroke="#5a4526"/>
+  <text x="578" y="80" fill="#ffd9a3" font-size="12.5" text-anchor="middle">STUN ×4</text>
+  <text x="578" y="96" fill="#8a7448" font-size="10.5" text-anchor="middle" font-family="monospace">只回映射地址</text>
+
+  <!-- discovery arrows -->
+  <path d="M200,176 C260,150 300,140 356,110" stroke="#4aa8ff" stroke-width="1.6" fill="none" marker-end="url(#ah)" opacity=".9"/>
+  <path d="M800,176 C740,150 700,140 652,110" stroke="#4aa8ff" stroke-width="1.6" fill="none" marker-end="url(#ah)" opacity=".9"/>
+  <text x="252" y="140" fill="#4aa8ff" font-size="11" font-family="monospace">① announce</text>
+  <text x="700" y="140" fill="#4aa8ff" font-size="11" font-family="monospace" text-anchor="end">① get_peers</text>
+
+  <!-- stun arrows -->
+  <path d="M224,235 C330,220 470,150 560,112" stroke="#ffb454" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#ah3)"/>
+  <path d="M776,235 C670,220 530,150 596,112" stroke="#ffb454" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#ah3)"/>
+  <text x="360" y="196" fill="#ffb454" font-size="11" font-family="monospace">② Binding Request</text>
+
+  <!-- direct link -->
+  <path d="M224,330 L776,330" stroke="#3ddc97" stroke-width="2.4" fill="none" marker-end="url(#ah2)" marker-start="url(#ah2)"/>
+  <text x="500" y="318" fill="#3ddc97" font-size="12.5" text-anchor="middle" font-weight="600">③ UDP 直连 · AES-256-GCM 端到端加密</text>
+  <text x="500" y="352" fill="#5a6b7d" font-size="11" text-anchor="middle" font-family="monospace">握手 192B 定长 · 数据帧 64/256/1024/4096 定长</text>
+
+  <!-- legend -->
+  <text x="500" y="404" fill="#5a6b7d" font-size="11" text-anchor="middle" font-family="monospace">
+    ① DHT 找地址　② STUN 探映射　③ 打洞后直连（此阶段不经过任何服务器）
+  </text>
+</svg>
+<figcaption>连接建立前可借公共 DHT / STUN；连接建立后，报文不再经过任何第三方。</figcaption>
+</figure>
+
+<h2><span class="num">02</span>一条消息的生命周期</h2>
+<div class="flow">
+  <div class="step">
+    <div class="idx">1</div>
+    <div><div class="t">算主题</div>
+    <div class="d"><code>topic = SHA1("p2pnet/v1/topic/" + network + "|" + epoch)</code>，
+    每小时换一次，跨轮次时同时查上一轮。同一个网络名必然算出同一主题，别人猜到主题也只知道"有谁在关心它"。</div></div>
+  </div>
+  <div class="step">
+    <div class="idx">2</div>
+    <div><div class="t">收敛到最近的 K 个节点</div>
+    <div class="d">迭代查询：每轮向"当前已知离主题最近的 K=8 个节点"中尚未访问的 α=3 个发
+    <code>get_peers</code>，把返回的节点并入候选集，直到最近 K 个都问过。
+    <b>公告集与查询集必须收敛到同一批节点</b>，否则两端互相看不见——这是最容易写错的一步。</div></div>
+  </div>
+  <div class="step">
+    <div class="idx">3</div>
+    <div><div class="t">公告 + 发现</div>
+    <div class="d">向这批节点 <code>announce_peer</code>（最多 3 个候选端口），
+    同时 <code>get_peers</code> 取回别人的 <code>IP:port</code>，再与本地 peer store 合并。</div></div>
+  </div>
+  <div class="step">
+    <div class="idx">4</div>
+    <div><div class="t">双向打洞</div>
+    <div class="d">对每个候选地址每 400ms 发一个 16 字节探测包。收到包就向<b>真实来源</b>回包——
+    对称 NAT 下公告的端口不成立，但它发来的包的真实源端口成立。</div></div>
+  </div>
+  <div class="step">
+    <div class="idx">5</div>
+    <div><div class="t">双向同时握手</div>
+    <div class="d">双方各自发 192 字节 HELLO（临时 X25519 + 长期 Ed25519 + 签名 + 网络口令 HMAC），
+    收到对端 HELLO 即完成，无需区分发起方。临时密钥提供前向保密，签名绑定身份。</div></div>
+  </div>
+  <div class="step">
+    <div class="idx">6</div>
+    <div><div class="t">加密传输</div>
+    <div class="d">消息切片 → 填入固定桶长 → AES-256-GCM。
+    ACK 逐片确认，超时指数退避重传。空闲时发 PING 保活，并按随机间隔发掩护帧。</div></div>
+  </div>
+</div>
+
+<h2><span class="num">03</span>谁知道了什么</h2>
+<p class="lead">"最小知情范围"落到每一方，边界如下。</p>
+
+<table>
+  <thead>
+    <tr><th>角色</th><th>能知道</th><th>不能知道</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>公共 DHT 节点</b></td>
+      <td>某个 <code>IP:port</code> 对某个 160bit 主题感兴趣；公告的端口号；报文到达时间</td>
+      <td class="no">消息内容、身份公钥、peerId、在线状态、对端是谁</td>
+    </tr>
+    <tr>
+      <td><b>STUN 服务器</b></td>
+      <td>你的出口 <code>IP:port</code>（这是它的唯一职责）</td>
+      <td class="no">你在和谁通信、内容、身份</td>
+    </tr>
+    <tr>
+      <td><b>路径上的网络设备</b></td>
+      <td>两端 IP、报文长度（只有四种）、发送时刻</td>
+      <td class="no">内容、真实长度（填充掩盖）、精确发送时刻（抖动 + 掩护帧）</td>
+    </tr>
+    <tr>
+      <td><b>对端节点</b></td>
+      <td>你的出口 IP、消息内容（这是通信的必要条件）</td>
+      <td class="no">你的内网地址、你的其它会话</td>
+    </tr>
+    <tr>
+      <td><b>网络外扫描者</b></td>
+      <td>你的 UDP 端口存在</td>
+      <td class="no">连握手都过不了：缺网络口令算不出 HMAC，无法建立会话</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <b>需要说清楚的诚实边界：</b>DHT 只能做到"不写内容"，做不到"不暴露地址"。
+  任何人知道 <code>network</code> 名，都能在 DHT 上查到"有哪些 IP:port 在关心这个主题"。
+  要隐藏这一点，需要叠加 VPN / Tor 这类网络层手段——那已超出本程序的范围。
+</div>
+
+<h2><span class="num">04</span>退出时给出可复用的 BOOTSTRAPS</h2>
+<p class="lead">把路由表直接丢给人是没用的——里面大半是早就下线的节点。所以退出时逐个 <code>ping</code>，只留"此刻真的应答"的。</p>
+
+<pre><span class="g">══════════════════════════════════════════════════════════</span>
+ 本轮运行结束：当前可用的 DHT BOOTSTRAPS（已逐个 ping 验证）
+<span class="g">══════════════════════════════════════════════════════════</span>
+  共 <span class="n">62</span> 个可用节点，按 RTT 排序：
+
+<span class="k">const</span> BOOTSTRAPS = [
+  { host: <span class="s">'122.193.252.163'</span>, port: <span class="n">37761</span> },
+  { host: <span class="s">'114.80.9.168'</span>,   port: <span class="n">6890</span> },
+  { host: <span class="s">'114.230.238.61'</span>, port: <span class="n">6889</span> },
+  ...
+]
+
+<span class="g">── 本节点信息 ──────────────────────────────</span>
+  peerId    : uuiu4ggbg6n7
+  UDP 端口  : 55274
+  公网映射  : 203.0.113.7:48459
+  NAT 类型  : endpoint-independent
+  报告已存  : ./data/bootstraps-latest.json（下次启动会自动加载）</pre>
+
+<p>报告同时落盘，<b>下次启动自动作为引导节点加载</b>，不需要复制粘贴。同一个节点反复运行时，接入速度会越来越快。</p>
+
+<h2><span class="num">05</span>能力与边界</h2>
+
+<div class="grid g2" style="margin-top:14px">
+  <div class="card">
+    <h4><span class="dot c3"></span>能做到</h4>
+    <p>锥形 NAT（含端口保持型）之间直连；单侧对称 NAT 与锥形 NAT 之间通常也能通；
+    40% 丢包下消息完整送达；跨轮次主题自动兼容；零服务端代码部署。</p>
+  </div>
+  <div class="card">
+    <h4><span class="dot c2"></span>做不到</h4>
+    <p>对称 NAT ↔ 对称 NAT。这是 NAT 的物理限制，任何"不用中继"的方案都不成立。
+    程序的处理是明确失败，不会偷偷降级到某台服务器——否则就违背了"通信不使用服务器"这条约束。</p>
+  </div>
+</div>
+
+<h3>测试实测</h3>
+<table>
+  <thead><tr><th>场景</th><th>结果</th></tr></thead>
+  <tbody>
+    <tr><td>3 节点本机回环：DHT 公告 / 发现 / 握手</td><td class="ok">全部连通（A=B=C=2 个会话）</td></tr>
+    <tr><td>8 KB 消息跨 9 个分片</td><td class="ok">重组内容逐字节一致</td></tr>
+    <tr><td>线上抓包检索明文</td><td class="ok">未命中</td></tr>
+    <tr><td>随机丢弃 40% 数据帧</td><td class="ok">重传补齐，完整送达</td></tr>
+    <tr><td>公共 DHT（真实公网）跨 NAT 交换地址</td><td class="ok">双方互相发现对方全部候选端口</td></tr>
+    <tr><td>对称 CGNAT 双端直连</td><td class="mid">按预期失败（无中继，物理不可达）</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  <span>p2pnode · MIT · Node.js ≥ 18 · 零第三方依赖</span>
+  <span>docs/PROTOCOL.md 有完整的线格式与状态机</span>
+</footer>
+
+</div>
+</body>
+</html>
