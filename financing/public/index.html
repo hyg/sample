@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="FundFlow AI — 用一次对话整理标准对齐的融资材料。Bilingual AI funding-pack builder with ISO standards matching, gap-filling interviews and downloadable materials."
+    />
+    <meta name="theme-color" content="#071019" />
+    <title>FundFlow AI · 融资材料工作台</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Project panel">
+        <div class="sidebar-head">
+          <a class="brand" href="/" aria-label="FundFlow AI home">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32" role="img">
+                <path d="M8 23V9h16M8 16h11M8 23h9" />
+                <circle cx="23" cy="9" r="2.6" />
+              </svg>
+            </span>
+            <span class="brand-copy">
+              <strong>FundFlow AI</strong>
+              <small>融资材料工作台</small>
+            </span>
+          </a>
+          <button class="icon-button sidebar-close" id="sidebarClose" type="button" aria-label="Close panel">
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <div class="sidebar-body" id="sidebarBody"></div>
+
+        <div class="sidebar-foot">
+          <span class="mini-dot"></span>
+          <span id="sidebarFootText">ISO / GB standards · private by design</span>
+        </div>
+      </aside>
+
+      <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="icon-button mobile-menu" id="menuButton" type="button" aria-label="Open panel">
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+            </button>
+            <span class="status-pill" id="statusPill">
+              <span class="pulse-dot"></span>
+              <span id="modeLabel">Online</span>
+            </span>
+            <span class="topbar-separator" aria-hidden="true"></span>
+            <span class="topbar-note" id="topbarNote">Conversation → standards → funding pack</span>
+          </div>
+          <div class="topbar-right">
+            <span class="lang-badge" id="langBadge" hidden>中文</span>
+            <button class="ghost-button" id="providerSettingsButton" type="button" hidden>模型设置</button>
+            <button class="ghost-button" id="restartButton" type="button" hidden>重新开始</button>
+          </div>
+        </header>
+
+        <div class="request-banner" id="requestBanner" role="status" aria-live="polite" hidden>
+          <span class="request-spinner" aria-hidden="true"></span>
+          <span class="request-status-text" id="requestStatusText"></span>
+          <button class="ghost-button request-cancel" id="requestCancel" type="button">取消请求</button>
+        </div>
+
+        <section class="start-view" id="startView">
+          <div class="start-copy">
+            <div class="eyebrow">
+              <span class="eyebrow-line"></span>
+              ISO / GB · INVESTOR READY
+            </div>
+            <h1>
+              <span class="gradient-text">用一次对话</span><br />
+              整理全套融资材料
+            </h1>
+            <p class="start-lead">
+              Turn one project conversation into a complete, standards-aligned funding pack.
+            </p>
+            <p class="start-sub">
+              匹配最接近的 ISO / GB 标准，围绕商业计划书、财务预测、技术与合规尽调逐项追问，最后生成可预览、可下载的全套材料。
+            </p>
+          </div>
+
+          <div class="language-panel">
+            <p class="language-prompt">请选择使用语言 / Please choose your language</p>
+            <div class="language-grid">
+              <button class="language-card" type="button" data-lang="zh">
+                <span class="language-mark">中</span>
+                <span class="language-copy">
+                  <strong>中文</strong>
+                  <small>用中文开始项目访谈</small>
+                </span>
+                <span class="language-arrow" aria-hidden="true">→</span>
+              </button>
+              <button class="language-card" type="button" data-lang="en">
+                <span class="language-mark language-mark-en">EN</span>
+                <span class="language-copy">
+                  <strong>English</strong>
+                  <small>Start the interview in English</small>
+                </span>
+                <span class="language-arrow" aria-hidden="true">→</span>
+              </button>
+            </div>
+            <button class="language-card language-card-other" id="otherLanguageCard" type="button">
+              <span class="language-mark language-mark-other">文</span>
+              <span class="language-copy">
+                <strong>其他语言 / Other language</strong>
+                <small>日本語 · Español · Français · Deutsch · 한국어 …</small>
+              </span>
+              <span class="language-arrow" aria-hidden="true">→</span>
+            </button>
+            <div class="other-language" id="otherLanguagePanel" hidden>
+              <label class="sr-only" for="otherLanguageInput">Language name</label>
+              <input
+                class="text-input"
+                id="otherLanguageInput"
+                type="text"
+                maxlength="60"
+                placeholder="例如：日本語 / Español / Français"
+              />
+              <button class="primary-button" id="otherLanguageStart" type="button">继续 / Continue</button>
+              <p class="language-note">
+                其他语言由所连接的大模型处理，界面保持英文。<br />
+                Other languages are handled by your connected model; the interface stays in English.
+              </p>
+            </div>
+            <p class="language-note">
+              选定语言后，后续提问、标准说明与全部文档都将使用该语言。<br />
+              The selected language will be used for the interview, standards notes and every document.
+            </p>
+          </div>
+
+          <div class="feature-strip" aria-label="How it works">
+            <article class="feature">
+              <span class="feature-index">01</span>
+              <h2>标准匹配 / Standards fit</h2>
+              <p>根据产品与行业信号匹配 ISO/IEC 25000 系列、ISO 9001、ISO 13485、ISO/IEC 27001 等。</p>
+            </article>
+            <article class="feature">
+              <span class="feature-index">02</span>
+              <h2>文档级追问 / Guided gaps</h2>
+              <p>按商业计划书、财务模型、技术尽调与数据室清单逐项补齐，不用自己列问题。</p>
+            </article>
+            <article class="feature">
+              <span class="feature-index">03</span>
+              <h2>成套交付 / Ready to share</h2>
+              <p>生成 9 份材料，支持在线预览、Markdown、Word 与全套 ZIP 下载。</p>
+            </article>
+          </div>
+
+          <p class="start-disclaimer">
+            对话内容仅用于本次材料生成；所有数字、资质与标准表述仍需创始人核验。
+            <span>No third-party files required. All figures must be verified before external use.</span>
+          </p>
+        </section>
+
+        <section class="chat-view" id="chatView" hidden>
+          <div class="chat-scroll" id="chatScroll">
+            <div class="chat-context" id="chatContext"></div>
+            <div class="message-list" id="messageList" role="log" aria-live="polite"></div>
+          </div>
+
+          <div class="composer-area">
+            <div class="quick-replies" id="quickReplies"></div>
+            <form class="composer" id="composer" autocomplete="off">
+              <label class="sr-only" for="composerInput">Project message</label>
+              <textarea
+                id="composerInput"
+                rows="1"
+                maxlength="6000"
+                placeholder="介绍您的项目…"
+              ></textarea>
+              <button class="send-button" id="sendButton" type="submit" aria-label="Send">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h13M13 6l6 6-6 6" />
+                </svg>
+              </button>
+            </form>
+            <div class="composer-meta">
+              <span id="composerHint">Enter 发送 · Shift + Enter 换行</span>
+              <button class="text-button" id="generateButton" type="button">生成全套材料</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="materials-view" id="materialsView" hidden>
+          <div class="materials-head">
+            <div class="materials-head-copy">
+              <button class="ghost-button back-button" id="backToChat" type="button">
+                <span aria-hidden="true">←</span> 返回对话
+              </button>
+              <div class="eyebrow eyebrow-small">
+                <span class="eyebrow-line"></span>
+                <span id="materialsEyebrow">FUNDING PACK</span>
+              </div>
+              <h2 id="materialsTitle">融资材料包</h2>
+              <p id="materialsSubtitle"></p>
+            </div>
+            <div class="materials-actions">
+              <button class="secondary-button" id="printButton" type="button">打印当前文档</button>
+              <button class="primary-button" id="downloadAllButton" type="button">下载全套 ZIP</button>
+            </div>
+          </div>
+
+          <div class="materials-body">
+            <aside class="doc-list" id="docList" aria-label="Materials list"></aside>
+            <article class="preview-panel">
+              <div class="preview-toolbar">
+                <div class="preview-file">
+                  <span class="file-icon" aria-hidden="true">MD</span>
+                  <span id="previewFilename">material.md</span>
+                </div>
+                <div class="preview-actions">
+                  <button class="icon-text-button" id="copyButton" type="button">复制</button>
+                  <button class="icon-text-button" id="downloadMdButton" type="button">Markdown</button>
+                  <button class="icon-text-button" id="downloadDocButton" type="button">Word</button>
+                </div>
+              </div>
+              <div class="preview-scroll">
+                <div class="preview markdown-body" id="preview"></div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="providerModal" hidden>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="providerTitle">
+        <button class="modal-close" id="providerClose" type="button" aria-label="Close">×</button>
+        <div class="eyebrow eyebrow-small">
+          <span class="eyebrow-line"></span>
+          <span>MODEL PROVIDER</span>
+        </div>
+        <h2 id="providerTitle">连接在线大模型</h2>
+        <p class="modal-copy" id="providerIntro"></p>
+        <form id="providerForm" autocomplete="off">
+          <div class="field-grid">
+            <label class="field">
+              <span id="providerLabel">提供商</span>
+              <select class="text-input" id="providerSelect"></select>
+            </label>
+            <label class="field">
+              <span id="providerModelLabel">模型</span>
+              <input class="text-input" id="providerModel" list="providerModels" maxlength="160" spellcheck="false" />
+              <datalist id="providerModels"></datalist>
+            </label>
+          </div>
+          <label class="field" id="providerBaseUrlField" hidden>
+            <span id="providerBaseUrlLabel">Base URL</span>
+            <input
+              class="text-input"
+              id="providerBaseUrl"
+              type="url"
+              placeholder="https://api.example.com/v1"
+              spellcheck="false"
+            />
+          </label>
+          <label class="field">
+            <span id="providerKeyLabel">API Key</span>
+            <input
+              class="text-input"
+              id="providerKey"
+              type="password"
+              autocomplete="new-password"
+              spellcheck="false"
+            />
+          </label>
+          <p class="provider-docs">
+            <a id="providerDocs" href="#" target="_blank" rel="noopener noreferrer" hidden></a>
+          </p>
+          <p class="provider-note" id="providerPrivacy"></p>
+          <p class="provider-status" id="providerStatus" role="status"></p>
+          <div class="modal-actions">
+            <button class="secondary-button" id="providerTest" type="button">测试连接</button>
+            <button class="ghost-button" id="providerDemo" type="button">使用演示模式</button>
+            <button class="primary-button" id="providerSubmit" type="submit">开始访谈</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <noscript>
+      <div class="noscript">This application requires JavaScript. 请启用 JavaScript 后重试。</div>
+    </noscript>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
