@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  EDGE_AI_DEFAULT_MODEL,
   ProviderError,
   callProvider,
+  edgeOneAiConfig,
   listProviders,
   normalizeProviderConfig,
   publicProviderInfo,
@@ -21,6 +23,16 @@ function withMockFetch(t, handler) {
   globalThis.fetch = handler;
   t.after(() => {
     globalThis.fetch = original;
+  });
+}
+
+function withMockAi(t, handler) {
+  const hadAi = Object.prototype.hasOwnProperty.call(globalThis, "AI");
+  const original = globalThis.AI;
+  globalThis.AI = { chatCompletions: handler };
+  t.after(() => {
+    if (hadAi) globalThis.AI = original;
+    else delete globalThis.AI;
   });
 }
 
@@ -262,6 +274,74 @@ test("empty content with finish_reason=length reports the output budget", async 
     (error) => {
       assert.equal(error.code, "empty_response");
       assert.match(error.message, /128-token output limit/);
+      return true;
+    }
+  );
+});
+
+test("EdgeOne AI calls the runtime without an API key", async (t) => {
+  let captured;
+  withMockAi(t, async (payload) => {
+    captured = payload;
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: "edge hello" }, finish_reason: "stop" }] })
+    );
+  });
+
+  const config = edgeOneAiConfig();
+  const text = await callProvider(config, { system: "sys", user: "hi", maxTokens: 99 });
+
+  assert.equal(text, "edge hello");
+  assert.equal(captured.model, EDGE_AI_DEFAULT_MODEL);
+  assert.equal(captured.stream, true);
+  assert.equal("max_tokens" in captured, false);
+  assert.equal("temperature" in captured, false);
+  assert.deepEqual(captured.messages, [
+    { role: "system", content: "sys" },
+    { role: "user", content: "hi" }
+  ]);
+});
+
+test("EdgeOne AI falls back across models and parses streaming chunks", async (t) => {
+  const models = [];
+  withMockAi(t, async (payload) => {
+    models.push(payload.model);
+    if (models.length === 1) {
+      throw new Error(JSON.stringify({ code: 14020, message: "daily public quota exhausted" }));
+    }
+    return new Response(
+      [
+        'data: {"choices":[{"delta":{"content":"edge "}}]}',
+        "",
+        'data: {"choices":[{"delta":{"content":"fallback"},"finish_reason":"stop"}]}',
+        "",
+        "data: [DONE]",
+        ""
+      ].join("\n")
+    );
+  });
+
+  const config = edgeOneAiConfig();
+  const text = await callProvider(config, { user: "hi" });
+
+  assert.equal(text, "edge fallback");
+  assert.equal(models.length, 2);
+  assert.equal(config.model, "@tx/deepseek-ai/deepseek-v32");
+});
+
+test("EdgeOne AI quota exhaustion is explicit after all models fail", async (t) => {
+  withMockAi(t, async () => {
+    throw new Error(JSON.stringify({ code: 14020, message: "daily public quota exhausted" }));
+  });
+
+  await assert.rejects(
+    () => callProvider(edgeOneAiConfig(), { user: "hi" }),
+    (error) => {
+      assert.ok(error instanceof ProviderError);
+      assert.equal(error.code, "edge_ai_quota_exhausted");
+      assert.equal(error.status, 429);
+      assert.equal(error.details.models.length, 3);
+      assert.match(error.message, /configure your own provider/i);
       return true;
     }
   );

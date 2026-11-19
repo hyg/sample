@@ -1,6 +1,8 @@
 node_modules/
 .wrangler/
 .wrangler-account.json
+.edgeone/
 .dev.vars
 dist/
+financing.zip
 *.log

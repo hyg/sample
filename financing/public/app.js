@@ -36,6 +36,16 @@ const I18N = {
       "演示模式仅支持中文和英文。其他语言请连接在线模型提供商。",
     providerDisabledDemo: "演示模式当前不可用，请连接在线模型。",
     providerDocs: "获取 API Key / 查看文档",
+    edgeAiNotice:
+      "默认使用 EdgeOne AI 免费额度（无需 API Key）。如需更高额度，请设置自己的 Provider / API Key。",
+    edgeAiQuotaNotice: "EdgeOne AI 免费额度已用完。请设置自己的 Provider 和 API Key 后继续。",
+    edgeAiSetup: "设置自己的模型",
+    edgeAiDocs: "EdgeOne AI 介绍",
+    edgeAiQuotaTitle: "EdgeOne AI 免费额度已用完",
+    edgeAiQuotaIntro:
+      "免费额度已用完，必须设置自己的 Provider 和 API Key 才能继续。当前对话和已填写信息不会丢失。",
+    edgeAiQuotaError: "EdgeOne AI 免费额度已用完，请设置自己的 Provider / API Key 后继续。",
+    edgeAiUnavailable: "EdgeOne AI 当前不可用，已回退到演示模式。",
     providerDemoName: "演示模式",
     providerDemoModel: "规则引擎",
     otherLanguage: "其他语言 / Other language",
@@ -161,6 +171,16 @@ const I18N = {
       "Demo mode supports Chinese and English only. Connect a model provider for other languages.",
     providerDisabledDemo: "Demo mode is disabled. Please connect a model provider.",
     providerDocs: "Get an API key / view docs",
+    edgeAiNotice:
+      "EdgeOne AI free quota is used by default with no API key. For higher limits, configure your own provider and API key.",
+    edgeAiQuotaNotice: "EdgeOne AI free quota is exhausted. Configure your own provider and API key to continue.",
+    edgeAiSetup: "Set up my model",
+    edgeAiDocs: "About EdgeOne AI",
+    edgeAiQuotaTitle: "EdgeOne AI free quota exhausted",
+    edgeAiQuotaIntro:
+      "The free quota is exhausted. Configure your own provider and API key to continue. Your conversation and answers are not lost.",
+    edgeAiQuotaError: "EdgeOne AI free quota is exhausted. Configure your own provider / API key to continue.",
+    edgeAiUnavailable: "EdgeOne AI is unavailable; demo mode is being used.",
     providerDemoName: "Demo mode",
     providerDemoModel: "Rules engine",
     otherLanguage: "Other language / 其他语言",
@@ -251,6 +271,8 @@ const I18N = {
   }
 };
 
+const EDGE_AI_QUOTA_STORAGE_KEY = "fundflow.edgeAiQuotaDate";
+
 const state = {
   lang: null,
   uiLang: "zh",
@@ -276,6 +298,9 @@ const state = {
   providerInfo: null,
   demo: false,
   demoEnabled: true,
+  edgeAiAvailable: true,
+  edgeAiExhausted: readEdgeAiQuotaExhausted(),
+  edgeAiDocsUrl: "https://pages.edgeone.ai/zh/document/edge-ai",
   providers: [],
   providersLoaded: false,
   providersLoading: false,
@@ -294,6 +319,10 @@ const el = {
   statusPill: document.getElementById("statusPill"),
   modeLabel: document.getElementById("modeLabel"),
   topbarNote: document.getElementById("topbarNote"),
+  edgeAiNotice: document.getElementById("edgeAiNotice"),
+  edgeAiNoticeText: document.getElementById("edgeAiNoticeText"),
+  edgeAiDocs: document.getElementById("edgeAiDocs"),
+  edgeAiSetup: document.getElementById("edgeAiSetup"),
   requestBanner: document.getElementById("requestBanner"),
   requestStatusText: document.getElementById("requestStatusText"),
   requestCancel: document.getElementById("requestCancel"),
@@ -361,6 +390,111 @@ function t(key, vars = {}) {
   const value = I18N[lang][key] ?? I18N.zh[key] ?? key;
   if (typeof value !== "string") return value;
   return value.replace(/\{(\w+)\}/g, (_, name) => (vars[name] == null ? "" : String(vars[name])));
+}
+
+function localDayKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function readEdgeAiQuotaExhausted() {
+  try {
+    return window.localStorage.getItem(EDGE_AI_QUOTA_STORAGE_KEY) === localDayKey();
+  } catch {
+    return false;
+  }
+}
+
+function persistEdgeAiQuotaExhausted(exhausted) {
+  try {
+    if (exhausted) {
+      window.localStorage.setItem(EDGE_AI_QUOTA_STORAGE_KEY, localDayKey());
+    } else {
+      window.localStorage.removeItem(EDGE_AI_QUOTA_STORAGE_KEY);
+    }
+  } catch {
+    /* storage can be unavailable in private browsing */
+  }
+}
+
+function isEdgeAiQuotaError(error) {
+  return Boolean(
+    error &&
+      (error.code === "edge_ai_quota_exhausted" ||
+        /EdgeOne AI free quota|免费额度已用完|每日.*额度/i.test(String(error.message || "")))
+  );
+}
+
+function markEdgeAiQuotaExhausted() {
+  state.edgeAiExhausted = true;
+  state.demo = false;
+  state.provider = null;
+  state.providerInfo = null;
+  persistEdgeAiQuotaExhausted(true);
+  updateStatus();
+  updateEdgeAiNotice();
+  syncControls();
+}
+
+function clearEdgeAiQuotaExhausted() {
+  if (!state.edgeAiExhausted) return;
+  state.edgeAiExhausted = false;
+  persistEdgeAiQuotaExhausted(false);
+  updateEdgeAiNotice();
+  syncControls();
+}
+
+function handleEdgeAiQuota() {
+  markEdgeAiQuotaExhausted();
+  showToast(t("edgeAiQuotaError"));
+  openProviderModal("quota");
+}
+
+function ensureProviderReady() {
+  if (state.edgeAiExhausted && !state.provider) {
+    openProviderModal("quota");
+    return false;
+  }
+  return true;
+}
+
+function updateEdgeAiNotice() {
+  if (!el.edgeAiNotice) return;
+  const show =
+    Boolean(state.edgeAiExhausted) ||
+    (!state.provider && !state.demo && state.edgeAiAvailable !== false);
+  el.edgeAiNotice.hidden = !show;
+  if (!show) return;
+  el.edgeAiNotice.classList.toggle("quota", state.edgeAiExhausted);
+  if (el.edgeAiNoticeText) {
+    el.edgeAiNoticeText.textContent = state.edgeAiExhausted ? t("edgeAiQuotaNotice") : t("edgeAiNotice");
+  }
+  if (el.edgeAiDocs) {
+    el.edgeAiDocs.href = state.edgeAiDocsUrl;
+    el.edgeAiDocs.textContent = t("edgeAiDocs");
+  }
+  if (el.edgeAiSetup) el.edgeAiSetup.textContent = t("edgeAiSetup");
+}
+
+function applyProviderResult(data) {
+  if (data.provider) {
+    state.providerInfo = {
+      id: data.provider.id,
+      name: data.provider.name,
+      model: data.provider.model
+    };
+    if (state.provider && state.provider.id === data.provider.id) {
+      state.provider.model = data.provider.model || state.provider.model;
+    }
+  }
+  if (typeof data.demo === "boolean") state.demo = data.demo;
+  if (data.edgeAi) {
+    state.edgeAiAvailable = true;
+    if (state.edgeAiExhausted) clearEdgeAiQuotaExhausted();
+  }
+  updateEdgeAiNotice();
 }
 
 function escapeHtml(value) {
@@ -443,6 +577,7 @@ function setInitialChrome() {
   if (el.langBadge) el.langBadge.hidden = true;
   if (el.restartButton) el.restartButton.hidden = true;
   if (el.providerSettingsButton) el.providerSettingsButton.hidden = true;
+  updateEdgeAiNotice();
   document.documentElement.lang = "zh-CN";
 }
 
@@ -474,6 +609,7 @@ function applyLanguageChrome(lang, label) {
   if (el.copyButton) el.copyButton.textContent = t("copy");
   if (el.downloadMdButton) el.downloadMdButton.textContent = t("downloadMd");
   if (el.downloadDocButton) el.downloadDocButton.textContent = t("downloadDoc");
+  updateEdgeAiNotice();
   updateStatus();
 }
 
@@ -674,8 +810,9 @@ function renderSidebar() {
 
 function syncControls() {
   const busy = state.busy || state.starting;
-  const disabled = busy || !hasUserMessage();
-  if (el.sendButton) el.sendButton.disabled = state.busy;
+  const blocked = state.edgeAiExhausted && !state.provider;
+  const disabled = busy || !hasUserMessage() || blocked;
+  if (el.sendButton) el.sendButton.disabled = state.busy || blocked;
   if (el.generateButton) {
     el.generateButton.disabled = disabled || state.generating;
     el.generateButton.textContent = state.generating ? t("generating") : t("generate");
@@ -802,11 +939,13 @@ function resizeComposer() {
 
 async function startConversation(lang, label) {
   if (state.starting) return;
-  if (!state.provider && !state.demo) {
-    state.pendingLanguage = { lang, label };
+  state.pendingLanguage = { lang, label };
+  if (!ensureProviderReady()) return;
+  if (!state.provider && !state.demo && !state.edgeAiAvailable) {
     openProviderModal("start");
     return;
   }
+  state.pendingLanguage = null;
   state.starting = true;
   state.lang = lang;
   state.languageLabel = label || (lang === "zh" ? "中文" : lang === "en" ? "English" : "Other");
@@ -840,7 +979,8 @@ async function startConversation(lang, label) {
       provider: state.provider,
       demo: state.demo
     }, "POST", { timeoutMs: 20000 });
-    state.mode = state.provider ? "ai" : data.mode || state.mode;
+    applyProviderResult(data);
+    state.mode = data.mode || (state.provider ? "ai" : state.mode);
     if (data.languageLabel) {
       state.languageLabel = data.languageLabel;
       applyLanguageChrome(lang, data.languageLabel);
@@ -935,6 +1075,7 @@ function requestWasAborted(error) {
 }
 
 function providerErrorText(error) {
+  if (isEdgeAiQuotaError(error)) return t("edgeAiQuotaError");
   const parts = [`${t("errorPrefix")}${(error && error.message) || t("toastError")}`];
   if (error && error.code === "empty_response") parts.push(t("emptyResponseHint"));
   else if (error && error.code === "timeout") parts.push(t("requestTimeout"));
@@ -953,7 +1094,8 @@ function needsProviderSettings(error) {
         "unknown_provider",
         "invalid_model",
         "missing_model",
-        "empty_response"
+        "empty_response",
+        "edge_ai_quota_exhausted"
       ].includes(error.code)
   );
 }
@@ -979,7 +1121,9 @@ function addProviderError(error) {
     button.type = "button";
     button.className = "inline-action";
     button.textContent = t("providerSettings");
-    button.addEventListener("click", () => openProviderModal("settings"));
+    button.addEventListener("click", () =>
+      openProviderModal(error.code === "edge_ai_quota_exhausted" ? "quota" : "settings")
+    );
     bubble.append(button);
   }
   return row;
@@ -988,6 +1132,7 @@ function addProviderError(error) {
 async function sendMessage(text) {
   const content = String(text || "").trim();
   if (!content || !state.lang || state.busy || state.starting || state.generating) return;
+  if (!ensureProviderReady()) return;
   if (state.view !== "chat") showView("chat");
 
   el.quickReplies.innerHTML = "";
@@ -1018,11 +1163,8 @@ async function sendMessage(text) {
       demo: state.demo
     }, "POST", { signal });
     hideTyping();
+    applyProviderResult(data);
     state.mode = data.mode || state.mode;
-    if (data.provider && state.provider) {
-      state.provider.model = data.provider.model || state.provider.model;
-      state.providerInfo = { name: data.provider.name, model: data.provider.model };
-    }
     state.profile = data.profile || state.profile;
     state.pending = data.pending || [];
     state.standard = data.standard || state.standard;
@@ -1049,6 +1191,9 @@ async function sendMessage(text) {
       const message = timedOut ? t("requestTimeout") : t("requestCancelled");
       addMessage("assistant", message, { error: timedOut, store: false });
       showToast(message);
+    } else if (isEdgeAiQuotaError(error)) {
+      addProviderError(error);
+      handleEdgeAiQuota();
     } else {
       addProviderError(error);
       showToast(t("toastError"));
@@ -1067,6 +1212,7 @@ async function runGenerate() {
     showToast(t("toastNeedIntro"));
     return;
   }
+  if (!ensureProviderReady()) return;
 
   state.generating = true;
   syncControls();
@@ -1089,11 +1235,8 @@ async function runGenerate() {
     state.standard = data.standard || state.standard;
     state.coverage = (data.meta && data.meta.coverage) || state.coverage;
     state.activeMaterial = 0;
+    applyProviderResult(data);
     state.mode = data.mode || state.mode;
-    if (data.provider && state.provider) {
-      state.provider.model = data.provider.model || state.provider.model;
-      state.providerInfo = { name: data.provider.name, model: data.provider.model };
-    }
     state.warnings = (data.meta && data.meta.warnings) || data.warnings || [];
     updateStatus();
     renderSidebar();
@@ -1112,6 +1255,10 @@ async function runGenerate() {
     const timedOut = Boolean(activeRequest && activeRequest.timedOut);
     if (requestWasAborted(error)) {
       showToast(timedOut ? t("requestTimeout") : t("requestCancelled"));
+    } else if (isEdgeAiQuotaError(error)) {
+      addProviderError(error);
+      showView("chat");
+      handleEdgeAiQuota();
     } else {
       addProviderError(error);
       showView("chat");
@@ -1311,6 +1458,11 @@ async function loadProviders() {
     const data = await api("/api/providers", undefined, "GET");
     state.providers = Array.isArray(data.providers) ? data.providers : [];
     state.demoEnabled = data.demoEnabled !== false;
+    if (data.edgeAi) {
+      state.edgeAiAvailable = data.edgeAi.available !== false;
+      if (data.edgeAi.docsUrl) state.edgeAiDocsUrl = data.edgeAi.docsUrl;
+    }
+    updateEdgeAiNotice();
     state.providersLoaded = true;
   } catch (error) {
     if (el.providerStatus) setProviderStatus(t("providerLoadError"), "error");
@@ -1367,9 +1519,22 @@ function setProviderStatus(message, kind) {
 }
 
 function applyProviderModalCopy() {
+  const quota = state.providerModalMode === "quota";
   const settings = state.providerModalMode === "settings";
-  if (el.providerTitle) el.providerTitle.textContent = settings ? t("providerTitleSettings") : t("providerTitleStart");
-  if (el.providerIntro) el.providerIntro.textContent = settings ? t("providerIntroSettings") : t("providerIntroStart");
+  if (el.providerTitle) {
+    el.providerTitle.textContent = quota
+      ? t("edgeAiQuotaTitle")
+      : settings
+        ? t("providerTitleSettings")
+        : t("providerTitleStart");
+  }
+  if (el.providerIntro) {
+    el.providerIntro.textContent = quota
+      ? t("edgeAiQuotaIntro")
+      : settings
+        ? t("providerIntroSettings")
+        : t("providerIntroStart");
+  }
   if (el.providerLabel) el.providerLabel.textContent = t("providerLabel");
   if (el.providerModelLabel) el.providerModelLabel.textContent = t("providerModelLabel");
   if (el.providerBaseUrlLabel) el.providerBaseUrlLabel.textContent = t("providerBaseUrlLabel");
@@ -1378,14 +1543,16 @@ function applyProviderModalCopy() {
   if (el.providerTest) el.providerTest.textContent = t("providerTest");
   if (el.providerDemo) {
     el.providerDemo.textContent = t("providerDemo");
-    el.providerDemo.hidden = !state.demoEnabled;
+    el.providerDemo.hidden = !state.demoEnabled || quota;
   }
-  if (el.providerSubmit) el.providerSubmit.textContent = settings ? t("providerSave") : t("providerStart");
+  if (el.providerSubmit) {
+    el.providerSubmit.textContent = quota || settings ? t("providerSave") : t("providerStart");
+  }
   setProviderStatus("", "");
 }
 
 async function openProviderModal(mode = "start") {
-  state.providerModalMode = mode === "settings" ? "settings" : "start";
+  state.providerModalMode = mode === "settings" || mode === "quota" ? mode : "start";
   applyProviderModalCopy();
   if (el.providerModal) el.providerModal.hidden = false;
   document.body.classList.add("modal-open");
@@ -1461,9 +1628,16 @@ function saveProviderAndStart(config, def) {
   state.demo = false;
   state.providerInfo = { name: def.name, model: config.model };
   state.mode = "ai";
+  state.edgeAiExhausted = false;
+  persistEdgeAiQuotaExhausted(false);
+  const shouldStart =
+    Boolean(state.pendingLanguage) &&
+    (state.providerModalMode === "start" || state.providerModalMode === "quota");
   closeProviderModal();
   updateStatus();
-  if (state.providerModalMode === "start" && state.pendingLanguage) {
+  updateEdgeAiNotice();
+  syncControls();
+  if (shouldStart) {
     const pending = state.pendingLanguage;
     state.pendingLanguage = null;
     startConversation(pending.lang, pending.label);
@@ -1484,6 +1658,10 @@ async function submitProviderForm(event) {
 }
 
 function chooseDemoMode() {
+  if (state.edgeAiExhausted || state.providerModalMode === "quota") {
+    setProviderStatus(t("edgeAiQuotaError"), "error");
+    return;
+  }
   if (!state.demoEnabled) {
     setProviderStatus(t("providerDisabledDemo"), "error");
     return;
@@ -1502,6 +1680,8 @@ function chooseDemoMode() {
   state.mode = "rules";
   closeProviderModal();
   updateStatus();
+  updateEdgeAiNotice();
+  syncControls();
   if (state.providerModalMode === "start" && state.pendingLanguage) {
     const pending = state.pendingLanguage;
     state.pendingLanguage = null;
@@ -1513,8 +1693,7 @@ function chooseDemoMode() {
 
 function chooseLanguage(lang) {
   const labels = { zh: "中文", en: "English" };
-  state.pendingLanguage = { lang, label: labels[lang] || lang };
-  openProviderModal("start");
+  startConversation(lang, labels[lang] || lang);
 }
 
 function chooseOtherLanguage() {
@@ -1526,8 +1705,7 @@ function chooseOtherLanguage() {
     if (el.otherLanguageInput) el.otherLanguageInput.focus();
     return;
   }
-  state.pendingLanguage = { lang: "other", label };
-  openProviderModal("start");
+  startConversation("other", label);
 }
 
 function resetApp() {
@@ -1601,6 +1779,11 @@ function initEvents() {
 
   if (el.providerSettingsButton) {
     el.providerSettingsButton.addEventListener("click", () => openProviderModal("settings"));
+  }
+  if (el.edgeAiSetup) {
+    el.edgeAiSetup.addEventListener("click", () =>
+      openProviderModal(state.edgeAiExhausted ? "quota" : "settings")
+    );
   }
   if (el.providerClose) el.providerClose.addEventListener("click", closeProviderModal);
   if (el.providerModal) {
@@ -1835,6 +2018,13 @@ async function init() {
     if (response.ok) {
       const data = await response.json();
       state.demoEnabled = data.demo !== false;
+      state.edgeAiAvailable = data.edgeAi !== false;
+      if (!state.edgeAiAvailable && state.demoEnabled && !state.provider && !state.edgeAiExhausted) {
+        state.demo = true;
+        state.mode = "rules";
+        state.providerInfo = { name: t("providerDemoName"), model: t("providerDemoModel") };
+      }
+      updateEdgeAiNotice();
       updateStatus();
     }
   } catch {

@@ -327,6 +327,86 @@ a {
   text-overflow: ellipsis;
 }
 
+.edge-ai-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 7px 30px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.16);
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.07), rgba(110, 231, 183, 0.045));
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+
+.edge-ai-notice[hidden] {
+  display: none;
+}
+
+.edge-ai-badge {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.08);
+  color: #bfe9ff;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+}
+
+.edge-ai-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.edge-ai-link {
+  flex: 0 0 auto;
+  color: var(--sky);
+  font-size: 11px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.edge-ai-link:hover {
+  text-decoration: underline;
+}
+
+.edge-ai-action {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(110, 231, 183, 0.28);
+  border-radius: 999px;
+  background: rgba(110, 231, 183, 0.08);
+  color: #b8f4df;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.edge-ai-action:hover {
+  background: rgba(110, 231, 183, 0.14);
+}
+
+.edge-ai-notice.quota {
+  border-bottom-color: rgba(252, 165, 165, 0.28);
+  background: linear-gradient(90deg, rgba(252, 165, 165, 0.09), rgba(229, 192, 123, 0.045));
+}
+
+.edge-ai-notice.quota .edge-ai-badge {
+  border-color: rgba(252, 165, 165, 0.36);
+  background: rgba(252, 165, 165, 0.1);
+  color: #ffd0cc;
+}
+
+.edge-ai-notice.quota .edge-ai-action {
+  border-color: rgba(252, 165, 165, 0.36);
+  background: rgba(252, 165, 165, 0.1);
+  color: #ffd0cc;
+}
+
 .lang-badge {
   padding: 6px 11px;
   border: 1px solid var(--line);
@@ -2238,6 +2318,33 @@ body.modal-open {
   .topbar-note,
   .topbar-separator {
     display: none;
+  }
+
+  .edge-ai-notice {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 16px;
+  }
+
+  .edge-ai-badge {
+    order: 1;
+  }
+
+  .edge-ai-link {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .edge-ai-text {
+    order: 3;
+    flex-basis: 100%;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .edge-ai-action {
+    order: 4;
+    margin-left: auto;
   }
 
   .start-view {

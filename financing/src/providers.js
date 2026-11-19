@@ -1,4 +1,4 @@
-const PROVIDERS = [
+﻿const PROVIDERS = [
   {
     id: "openai",
     name: "OpenAI",
@@ -123,6 +123,42 @@ const PROVIDERS = [
 ];
 
 const PROVIDER_MAP = Object.fromEntries(PROVIDERS.map((provider) => [provider.id, provider]));
+
+export const EDGE_AI_DEFAULT_MODEL = "@tx/deepseek-ai/deepseek-v4";
+export const EDGE_AI_MODELS = [
+  EDGE_AI_DEFAULT_MODEL,
+  "@tx/deepseek-ai/deepseek-v32",
+  "@tx/deepseek-ai/deepseek-v3-0324"
+];
+export const EDGE_AI_DOCS_URL = "https://pages.edgeone.ai/zh/document/edge-ai";
+
+export function edgeOneAiAvailable() {
+  const ai = globalThis.AI;
+  return Boolean(ai && typeof ai.chatCompletions === "function");
+}
+
+export function edgeOneAiConfig(model = EDGE_AI_DEFAULT_MODEL) {
+  return {
+    id: "edgeone-ai",
+    name: "EdgeOne AI",
+    api: "edgeone",
+    baseUrl: "",
+    model: EDGE_AI_MODELS.includes(model) ? model : EDGE_AI_DEFAULT_MODEL,
+    apiKey: "",
+    free: true
+  };
+}
+
+export function edgeOneAiInfo() {
+  return {
+    id: "edgeone-ai",
+    name: "EdgeOne AI",
+    available: edgeOneAiAvailable(),
+    defaultModel: EDGE_AI_DEFAULT_MODEL,
+    models: EDGE_AI_MODELS,
+    docsUrl: EDGE_AI_DOCS_URL
+  };
+}
 
 export class ProviderError extends Error {
   constructor(
@@ -284,8 +320,19 @@ async function readProviderError(response, config) {
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const eoTimeout = Math.max(1000, Math.min(timeoutMs, 300000));
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      eo: {
+        timeoutSetting: {
+          connectTimeout: Math.min(eoTimeout, 15000),
+          readTimeout: eoTimeout,
+          writeTimeout: Math.min(eoTimeout, 30000)
+        }
+      }
+    });
   } catch (error) {
     if (error && error.name === "AbortError") {
       throw new ProviderError("The model provider request timed out. Please retry.", {
@@ -461,15 +508,262 @@ async function callGemini(config, system, user, maxTokens, temperature, timeoutM
   return text;
 }
 
+function withTimeout(promise, timeoutMs, config) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        new ProviderError("The model provider request timed out. Please retry.", {
+          status: 504,
+          code: "timeout",
+          provider: config.name
+        })
+      );
+    }, timeoutMs);
+  });
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
+}
+
+function edgeAiResponseText(data, trim = true) {
+  if (!data || typeof data !== "object") return "";
+  const choices = Array.isArray(data.choices) ? data.choices : [];
+  const choice = choices[0] || {};
+  const message = choice.message || choice.delta || {};
+  const candidates = [message.content, message.reasoning_content, choice.text];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return trim ? candidate.trim() : candidate;
+    if (Array.isArray(candidate)) {
+      const text = candidate
+        .map((part) => (typeof part === "string" ? part : (part && (part.text || part.content)) || ""))
+        .join("");
+      if (text.trim()) return trim ? text.trim() : text;
+    }
+  }
+  for (const key of ["content", "response", "text", "output_text"]) {
+    const value = data[key];
+    if (typeof value === "string" && value.trim()) return trim ? value.trim() : value;
+  }
+  return "";
+}
+
+function parseEdgeAiOutput(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return { text: "", data: null };
+
+  try {
+    const data = JSON.parse(text);
+    return { text: edgeAiResponseText(data), data };
+  } catch {
+    // SSE responses are parsed below.
+  }
+
+  if (text.includes("data:")) {
+    const chunks = [];
+    let lastData = null;
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      try {
+        const data = JSON.parse(payload);
+        lastData = data;
+        const chunk = edgeAiResponseText(data, false);
+        if (chunk) chunks.push(chunk);
+      } catch {
+        chunks.push(payload);
+      }
+    }
+    return { text: chunks.join("").trim(), data: lastData };
+  }
+
+  return { text, data: null };
+}
+
+async function readEdgeAiRaw(response) {
+  if (response === undefined || response === null) return "";
+  if (typeof response === "string") return response;
+  if (typeof response.getReader === "function") {
+    const reader = response.getReader();
+    const decoder = new TextDecoder();
+    let raw = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        raw += decoder.decode(value, { stream: true });
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return raw + decoder.decode();
+  }
+  if (typeof response.text === "function") return response.text();
+  return JSON.stringify(response);
+}
+
+function edgeAiFailure(error) {
+  const raw = error && typeof error.message === "string" ? error.message : String(error || "");
+  let parsed = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = null;
+  }
+  const nested = parsed && typeof parsed.error === "object" ? parsed.error : parsed;
+  const code = (nested && (nested.code || nested.statusCode)) || (error && error.code) || "";
+  const message = redact(
+    (nested && (nested.message || nested.msg)) ||
+      (parsed && typeof parsed.error === "string" ? parsed.error : "") ||
+      raw ||
+      "EdgeOne AI request failed."
+  );
+  const quota =
+    String(code) === "14020" ||
+    /daily public quota|public quota|quota[^.]{0,40}(exhaust|exceed|limit)|额度[^。]{0,20}(用尽|用完|耗尽|不足)|配额[^。]{0,20}(用完|耗尽|不足)/i.test(
+      message
+    );
+  return { code, message, quota };
+}
+
+async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs) {
+  if (!edgeOneAiAvailable()) {
+    throw new ProviderError(
+      "EdgeOne AI is not available in this runtime. Please configure your own provider and API key.",
+      { status: 503, code: "edge_ai_unavailable", provider: "EdgeOne AI" }
+    );
+  }
+
+  const models = [config.model, ...EDGE_AI_MODELS].filter(
+    (model, index, list) => model && list.indexOf(model) === index
+  );
+  const systemMessages = system.trim() ? [{ role: "system", content: system }] : [];
+  const userMessage = { role: "user", content: user };
+  const documentedMessages = [...systemMessages, userMessage];
+  const foldedMessages = [
+    { role: "user", content: system.trim() ? `${system}\n\n${user}` : user }
+  ];
+  const attempted = [];
+  const failures = [];
+  let lastError = null;
+  let quotaError = null;
+
+  for (const model of models) {
+    attempted.push(model);
+    const variants = [
+      {
+        name: "documented",
+        payload: { model, messages: documentedMessages, stream: true }
+      },
+      ...(systemMessages.length
+        ? [
+            {
+              name: "folded-system",
+              payload: { model, messages: foldedMessages, stream: true }
+            }
+          ]
+        : []),
+      {
+        name: "non-stream",
+        payload: { model, messages: documentedMessages, stream: false }
+      },
+      {
+        name: "with-parameters",
+        payload: {
+          model,
+          messages: documentedMessages,
+          stream: true,
+          max_tokens: maxTokens,
+          temperature
+        }
+      }
+    ];
+
+    for (const variant of variants) {
+      try {
+        const response = await withTimeout(
+          globalThis.AI.chatCompletions(variant.payload),
+          timeoutMs,
+          config
+        );
+
+        if (response && typeof response.ok === "boolean" && !response.ok) {
+          throw new Error(`EdgeOne AI returned HTTP ${response.status}.`);
+        }
+
+        const raw = await readEdgeAiRaw(response);
+        const parsed = parseEdgeAiOutput(raw);
+        if (parsed.data && parsed.data.error) {
+          throw new Error(JSON.stringify(parsed.data));
+        }
+        if (!parsed.text) {
+          lastError = emptyOpenAiResponseError(
+            { ...config, model },
+            openAiResponseDetails(parsed.data || {}, { ...config, model }, maxTokens)
+          );
+          failures.push({ model, variant: variant.name, error: "empty response" });
+          continue;
+        }
+        config.model = model;
+        return parsed.text;
+      } catch (error) {
+        const failure = edgeAiFailure(error);
+        failures.push({ model, variant: variant.name, error: failure.message });
+        if (failure.quota) {
+          quotaError = new ProviderError(
+            "EdgeOne AI free quota has been exhausted. Please configure your own provider and API key to continue.",
+            {
+              status: 429,
+              code: "edge_ai_quota_exhausted",
+              provider: "EdgeOne AI",
+              details: { models: attempted.slice(), reason: failure.message }
+            }
+          );
+          break;
+        }
+        lastError =
+          error instanceof ProviderError
+            ? error
+            : new ProviderError(
+                `EdgeOne AI request failed (${variant.name}): ${failure.message}`,
+                {
+                  status: 502,
+                  code: "edge_ai_error",
+                  provider: "EdgeOne AI"
+                }
+              );
+      }
+    }
+  }
+
+  if (quotaError) throw quotaError;
+  if (lastError) {
+    if (!lastError.details) lastError.details = {};
+    lastError.details.attempts = failures.slice(-6);
+    throw lastError;
+  }
+  throw new ProviderError("EdgeOne AI returned no response.", {
+    status: 502,
+    code: "edge_ai_error",
+    provider: "EdgeOne AI",
+    details: { attempts: failures.slice(-6) }
+  });
+}
+
 export async function callProvider(
   config,
   { system = "", user = "", maxTokens = 1600, temperature = 0.3, timeoutMs = 45000 } = {}
 ) {
-  if (!config || !config.apiKey) {
+  if (!config) {
     throw new ProviderError("Model provider is not configured.", { status: 400, code: "missing_provider" });
   }
   if (!user.trim()) throw new ProviderError("Empty model prompt.", { status: 400, code: "empty_prompt" });
 
+  if (config.api === "edgeone") {
+    return callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs);
+  }
+  if (!config.apiKey) {
+    throw new ProviderError("Model provider is not configured.", { status: 400, code: "missing_provider" });
+  }
   if (config.api === "anthropic") {
     return callAnthropic(config, system, user, maxTokens, temperature, timeoutMs);
   }
@@ -494,3 +788,4 @@ export async function testProvider(config) {
     sample: sample.slice(0, 80)
   };
 }
+

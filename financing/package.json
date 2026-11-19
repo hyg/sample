@@ -6,13 +6,18 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node --test tests/engine.test.js tests/generator.test.js tests/providers.test.js tests/ai.test.js",
+    "build:edgeone": "node scripts/build-edgeone.mjs",
+    "deploy:edgeone": "npm run build:edgeone && edgeone makers deploy ./dist -n fundflow-ai --site china --json",
+    "deploy:edgeone:anonymous": "npm run build:edgeone && edgeone makers deploy ./dist -n fundflow-ai --anonymous --site china --json",
+    "test": "node --test tests/engine.test.js tests/generator.test.js tests/providers.test.js tests/ai.test.js tests/edgeone.test.js",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.2"
   },
   "devDependencies": {
+    "edgeone": "^1.7.3",
+    "esbuild": "^0.28.2",
     "wrangler": "^4.163.0"
   }
 }

@@ -2,9 +2,26 @@ import assert from "node:assert/strict";
 import { unzipSync } from "fflate";
 
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:8787").replace(/\/+$/, "");
+const entryQuery = (process.env.SMOKE_QUERY || "").replace(/^\?/, "");
+const useEdgeAi = process.env.SMOKE_EDGE_AI === "1";
+let cookieHeader = "";
 
-async function request(path, options) {
-  const response = await fetch(`${baseUrl}${path}`, options);
+async function bootstrapCookies() {
+  if (!entryQuery) return;
+  const response = await fetch(`${baseUrl}/?${entryQuery}`, { redirect: "manual" });
+  const cookies = response.headers.getSetCookie
+    ? response.headers.getSetCookie()
+    : [response.headers.get("set-cookie")].filter(Boolean);
+  cookieHeader = cookies.map((cookie) => cookie.split(";")[0]).join("; ");
+  if (!cookieHeader) {
+    throw new Error(`Preview entry did not set cookies (HTTP ${response.status}).`);
+  }
+}
+
+async function request(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  if (cookieHeader) headers.set("cookie", cookieHeader);
+  const response = await fetch(`${baseUrl}${path}`, { ...options, headers });
   if (!response.ok) {
     throw new Error(`${path} returned ${response.status}: ${await response.text()}`);
   }
@@ -19,6 +36,7 @@ async function postJson(path, body) {
   });
 }
 
+await bootstrapCookies();
 const health = await (await request("/api/health")).json();
 assert.equal(health.ok, true);
 console.log(`health ok: v${health.version}, demo=${health.demo}`);
@@ -29,7 +47,7 @@ console.log(`providers ok: ${providers.providers.length}`);
 
 const intro = {
   lang: "zh",
-  demo: true,
+  ...(useEdgeAi ? {} : { demo: true }),
   messages: [
     {
       role: "user",
@@ -44,11 +62,18 @@ const intro = {
 const chat = await (await postJson("/api/chat", intro)).json();
 assert.equal(chat.standard.id, "software-25010");
 assert.ok(chat.questions.length >= 1);
-console.log(`chat ok: ${chat.standard.primary.code}, ${chat.questions.length} questions`);
+if (useEdgeAi) {
+  assert.equal(chat.edgeAi, true);
+  assert.equal(chat.provider.id, "edgeone-ai");
+}
+console.log(
+  `chat ok: ${chat.standard.primary.code}, ${chat.questions.length} questions, edgeAi=${chat.edgeAi === true}`
+);
 
 const generated = await (
   await postJson("/api/generate", {
     ...intro,
+    demo: true,
     standardId: chat.standard.id,
     productType: chat.productType
   })

@@ -384,9 +384,13 @@ export async function generateDocumentsWithProvider(
   const documents = {};
   const warnings = [];
   let firstError = null;
+  let quotaError = null;
   for (let index = 0; index < results.length; index += 1) {
     const result = results[index];
     if (result.status === "rejected") {
+      if (result.reason && result.reason.code === "edge_ai_quota_exhausted") {
+        quotaError = result.reason;
+      }
       if (!firstError) firstError = result.reason;
       if (result.reason instanceof ProviderError) {
         warnings.push(`${result.reason.provider}: ${result.reason.message}`);
@@ -400,6 +404,7 @@ export async function generateDocumentsWithProvider(
     }
   }
 
+  if (quotaError) throw quotaError;
   if (!Object.keys(documents).length && firstError) throw firstError;
   return { documents, warnings };
 }
