@@ -330,7 +330,7 @@ export function parseDocumentTags(raw) {
   let match;
   while ((match = pattern.exec(text))) {
     const attrs = match[1] || "";
-    const idMatch = attrs.match(/\bid\s*=\s*["']([a-z0-9-]+)["']/i);
+    const idMatch = attrs.match(/\bid\s*=\s*["']?([a-z0-9-]+)["']?/i);
     if (!idMatch) continue;
     const id = idMatch[1].toLowerCase();
     if (!DOC_MAP[id] || id === "overview") continue;
@@ -375,7 +375,8 @@ export async function generateDocumentsWithProvider(
         user: prompt.user,
         maxTokens: 8000,
         temperature: 0.35,
-        timeoutMs: 100000
+        timeoutMs: 100000,
+        validate: (text) => Object.keys(parseDocumentTags(text)).length > 0
       });
       return parseDocumentTags(raw);
     })
@@ -393,7 +394,10 @@ export async function generateDocumentsWithProvider(
       }
       if (!firstError) firstError = result.reason;
       if (result.reason instanceof ProviderError) {
-        warnings.push(`${result.reason.provider}: ${result.reason.message}`);
+        const snippet = result.reason.details && result.reason.details.snippet;
+        warnings.push(
+          `${result.reason.provider}: ${result.reason.message}${snippet ? ` Response starts with: ${snippet}` : ""}`
+        );
       } else {
         warnings.push(String((result.reason && result.reason.message) || result.reason || "AI generation failed"));
       }
@@ -405,7 +409,13 @@ export async function generateDocumentsWithProvider(
   }
 
   if (quotaError) throw quotaError;
-  if (!Object.keys(documents).length && firstError) throw firstError;
+  if (!Object.keys(documents).length && firstError) {
+    if (config.api === "edgeone" && firstError.code !== "edge_ai_quota_exhausted") {
+      warnings.push(firstError.message);
+      return { documents: {}, warnings };
+    }
+    throw firstError;
+  }
   return { documents, warnings };
 }
 

@@ -4,6 +4,7 @@ import { unzipSync } from "fflate";
 const baseUrl = (process.env.SMOKE_BASE_URL || "http://127.0.0.1:8787").replace(/\/+$/, "");
 const entryQuery = (process.env.SMOKE_QUERY || "").replace(/^\?/, "");
 const useEdgeAi = process.env.SMOKE_EDGE_AI === "1";
+const useEdgeAiGenerate = process.env.SMOKE_EDGE_AI_GENERATE === "1";
 let cookieHeader = "";
 
 async function bootstrapCookies() {
@@ -73,7 +74,7 @@ console.log(
 const generated = await (
   await postJson("/api/generate", {
     ...intro,
-    demo: true,
+    ...(useEdgeAiGenerate ? {} : { demo: true }),
     standardId: chat.standard.id,
     productType: chat.productType
   })
@@ -81,6 +82,10 @@ const generated = await (
 assert.equal(generated.ok, true);
 assert.equal(generated.materials.length, 9);
 assert.equal(generated.meta.standardCode, chat.standard.primary.code);
+if (useEdgeAiGenerate) {
+  assert.equal(generated.edgeAi, true);
+  assert.equal(generated.mode, "ai");
+}
 console.log(`generate ok: ${generated.materials.length} materials, mode=${generated.mode}`);
 
 const archive = await (

@@ -124,11 +124,13 @@
 
 const PROVIDER_MAP = Object.fromEntries(PROVIDERS.map((provider) => [provider.id, provider]));
 
-export const EDGE_AI_DEFAULT_MODEL = "@tx/deepseek-ai/deepseek-v4";
+export const EDGE_AI_DEFAULT_MODEL = "@tx/deepseek-ai/deepseek-v3-0324";
 export const EDGE_AI_MODELS = [
   EDGE_AI_DEFAULT_MODEL,
   "@tx/deepseek-ai/deepseek-v32",
-  "@tx/deepseek-ai/deepseek-v3-0324"
+  "@tx/deepseek-ai/deepseek-v4",
+  "@tx/deepseek-ai/deepseek-r1-0528",
+  "@tx/deepseek-ai/deepseek-r1-distill-qwen-32b"
 ];
 export const EDGE_AI_DOCS_URL = "https://pages.edgeone.ai/zh/document/edge-ai";
 
@@ -579,21 +581,54 @@ function parseEdgeAiOutput(raw) {
   return { text, data: null };
 }
 
-async function readEdgeAiRaw(response) {
+async function readEdgeAiRaw(response, signal) {
   if (response === undefined || response === null) return "";
   if (typeof response === "string") return response;
   if (typeof response.getReader === "function") {
     const reader = response.getReader();
     const decoder = new TextDecoder();
     let raw = "";
+    let abortPromise = null;
+    const onAbort = () => {
+      Promise.resolve(reader.cancel()).catch(() => {});
+    };
+    if (signal) {
+      if (signal.aborted) {
+        onAbort();
+        throw new ProviderError("The EdgeOne AI stream timed out. Please retry.", {
+          status: 504,
+          code: "timeout",
+          provider: "EdgeOne AI"
+        });
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+      abortPromise = new Promise((_, reject) => {
+        signal.addEventListener(
+          "abort",
+          () =>
+            reject(
+              new ProviderError("The EdgeOne AI stream timed out. Please retry.", {
+                status: 504,
+                code: "timeout",
+                provider: "EdgeOne AI"
+              })
+            ),
+          { once: true }
+        );
+      });
+    }
     try {
       while (true) {
-        const { done, value } = await reader.read();
+        const read = reader.read();
+        const { done, value } = abortPromise ? await Promise.race([read, abortPromise]) : await read;
         if (done) break;
         raw += decoder.decode(value, { stream: true });
       }
     } finally {
-      reader.releaseLock();
+      if (signal) signal.removeEventListener("abort", onAbort);
+      try {
+        reader.releaseLock();
+      } catch {}
     }
     return raw + decoder.decode();
   }
@@ -625,7 +660,7 @@ function edgeAiFailure(error) {
   return { code, message, quota };
 }
 
-async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs) {
+async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs, validate = null) {
   if (!edgeOneAiAvailable()) {
     throw new ProviderError(
       "EdgeOne AI is not available in this runtime. Please configure your own provider and API key.",
@@ -636,102 +671,84 @@ async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeo
   const models = [config.model, ...EDGE_AI_MODELS].filter(
     (model, index, list) => model && list.indexOf(model) === index
   );
-  const systemMessages = system.trim() ? [{ role: "system", content: system }] : [];
-  const userMessage = { role: "user", content: user };
-  const documentedMessages = [...systemMessages, userMessage];
-  const foldedMessages = [
-    { role: "user", content: system.trim() ? `${system}\n\n${user}` : user }
+  const messages = [
+    ...(system.trim() ? [{ role: "system", content: system }] : []),
+    { role: "user", content: user }
   ];
   const attempted = [];
   const failures = [];
+  const budget = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 45000;
+  const deadline = Date.now() + budget;
   let lastError = null;
   let quotaError = null;
 
   for (const model of models) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
     attempted.push(model);
-    const variants = [
-      {
-        name: "documented",
-        payload: { model, messages: documentedMessages, stream: true }
-      },
-      ...(systemMessages.length
-        ? [
-            {
-              name: "folded-system",
-              payload: { model, messages: foldedMessages, stream: true }
-            }
-          ]
-        : []),
-      {
-        name: "non-stream",
-        payload: { model, messages: documentedMessages, stream: false }
-      },
-      {
-        name: "with-parameters",
-        payload: {
-          model,
-          messages: documentedMessages,
-          stream: true,
-          max_tokens: maxTokens,
-          temperature
-        }
-      }
-    ];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), Math.min(remaining, budget));
+    try {
+      const response = await withTimeout(
+        globalThis.AI.chatCompletions({ model, messages, stream: true }),
+        Math.min(remaining, budget),
+        config
+      );
 
-    for (const variant of variants) {
-      try {
-        const response = await withTimeout(
-          globalThis.AI.chatCompletions(variant.payload),
-          timeoutMs,
-          config
+      if (response && typeof response.ok === "boolean" && !response.ok) {
+        throw new Error(`EdgeOne AI returned HTTP ${response.status}.`);
+      }
+
+      const raw = await readEdgeAiRaw(response, controller.signal);
+      const parsed = parseEdgeAiOutput(raw);
+      if (parsed.data && parsed.data.error) {
+        throw new Error(JSON.stringify(parsed.data));
+      }
+      if (!parsed.text) {
+        lastError = emptyOpenAiResponseError(
+          { ...config, model },
+          openAiResponseDetails(parsed.data || {}, { ...config, model }, maxTokens)
         );
-
-        if (response && typeof response.ok === "boolean" && !response.ok) {
-          throw new Error(`EdgeOne AI returned HTTP ${response.status}.`);
-        }
-
-        const raw = await readEdgeAiRaw(response);
-        const parsed = parseEdgeAiOutput(raw);
-        if (parsed.data && parsed.data.error) {
-          throw new Error(JSON.stringify(parsed.data));
-        }
-        if (!parsed.text) {
-          lastError = emptyOpenAiResponseError(
-            { ...config, model },
-            openAiResponseDetails(parsed.data || {}, { ...config, model }, maxTokens)
-          );
-          failures.push({ model, variant: variant.name, error: "empty response" });
-          continue;
-        }
-        config.model = model;
-        return parsed.text;
-      } catch (error) {
-        const failure = edgeAiFailure(error);
-        failures.push({ model, variant: variant.name, error: failure.message });
-        if (failure.quota) {
-          quotaError = new ProviderError(
-            "EdgeOne AI free quota has been exhausted. Please configure your own provider and API key to continue.",
-            {
-              status: 429,
-              code: "edge_ai_quota_exhausted",
-              provider: "EdgeOne AI",
-              details: { models: attempted.slice(), reason: failure.message }
-            }
-          );
-          break;
-        }
-        lastError =
-          error instanceof ProviderError
-            ? error
-            : new ProviderError(
-                `EdgeOne AI request failed (${variant.name}): ${failure.message}`,
-                {
-                  status: 502,
-                  code: "edge_ai_error",
-                  provider: "EdgeOne AI"
-                }
-              );
+        failures.push({ model, error: "empty response" });
+        continue;
       }
+      if (validate && !validate(parsed.text)) {
+        lastError = new ProviderError("EdgeOne AI returned an invalid response format.", {
+          status: 502,
+          code: "edge_ai_invalid_response",
+          provider: "EdgeOne AI",
+          details: { model, snippet: parsed.text.slice(0, 300) }
+        });
+        failures.push({ model, error: "invalid response format" });
+        continue;
+      }
+      config.model = model;
+      return parsed.text;
+    } catch (error) {
+      const failure = edgeAiFailure(error);
+      failures.push({ model, error: failure.message });
+      if (failure.quota) {
+        quotaError = new ProviderError(
+          "EdgeOne AI free quota has been exhausted. Please configure your own provider and API key to continue.",
+          {
+            status: 429,
+            code: "edge_ai_quota_exhausted",
+            provider: "EdgeOne AI",
+            details: { models: attempted.slice(), reason: failure.message }
+          }
+        );
+        continue;
+      }
+      lastError =
+        error instanceof ProviderError
+          ? error
+          : new ProviderError(`EdgeOne AI request failed: ${failure.message}`, {
+              status: 502,
+              code: "edge_ai_error",
+              provider: "EdgeOne AI"
+            });
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -751,7 +768,7 @@ async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeo
 
 export async function callProvider(
   config,
-  { system = "", user = "", maxTokens = 1600, temperature = 0.3, timeoutMs = 45000 } = {}
+  { system = "", user = "", maxTokens = 1600, temperature = 0.3, timeoutMs = 45000, validate = null } = {}
 ) {
   if (!config) {
     throw new ProviderError("Model provider is not configured.", { status: 400, code: "missing_provider" });
@@ -759,18 +776,28 @@ export async function callProvider(
   if (!user.trim()) throw new ProviderError("Empty model prompt.", { status: 400, code: "empty_prompt" });
 
   if (config.api === "edgeone") {
-    return callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs);
+    return callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs, validate);
   }
   if (!config.apiKey) {
     throw new ProviderError("Model provider is not configured.", { status: 400, code: "missing_provider" });
   }
+  let text;
   if (config.api === "anthropic") {
-    return callAnthropic(config, system, user, maxTokens, temperature, timeoutMs);
+    text = await callAnthropic(config, system, user, maxTokens, temperature, timeoutMs);
+  } else if (config.api === "gemini") {
+    text = await callGemini(config, system, user, maxTokens, temperature, timeoutMs);
+  } else {
+    text = await callOpenAiCompatible(config, system, user, maxTokens, temperature, timeoutMs);
   }
-  if (config.api === "gemini") {
-    return callGemini(config, system, user, maxTokens, temperature, timeoutMs);
+  if (validate && !validate(text)) {
+    throw new ProviderError("The model returned an invalid response format.", {
+      status: 502,
+      code: "provider_invalid_response",
+      provider: config.name,
+      details: { model: config.model, snippet: text.slice(0, 300) }
+    });
   }
-  return callOpenAiCompatible(config, system, user, maxTokens, temperature, timeoutMs);
+  return text;
 }
 
 export async function testProvider(config) {

@@ -64,8 +64,8 @@ test("EdgeOne adapter uses EdgeOne AI by default when available", async (t) => {
   assert.equal(data.edgeAi, true);
   assert.equal(data.demo, false);
   assert.equal(data.provider.id, "edgeone-ai");
-  assert.equal(data.provider.model, "@tx/deepseek-ai/deepseek-v4");
-  assert.equal(captured.model, "@tx/deepseek-ai/deepseek-v4");
+  assert.equal(data.provider.model, "@tx/deepseek-ai/deepseek-v3-0324");
+  assert.equal(captured.model, "@tx/deepseek-ai/deepseek-v3-0324");
 });
 
 test("EdgeOne adapter surfaces free-quota exhaustion", async (t) => {

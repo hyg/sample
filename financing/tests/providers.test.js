@@ -340,7 +340,7 @@ test("EdgeOne AI quota exhaustion is explicit after all models fail", async (t) 
       assert.ok(error instanceof ProviderError);
       assert.equal(error.code, "edge_ai_quota_exhausted");
       assert.equal(error.status, 429);
-      assert.equal(error.details.models.length, 3);
+      assert.equal(error.details.models.length, 5);
       assert.match(error.message, /configure your own provider/i);
       return true;
     }
