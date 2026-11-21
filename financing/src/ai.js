@@ -1,7 +1,7 @@
 import { FIELD_DEFINITIONS, computeCoverage } from "./engine.js";
 import { getStandardCatalog, standardDefinition } from "./standards.js";
 import { DOC_DEFS } from "./generator.js";
-import { ProviderError, callProvider } from "./providers.js";
+import { EDGE_AI_GENERATION_MODEL, ProviderError, callProvider } from "./providers.js";
 
 const ALLOWED_PRODUCT_TYPES = [
   "software",
@@ -302,6 +302,8 @@ Rules:
 - Write substantive, specific prose that uses the founder's facts. Do not invent facts, numbers, customers, certifications, patents, licences, team credentials or standards claims.
 - If a required fact is missing, write a clearly marked "to be confirmed" statement in ${targetLanguage}. You may provide a recommended framework, checklist or table, but label it as a template or recommendation.
 - Include the project name and standards basis in each document. Use tables where they improve clarity.
+- Do not output analysis, planning, or chain-of-thought. Start directly with the first <DOCUMENT> tag and output only the requested <DOCUMENT> blocks.
+- Be concise: the summary should be 400-700 Chinese characters (or 250-400 English words); every other document should be 800-1500 Chinese characters (or 500-900 English words). Prefer compact tables over long prose.
 - Do not mention that you are an AI model. Do not include HTML.`;
 
   const user = `Target language: ${targetLanguage}
@@ -326,7 +328,7 @@ export function parseDocumentTags(raw) {
   const documents = {};
   if (typeof raw !== "string") return documents;
   const text = raw.replace(/```(?:markdown|md)?/gi, "").replace(/```/g, "");
-  const pattern = /<DOCUMENT\b([^>]*)>([\s\S]*?)<\/DOCUMENT>/gi;
+  const pattern = /<DOCUMENT\b([^>]*)>([\s\S]*?)(?:<\/DOCUMENT>|$)/gi;
   let match;
   while ((match = pattern.exec(text))) {
     const attrs = match[1] || "";
@@ -376,9 +378,12 @@ export async function generateDocumentsWithProvider(
         maxTokens: 8000,
         temperature: 0.35,
         timeoutMs: 100000,
+        model: EDGE_AI_GENERATION_MODEL,
         validate: (text) => Object.keys(parseDocumentTags(text)).length > 0
       });
-      return parseDocumentTags(raw);
+      const opened = (raw.match(/<DOCUMENT\b/gi) || []).length;
+      const closed = (raw.match(/<\/DOCUMENT>/gi) || []).length;
+      return { documents: parseDocumentTags(raw), truncated: opened > closed };
     })
   );
 
@@ -403,7 +408,10 @@ export async function generateDocumentsWithProvider(
       }
       continue;
     }
-    for (const [id, markdown] of Object.entries(result.value)) {
+    if (result.value.truncated) {
+      warnings.push("AI output may be truncated; review the last generated document before sharing.");
+    }
+    for (const [id, markdown] of Object.entries(result.value.documents)) {
       documents[id] = markdown;
     }
   }

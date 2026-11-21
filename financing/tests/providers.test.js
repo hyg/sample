@@ -2,10 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   EDGE_AI_DEFAULT_MODEL,
+  MAKERS_MODELS_MODEL,
   ProviderError,
   callProvider,
   edgeOneAiConfig,
   listProviders,
+  makersModelsAvailable,
+  makersModelsConfig,
   normalizeProviderConfig,
   publicProviderInfo,
   testProvider
@@ -340,7 +343,7 @@ test("EdgeOne AI quota exhaustion is explicit after all models fail", async (t) 
       assert.ok(error instanceof ProviderError);
       assert.equal(error.code, "edge_ai_quota_exhausted");
       assert.equal(error.status, 429);
-      assert.equal(error.details.models.length, 5);
+      assert.equal(error.details.models.length, 4);
       assert.match(error.message, /configure your own provider/i);
       return true;
     }
@@ -363,4 +366,45 @@ test("testProvider returns a short sample", async (t) => {
   });
   const body = JSON.parse(captured.options.body);
   assert.equal(body.max_tokens, 128);
+});
+
+test("Makers Models config is server-side only and defaults to the gateway", () => {
+  assert.equal(makersModelsAvailable({}), false);
+  assert.equal(makersModelsAvailable({ AI_GATEWAY_API_KEY: "   " }), false);
+  assert.equal(makersModelsAvailable({ AI_GATEWAY_API_KEY: "test-key" }), true);
+
+  const config = makersModelsConfig({
+    AI_GATEWAY_API_KEY: " test-key ",
+    AI_GATEWAY_BASE_URL: "https://gateway.example.test/v1/"
+  });
+  assert.equal(config.id, "makers-models");
+  assert.equal(config.name, "EdgeOne Makers Models");
+  assert.equal(config.api, "openai");
+  assert.equal(config.baseUrl, "https://gateway.example.test/v1");
+  assert.equal(config.model, MAKERS_MODELS_MODEL);
+  assert.equal(config.apiKey, "test-key");
+  assert.equal(config.free, true);
+
+  const fallback = makersModelsConfig({ AI_GATEWAY_API_KEY: "test-key" });
+  assert.equal(fallback.baseUrl, "https://ai-gateway.edgeone.link/v1");
+});
+
+test("Makers Models calls the configured gateway with its bearer key", async (t) => {
+  let captured;
+  withMockFetch(t, async (url, options) => {
+    captured = { url, options };
+    return jsonResponse({ choices: [{ message: { content: "gateway ok" } }] });
+  });
+
+  const config = makersModelsConfig({
+    AI_GATEWAY_API_KEY: "test-key",
+    AI_GATEWAY_BASE_URL: "https://gateway.example.test/v1"
+  });
+  const text = await callProvider(config, { system: "sys", user: "hi" });
+
+  assert.equal(text, "gateway ok");
+  assert.equal(captured.url, "https://gateway.example.test/v1/chat/completions");
+  assert.equal(captured.options.headers.authorization, "Bearer test-key");
+  const body = JSON.parse(captured.options.body);
+  assert.equal(body.model, MAKERS_MODELS_MODEL);
 });

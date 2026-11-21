@@ -8,6 +8,8 @@ import {
   edgeOneAiConfig,
   edgeOneAiInfo,
   listProviders,
+  makersModelsAvailable,
+  makersModelsConfig,
   normalizeProviderConfig,
   publicProviderInfo,
   testProvider
@@ -92,7 +94,20 @@ function demoEnabled(env) {
   return !env || env.DEMO_ENABLED !== "false";
 }
 function isEdgeAiProvider(provider) {
-  return Boolean(provider && provider.config && provider.config.api === "edgeone");
+  return Boolean(
+    provider && (provider.edgeAi === true || (provider.config && provider.config.api === "edgeone"))
+  );
+}
+function useMakersModelsForGeneration(provider, env) {
+  if (!provider || !provider.config || provider.config.api !== "edgeone") return provider;
+  if (!makersModelsAvailable(env)) return provider;
+  return {
+    ...provider,
+    config: makersModelsConfig(env),
+    edgeAi: true,
+    mode: "ai",
+    warning: undefined
+  };
 }
 function providerDefaults(provider) {
   return {
@@ -203,11 +218,12 @@ async function handleChat(request, env) {
   }
   const provider = resolveProvider(body, env);
   requireLanguageForDemo(provider, lang);
+  let chatProvider = provider;
   let aiResult = null;
+  let aiFailed = null;
   const warnings = [];
-  if (provider.warning) warnings.push(provider.warning);
-  if (provider.config) {
-    aiResult = await interviewWithProvider(provider.config, {
+  const runInterview = (config) =>
+    interviewWithProvider(config, {
       lang,
       languageLabel,
       messages,
@@ -215,10 +231,42 @@ async function handleChat(request, env) {
       pending,
       standard: sanitizeStandard(body.standard)
     });
+  if (provider.config) {
+    try {
+      aiResult = await runInterview(provider.config);
+    } catch (error) {
+      if (provider.config.api !== "edgeone" || (error && error.code === "edge_ai_quota_exhausted")) {
+        throw error;
+      }
+      aiFailed = error;
+    }
+    if (!aiResult && provider.config.api === "edgeone" && makersModelsAvailable(env)) {
+      try {
+        const makersConfig = makersModelsConfig(env);
+        aiResult = await runInterview(makersConfig);
+        chatProvider = {
+          ...provider,
+          config: makersConfig,
+          edgeAi: false,
+          mode: "ai",
+          warning: undefined
+        };
+        warnings.push(
+          "EdgeOne AI was temporarily unavailable; this turn used EdgeOne Makers Models."
+        );
+      } catch (error) {
+        aiFailed = error;
+      }
+    }
     if (!aiResult) {
-      warnings.push("The model response could not be parsed; this turn used the deterministic interview engine.");
+      warnings.push(
+        aiFailed
+          ? `EdgeOne AI: ${aiFailed.message}`
+          : "The model response could not be parsed; this turn used the deterministic interview engine."
+      );
     }
   }
+  if (chatProvider.warning) warnings.push(chatProvider.warning);
   const result = analyzeTurn({
     lang,
     languageLabel,
@@ -238,7 +286,7 @@ async function handleChat(request, env) {
   });
   return jsonResponse({
     ...result,
-    ...providerDefaults({ ...provider, mode: provider.config ? "ai" : "rules" }),
+    ...providerDefaults({ ...chatProvider, mode: chatProvider.config ? "ai" : "rules" }),
     productType: aiResult && aiResult.productType || body.productType || "",
     warnings
   });
@@ -258,7 +306,7 @@ async function handleGenerate(request, env) {
   if (!messages.some((message) => message.role === "user")) {
     throw new HttpError(400, "Please introduce the project before generating materials.");
   }
-  const provider = resolveProvider(body, env);
+  const provider = useMakersModelsForGeneration(resolveProvider(body, env), env);
   requireLanguageForDemo(provider, lang);
   const requestedDocs = Array.isArray(body.docs)
     ? body.docs.filter((id) => typeof id === "string").slice(0, 9)
@@ -283,14 +331,30 @@ async function handleGenerate(request, env) {
   const warnings = [];
   if (provider.warning) warnings.push(provider.warning);
   if (provider.config) {
-    const generated = await generateDocumentsWithProvider(provider.config, {
-      lang,
-      languageLabel: analysis.languageLabel || languageLabel,
-      profile: analysis.profile,
-      standard: analysis.standard,
-      messages,
-      docs: requestedDocs
-    });
+    let generated;
+    try {
+      generated = await generateDocumentsWithProvider(provider.config, {
+        lang,
+        languageLabel: analysis.languageLabel || languageLabel,
+        profile: analysis.profile,
+        standard: analysis.standard,
+        messages,
+        docs: requestedDocs
+      });
+    } catch (error) {
+      if (provider.config.id === "makers-models" && error && error.code === "rate_limit") {
+        throw new ProviderError(
+          "EdgeOne free AI quota has been exhausted. Please configure your own provider and API key to continue.",
+          {
+            status: 429,
+            code: "edge_ai_quota_exhausted",
+            provider: "EdgeOne AI",
+            details: { generationProvider: "makers-models" }
+          }
+        );
+      }
+      throw error;
+    }
     aiDocuments = generated.documents;
     warnings.push(...generated.warnings);
   }
@@ -407,6 +471,7 @@ async function route(request, env) {
       version: MODEL_VERSION,
       demo: demoEnabled(env),
       edgeAi: edgeOneAiAvailable(),
+      makersModels: makersModelsAvailable(env),
       defaultProvider: edgeOneAiAvailable() ? "edgeone-ai" : demoEnabled(env) ? "demo" : null,
       ai: edgeOneAiInfo(),
       time: (/* @__PURE__ */ new Date()).toISOString()

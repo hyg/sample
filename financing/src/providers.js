@@ -124,15 +124,34 @@
 
 const PROVIDER_MAP = Object.fromEntries(PROVIDERS.map((provider) => [provider.id, provider]));
 
-export const EDGE_AI_DEFAULT_MODEL = "@tx/deepseek-ai/deepseek-v3-0324";
+export const EDGE_AI_DEFAULT_MODEL = "@tx/deepseek-ai/deepseek-v4";
 export const EDGE_AI_MODELS = [
   EDGE_AI_DEFAULT_MODEL,
   "@tx/deepseek-ai/deepseek-v32",
-  "@tx/deepseek-ai/deepseek-v4",
+  "@tx/deepseek-ai/deepseek-v3-0324",
   "@tx/deepseek-ai/deepseek-r1-0528",
   "@tx/deepseek-ai/deepseek-r1-distill-qwen-32b"
 ];
+export const EDGE_AI_GENERATION_MODEL = "@tx/deepseek-ai/deepseek-r1-distill-qwen-32b";
+export const MAKERS_MODELS_MODEL = "@makers/deepseek-v4-flash";
 export const EDGE_AI_DOCS_URL = "https://pages.edgeone.ai/zh/document/edge-ai";
+
+export function makersModelsAvailable(env) {
+  return Boolean(env && typeof env.AI_GATEWAY_API_KEY === "string" && env.AI_GATEWAY_API_KEY.trim());
+}
+
+export function makersModelsConfig(env) {
+  const baseUrl = String((env && env.AI_GATEWAY_BASE_URL) || "https://ai-gateway.edgeone.link/v1").replace(/\/+$/, "");
+  return {
+    id: "makers-models",
+    name: "EdgeOne Makers Models",
+    api: "openai",
+    baseUrl,
+    model: MAKERS_MODELS_MODEL,
+    apiKey: String(env.AI_GATEWAY_API_KEY || "").trim(),
+    free: true
+  };
+}
 
 export function edgeOneAiAvailable() {
   const ai = globalThis.AI;
@@ -157,6 +176,7 @@ export function edgeOneAiInfo() {
     name: "EdgeOne AI",
     available: edgeOneAiAvailable(),
     defaultModel: EDGE_AI_DEFAULT_MODEL,
+    generationModel: EDGE_AI_GENERATION_MODEL,
     models: EDGE_AI_MODELS,
     docsUrl: EDGE_AI_DOCS_URL
   };
@@ -660,7 +680,7 @@ function edgeAiFailure(error) {
   return { code, message, quota };
 }
 
-async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs, validate = null) {
+async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs, validate = null, preferredModel = null) {
   if (!edgeOneAiAvailable()) {
     throw new ProviderError(
       "EdgeOne AI is not available in this runtime. Please configure your own provider and API key.",
@@ -668,9 +688,9 @@ async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeo
     );
   }
 
-  const models = [config.model, ...EDGE_AI_MODELS].filter(
-    (model, index, list) => model && list.indexOf(model) === index
-  );
+  const models = [preferredModel || config.model, ...EDGE_AI_MODELS]
+    .filter((model, index, list) => model && list.indexOf(model) === index)
+    .filter((model) => model !== EDGE_AI_GENERATION_MODEL || preferredModel === EDGE_AI_GENERATION_MODEL);
   const messages = [
     ...(system.trim() ? [{ role: "system", content: system }] : []),
     { role: "user", content: user }
@@ -768,7 +788,7 @@ async function callEdgeOneAi(config, system, user, maxTokens, temperature, timeo
 
 export async function callProvider(
   config,
-  { system = "", user = "", maxTokens = 1600, temperature = 0.3, timeoutMs = 45000, validate = null } = {}
+  { system = "", user = "", maxTokens = 1600, temperature = 0.3, timeoutMs = 45000, validate = null, model = null } = {}
 ) {
   if (!config) {
     throw new ProviderError("Model provider is not configured.", { status: 400, code: "missing_provider" });
@@ -776,7 +796,7 @@ export async function callProvider(
   if (!user.trim()) throw new ProviderError("Empty model prompt.", { status: 400, code: "empty_prompt" });
 
   if (config.api === "edgeone") {
-    return callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs, validate);
+    return callEdgeOneAi(config, system, user, maxTokens, temperature, timeoutMs, validate, model);
   }
   if (!config.apiKey) {
     throw new ProviderError("Model provider is not configured.", { status: 400, code: "missing_provider" });
